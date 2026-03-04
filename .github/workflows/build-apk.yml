@@ -8,9 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: meu-financeiro  # <- entra na subpasta automaticamente
 
     steps:
       - name: Checkout
@@ -38,9 +35,8 @@ jobs:
           cmdline-tools-version: '11076708'
           accept-android-sdk-licenses: true
 
-      - name: Instalar build tools e plataforma Android
-        run: |
-          sdkmanager "platforms;android-33" "build-tools;33.0.2" "platform-tools"
+      - name: Instalar build tools
+        run: sdkmanager "platforms;android-33" "build-tools;33.0.2" "platform-tools"
 
       - name: Adicionar e sincronizar Capacitor Android
         run: |
@@ -50,17 +46,15 @@ jobs:
 
       - name: Configurar Gradle
         run: |
-          cat >> android/gradle.properties << 'GRADLE'
-          org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=384m
-          org.gradle.daemon=false
-          org.gradle.parallel=false
-          android.useAndroidX=true
-          android.enableJetifier=true
-          GRADLE
+          echo "org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=384m" >> android/gradle.properties
+          echo "org.gradle.daemon=false" >> android/gradle.properties
+          echo "org.gradle.parallel=false" >> android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
 
       - name: Build APK
-        working-directory: meu-financeiro/android
         run: |
+          cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --no-parallel --max-workers=2
         env:
@@ -70,5 +64,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: meu-financeiro-apk
-          path: meu-financeiro/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
