@@ -1,5 +1,24 @@
 import { useState, useRef } from "react";
 
+const GEMINI_KEY = "AIzaSyA-gx5FUXaJfJ4IWU7MciY-gLlUk6D0TII"; // Substitua pela sua chave do Google AI Studio
+
+async function askGemini(systemPrompt, userMessage) {
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: systemPrompt + "\n\n" + userMessage }] }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1000 }
+      })
+    }
+  );
+  const d = await r.json();
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+
 const fmt = v => Number(v).toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
 
 const CATS = [
@@ -502,9 +521,7 @@ function Mercado({ markets }) {
 "recommendation":"mercado","totalByMarket":${JSON.stringify(mktObj)},
 "savings":0.00,"tip":"dica curta"}`;
     try{
-      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:[{role:"user",content:`Preços em Campinas nos mercados: ${mktNames.join(", ")} — produtos: ${items.join(", ")}`}]})});
-      const d=await r.json();
-      const txt=d.content?.[0]?.text||"";
+      const txt = await askGemini(sys, `Preços em Campinas nos mercados: ${mktNames.join(", ")} — produtos: ${items.join(", ")}`);
       setResult(JSON.parse(txt.replace(/```json|```/g,"").trim()));
     }catch{setResult({error:"Não consegui buscar os preços. Tente novamente."});}
     setLoading(false);
@@ -583,9 +600,8 @@ Categorias: Moradia R$1.200/R$1.500, Alimentação R$870/R$800 (acima!), Transpo
 Metas: Carro R$2.000/R$50.000 (48 meses), Reserva R$3.500/R$15.000
 Responda em português, máx 150 palavras, prático e direto.`;
     try{
-      const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:400,system:sys,messages:[{role:"user",content:msg}]})});
-      const d=await r.json();
-      setMsgs(p=>[...p,{role:"ai",text:d.content?.[0]?.text||"Não entendi, tente novamente."}]);
+      const txt = await askGemini(sys, msg);
+      setMsgs(p=>[...p,{role:"ai",text:txt||"Não entendi, tente novamente."}]);
     }catch{setMsgs(p=>[...p,{role:"ai",text:"Ops, problema de conexão. Tente novamente! 😅"}]);}
     setLoading(false);
     setTimeout(()=>ref.current?.scrollTo(0,99999),100);
