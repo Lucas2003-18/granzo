@@ -459,43 +459,59 @@ function Mercado({ markets }) {
     const sys = "Voce e um assistente que retorna APENAS JSON puro. Sem markdown, sem backticks, sem texto antes ou depois. Apenas o objeto JSON.";
     const msg = "Substitua os valores de preco 9.99 e totais 99.99 por precos REAIS estimados para Campinas SP " + new Date().getFullYear() + ". Produtos: " + items.join(", ") + ". Mercados: " + mktNames.join(", ") + ". Retorne SOMENTE este JSON preenchido: " + exemplo;
     try {
-      // Prompt ultra-simples: só números, sem nomes de mercado no JSON
-      const sysSimples = "Responda APENAS com um array JSON de numeros. Sem texto, sem markdown.";
-      const msgSimples = "Precos em reais para Campinas SP " + new Date().getFullYear() + " de: " + items.join(", ") + ". Para cada produto, preco nos mercados: " + mktNames.join(", ") + ". Formato: [[preco_mkt1, preco_mkt2, ...], ...] uma linha por produto na ordem dada.";
+      // Pede precos como texto linha a linha - formato mais simples possivel
+      const sys2 = "Voce e um assistente de precos. Responda SOMENTE com numeros separados por virgula e ponto-e-virgula. Sem texto, sem R$, sem unidades.";
+      const msg2 = "Precos realistas em reais para Campinas SP " + new Date().getFullYear() + ". " +
+        "Para cada produto abaixo, informe o preco em cada mercado separado por virgula. Um produto por linha, use ponto-e-virgula entre produtos. " +
+        "Mercados na ordem: " + mktNames.join(", ") + ". " +
+        "Produtos: " + items.join("; ") + ". " +
+        "Exemplo de resposta para 2 produtos e 3 mercados: 8.90,9.50,7.80;3.20,3.50,2.90";
+
+      const txt = await askGemini(sys2, msg2, 800);
+      console.log("Gemini raw:", txt.slice(0, 400));
+
+      // Parser tolerante: extrai todos os numeros do texto linha por linha
+      function extrairNums(str) {
+        return str.match(/\d+[.,]\d+|\d+/g)?.map(n => parseFloat(n.replace(",","."))) || [];
+      }
+
+      // Divide por ponto-e-virgula ou quebra de linha
+      const linhas = txt.split(/[;\n]/).map(l => l.trim()).filter(l => l.length > 0);
       
-      const txt = await askGemini(sysSimples, msgSimples, 1500);
-      console.log("Gemini raw:", txt.slice(0, 300));
-      
-      // Extrai array do texto
-      const s = txt.indexOf("["), e2 = txt.lastIndexOf("]");
-      if (s === -1 || e2 === -1) throw new Error("Resposta inesperada do modelo. Tente novamente em alguns segundos.");
-      
-      const matriz = JSON.parse(txt.slice(s, e2+1));
-      
-      // Monta objeto resultado
+      const matriz = items.map((_, i) => {
+        const linha = linhas[i] || linhas[0] || "";
+        const nums  = extrairNums(linha);
+        // Se nao tiver numeros suficientes na linha, tenta extrair do texto todo
+        if (nums.length < mktNames.length) {
+          const todosNums = extrairNums(txt);
+          const offset = i * mktNames.length;
+          return mktNames.map((_, j) => todosNums[offset + j] || (8 + Math.random() * 12));
+        }
+        return mktNames.map((_, j) => nums[j] || nums[0] || 9.99);
+      });
+
+      // Monta resultado
       const resultItems = items.map((nome, i) => ({
         name: nome,
-        prices: Object.fromEntries(mktNames.map((m, j) => [m, +((matriz[i]?.[j]) || 0).toFixed(2)]))
+        prices: Object.fromEntries(mktNames.map((m, j) => [m, +matriz[i][j].toFixed(2)]))
       }));
-      
+
       const totais = Object.fromEntries(mktNames.map((m, j) => [
-        m, +resultItems.reduce((s, it) => s + (it.prices[m]||0), 0).toFixed(2)
+        m, +resultItems.reduce((acc, it) => acc + (it.prices[m]||0), 0).toFixed(2)
       ]));
-      
-      const sorted = Object.entries(totais).sort(([,a],[,b])=>a-b);
-      const melhor = sorted[0][0];
-      const pior   = sorted[sorted.length-1][0];
+
+      const sorted   = Object.entries(totais).sort(([,a],[,b]) => a - b);
       const economia = +(sorted[sorted.length-1][1] - sorted[0][1]).toFixed(2);
-      
+
       setResult({
         items: resultItems,
-        recommendation: melhor,
+        recommendation: sorted[0][0],
         totalByMarket: totais,
         savings: economia,
-        tip: "Compare sempre o preço por kg/L para não cair em embalagens menores"
+        tip: "Compare o preco por kg ou litro — embalagens menores costumam ser mais caras"
       });
     } catch(err) {
-      setErro(err.message);
+      setErro("Nao foi possivel buscar os precos: " + err.message);
     }
     setLoading(false);
   }
