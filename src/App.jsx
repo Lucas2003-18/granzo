@@ -421,11 +421,26 @@ function Gastos({ exps, setExps, cats, openWith, onOpened }) {
 
 // ── MERCADO ────────────────────────────────────────────────
 function Mercado({ markets }) {
+  const [produtos, setProdutos] = useState(GROCERY);
   const [sel, setSel]       = useState({"Frango (kg)":true,"Arroz 5kg":true,"Feijão 1kg":true,"Leite integral (L)":true,"Ovos (dz)":true,"Macarrão 500g":true});
+  const [novoProd, setNovoProd] = useState("");
+  const [gerenciar, setGerenciar] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
   const [erro, setErro]       = useState("");
   const count = Object.values(sel).filter(Boolean).length;
+  
+  function addProduto() {
+    const nome = novoProd.trim();
+    if (!nome || produtos.includes(nome)) return;
+    setProdutos(p => [...p, nome]);
+    setSel(p => ({...p, [nome]: true}));
+    setNovoProd("");
+  }
+  function removeProduto(nome) {
+    setProdutos(p => p.filter(x => x !== nome));
+    setSel(p => { const n={...p}; delete n[nome]; return n; });
+  }
 
   async function buscar() {
     if (GEMINI_KEY==="SUA_CHAVE_AQUI") { setErro("Configure a chave do Gemini no App.jsx linha 3"); return; }
@@ -444,20 +459,41 @@ function Mercado({ markets }) {
     const sys = "Voce e um assistente que retorna APENAS JSON puro. Sem markdown, sem backticks, sem texto antes ou depois. Apenas o objeto JSON.";
     const msg = "Substitua os valores de preco 9.99 e totais 99.99 por precos REAIS estimados para Campinas SP " + new Date().getFullYear() + ". Produtos: " + items.join(", ") + ". Mercados: " + mktNames.join(", ") + ". Retorne SOMENTE este JSON preenchido: " + exemplo;
     try {
-      const txt = await askGemini(sys, msg, 2000);
-      let parsed = null;
-      try { parsed = JSON.parse(txt.trim()); } catch {}
-      if (!parsed) {
-        const s = txt.indexOf("{"), e2 = txt.lastIndexOf("}");
-        if (s !== -1 && e2 !== -1) try { parsed = JSON.parse(txt.slice(s, e2+1)); } catch {}
-      }
-      if (!parsed) {
-        const clean = txt.replace(/```json|```/gi,"").trim();
-        const s = clean.indexOf("{"), e2 = clean.lastIndexOf("}");
-        if (s !== -1 && e2 !== -1) try { parsed = JSON.parse(clean.slice(s, e2+1)); } catch {}
-      }
-      if (!parsed) throw new Error("Modelo nao retornou JSON valido. Tente novamente.");
-      setResult(parsed);
+      // Prompt ultra-simples: só números, sem nomes de mercado no JSON
+      const sysSimples = "Responda APENAS com um array JSON de numeros. Sem texto, sem markdown.";
+      const msgSimples = "Precos em reais para Campinas SP " + new Date().getFullYear() + " de: " + items.join(", ") + ". Para cada produto, preco nos mercados: " + mktNames.join(", ") + ". Formato: [[preco_mkt1, preco_mkt2, ...], ...] uma linha por produto na ordem dada.";
+      
+      const txt = await askGemini(sysSimples, msgSimples, 1500);
+      console.log("Gemini raw:", txt.slice(0, 300));
+      
+      // Extrai array do texto
+      const s = txt.indexOf("["), e2 = txt.lastIndexOf("]");
+      if (s === -1 || e2 === -1) throw new Error("Resposta inesperada do modelo. Tente novamente em alguns segundos.");
+      
+      const matriz = JSON.parse(txt.slice(s, e2+1));
+      
+      // Monta objeto resultado
+      const resultItems = items.map((nome, i) => ({
+        name: nome,
+        prices: Object.fromEntries(mktNames.map((m, j) => [m, +((matriz[i]?.[j]) || 0).toFixed(2)]))
+      }));
+      
+      const totais = Object.fromEntries(mktNames.map((m, j) => [
+        m, +resultItems.reduce((s, it) => s + (it.prices[m]||0), 0).toFixed(2)
+      ]));
+      
+      const sorted = Object.entries(totais).sort(([,a],[,b])=>a-b);
+      const melhor = sorted[0][0];
+      const pior   = sorted[sorted.length-1][0];
+      const economia = +(sorted[sorted.length-1][1] - sorted[0][1]).toFixed(2);
+      
+      setResult({
+        items: resultItems,
+        recommendation: melhor,
+        totalByMarket: totais,
+        savings: economia,
+        tip: "Compare sempre o preço por kg/L para não cair em embalagens menores"
+      });
     } catch(err) {
       setErro(err.message);
     }
@@ -467,13 +503,34 @@ function Mercado({ markets }) {
   return (
     <div style={{ padding:16, paddingBottom:100 }}>
       <p style={{ fontSize:13, color:"#64748b", marginBottom:14, lineHeight:1.5 }}>Selecione os itens para comparar preços nos seus mercados cadastrados:</p>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:16 }}>
-        {GROCERY.map(item=>(
-          <button key={item} style={{ background:sel[item]?"rgba(99,102,241,0.2)":"rgba(255,255,255,0.05)", border:sel[item]?"1px solid rgba(99,102,241,0.4)":"1px solid rgba(255,255,255,0.1)", color:sel[item]?"#818cf8":"#94a3b8", borderRadius:99, padding:"6px 12px", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}
-            onClick={()=>setSel(p=>({...p,[item]:!p[item]}))}>
-            {sel[item]?"✓ ":""}{item}
-          </button>
+      {/* Chips de produtos */}
+      <div style={{ display:"flex", flexWrap:"wrap", gap:7, marginBottom:10 }}>
+        {produtos.map(item=>(
+          <div key={item} style={{ position:"relative", display:"inline-flex", alignItems:"center" }}>
+            <button style={{ background:sel[item]?"rgba(99,102,241,0.2)":"rgba(255,255,255,0.05)", border:sel[item]?"1px solid rgba(99,102,241,0.4)":"1px solid rgba(255,255,255,0.1)", color:sel[item]?"#818cf8":"#94a3b8", borderRadius:99, padding:"6px 12px", paddingRight:gerenciar?"28px":"12px", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}
+              onClick={()=>!gerenciar&&setSel(p=>({...p,[item]:!p[item]}))}>
+              {sel[item]&&!gerenciar?"✓ ":""}{item}
+            </button>
+            {gerenciar && (
+              <button style={{ position:"absolute", right:6, background:"none", border:"none", color:"#f87171", fontSize:12, cursor:"pointer", lineHeight:1, padding:0 }}
+                onClick={()=>removeProduto(item)}>✕</button>
+            )}
+          </div>
         ))}
+      </div>
+
+      {/* Adicionar produto / toggle gerenciar */}
+      <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+        {gerenciar ? (
+          <>
+            <input style={{ ...inp(), flex:1, padding:"8px 12px", fontSize:13 }} placeholder="Novo produto..." value={novoProd}
+              onChange={e=>setNovoProd(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addProduto()}/>
+            <button style={{ background:"linear-gradient(135deg,#22c55e,#16a34a)", border:"none", color:"white", borderRadius:10, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }} onClick={addProduto}>+ Add</button>
+            <button style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", color:"#94a3b8", borderRadius:10, padding:"8px 12px", fontSize:13, cursor:"pointer" }} onClick={()=>setGerenciar(false)}>✓ OK</button>
+          </>
+        ) : (
+          <button style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", color:"#64748b", borderRadius:10, padding:"8px 14px", fontSize:12, cursor:"pointer", fontFamily:"inherit" }} onClick={()=>setGerenciar(true)}>✏️ Gerenciar produtos</button>
+        )}
       </div>
       <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{ opacity:loading||count===0?0.6:1, marginBottom:8 })}
         onClick={buscar} disabled={loading||count===0}>
