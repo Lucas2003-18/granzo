@@ -4,7 +4,7 @@ const GEMINI_KEY = "AIzaSyA-gx5FUXaJfJ4IWU7MciY-gLlUk6D0TII";
 
 async function askGemini(sys, msg, maxTokens = 1000) {
   const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -202,7 +202,25 @@ function Orcamento({ exps, cats, setCats }) {
 function Gastos({ exps, setExps, cats, openWith, onOpened }) {
   const [show, setShow] = useState(false);
   const [mode, setMode] = useState("expense");
-  const [form, setForm] = useState({ desc:"", value:"", cat:"alimentacao" });
+  const [form, setForm] = useState({ desc:"", value:"", cat:"alimentacao", date:"" });
+  const todayStr = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const [editId, setEditId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [filter, setFilter] = useState("todos");
+
+  function startEdit(e) {
+    setEditId(e.id);
+    setEditForm({ desc:e.desc, value:e.value, cat:e.cat||"outros", kind:e.kind, date:e.date||"" });
+  }
+  function saveEdit() {
+    setExps(p=>p.map(e=>e.id===editId ? {...e,...editForm, value:+editForm.value} : e));
+    setEditId(null);
+  }
+
+  // Meses disponíveis para filtro
+  const monthsAvail = [...new Set(exps.map(e=>{
+    const p=e.date?.split("/"); return p?.length>=2?p[1]:null;
+  }).filter(Boolean))].sort();
 
   useEffect(()=>{
     if (openWith) { setMode(openWith); setShow(true); if(onOpened) onOpened(); }
@@ -218,9 +236,9 @@ function Gastos({ exps, setExps, cats, openWith, onOpened }) {
       type: mode==="income"?"Manual":undefined,
       emoji: mode==="expense"?(cat?.emoji||"📦"):"💰",
       value: +form.value,
-      date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
+      date: form.date ? form.date.slice(0,5) : new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
     },...p]);
-    setForm({ desc:"", value:"", cat:"alimentacao" });
+    setForm({ desc:"", value:"", cat:"alimentacao", date:"" });
     setShow(false);
   }
 
@@ -236,6 +254,16 @@ function Gastos({ exps, setExps, cats, openWith, onOpened }) {
         </div>
       </div>
 
+      {/* Filtro por mês */}
+      {monthsAvail.length > 1 && (
+        <div style={{ display:"flex", gap:6, overflowX:"auto", marginBottom:12, paddingBottom:2 }}>
+          {["todos", ...monthsAvail].map(m=>(
+            <button key={m} style={{ background:filter===m?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.05)", border:filter===m?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.1)", color:filter===m?"#818cf8":"#64748b", borderRadius:99, padding:"4px 12px", fontSize:12, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0, fontFamily:"inherit" }}
+              onClick={()=>setFilter(m)}>{m==="todos"?"Todos":m+"/"+new Date().getFullYear().toString().slice(2)}</button>
+          ))}
+        </div>
+      )}
+
       {show && (
         <div style={{ background:"rgba(17,24,39,0.98)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:16, padding:20, marginBottom:16 }}>
           <div style={{ fontSize:16, fontWeight:800, color:"#f1f5f9", marginBottom:14 }}>{mode==="income"?"💰 Nova entrada":"💸 Novo gasto"}</div>
@@ -249,6 +277,8 @@ function Gastos({ exps, setExps, cats, openWith, onOpened }) {
           </div>
           <input style={{ ...inp(), marginBottom:10 }} placeholder="Descrição (ex: iFood, Salário)" value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/>
           <input style={{ ...inp(), marginBottom:10 }} type="number" placeholder="Valor (R$)" value={form.value} onChange={e=>setForm(p=>({...p,value:e.target.value}))}/>
+          <input style={{ ...inp(), marginBottom:10 }} type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))} placeholder="Data (deixe vazio = hoje)"
+            style={{ ...inp(), marginBottom:10, colorScheme:"dark" }}/>
           {mode==="expense" && (
             <select style={{ ...inp(), marginBottom:10 }} value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}>
               {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
@@ -281,9 +311,33 @@ function Gastos({ exps, setExps, cats, openWith, onOpened }) {
           </div>
           <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
             <span style={{ fontSize:14, fontWeight:700, color:e.kind==="inc"?"#4ade80":"#f87171" }}>{e.kind==="inc"?"+":"-"}{fmt(e.value)}</span>
-            <button style={{ fontSize:10, color:"#475569", background:"none", border:"none", cursor:"pointer" }} onClick={()=>setExps(p=>p.filter(x=>x.id!==e.id))}>✕</button>
+            <div style={{ display:"flex", gap:6 }}>
+              <button style={{ fontSize:10, color:"#818cf8", background:"none", border:"none", cursor:"pointer" }} onClick={()=>startEdit(e)}>✏️</button>
+              <button style={{ fontSize:10, color:"#475569", background:"none", border:"none", cursor:"pointer" }} onClick={()=>setExps(p=>p.filter(x=>x.id!==e.id))}>✕</button>
+            </div>
           </div>
-        </div>;
+        </div>
+        {editId===e.id && (
+          <div style={{ background:"rgba(17,24,39,0.98)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:14, padding:16, marginTop:-4, marginBottom:8 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:"#818cf8", marginBottom:12 }}>✏️ Editando lançamento</div>
+            <input style={{ ...inp(), marginBottom:8 }} placeholder="Descrição" value={editForm.desc} onChange={e=>setEditForm(p=>({...p,desc:e.target.value}))}/>
+            <input style={{ ...inp(), marginBottom:8 }} type="number" placeholder="Valor" value={editForm.value} onChange={e=>setEditForm(p=>({...p,value:e.target.value}))}/>
+            <input style={{ ...inp(), marginBottom:8, colorScheme:"dark" }} type="date" value={editForm.date?.length===5?("2025-"+editForm.date.split("/").reverse().join("-")):editForm.date} onChange={e=>{const d=new Date(e.target.value);const str=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});setEditForm(p=>({...p,date:str}));}}/>
+            <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+              <select style={{ ...inp(), flex:1 }} value={editForm.kind} onChange={e=>setEditForm(p=>({...p,kind:e.target.value}))}>
+                <option value="exp">💸 Gasto</option>
+                <option value="inc">💰 Entrada</option>
+              </select>
+              {editForm.kind==="exp" && <select style={{ ...inp(), flex:1 }} value={editForm.cat} onChange={e=>setEditForm(p=>({...p,cat:e.target.value}))}>
+                {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+              </select>}
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{ border:"1px solid rgba(255,255,255,0.1)" })} onClick={()=>setEditId(null)}>Cancelar</button>
+              <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)")} onClick={saveEdit}>Salvar ✓</button>
+            </div>
+          </div>
+        )};
       })}
     </div>
   );
