@@ -301,10 +301,15 @@ function Orcamento() {
 }
 
 // ── GASTOS ────────────────────────────────────────────────
-function Gastos() {
+function Gastos({ openWith, onOpened, importados }) {
   const [exps,setExps]=useState(EXPS);
+  const todosExps = [...(props.importados||[]), ...exps].sort((a,b)=>b.id-a.id);
   const [show,setShow]=useState(false);
   const [mode,setMode]=useState("expense");
+  const props = { importados };
+  React.useEffect(()=>{
+    if(openWith){setMode(openWith);setShow(true);onOpened&&onOpened();}
+  },[openWith]);
   const [form,setForm]=useState({desc:"",value:"",cat:"alimentacao"});
   function add(){
     if(!form.desc||!form.value)return;
@@ -336,7 +341,7 @@ function Gastos() {
           </div>
         </div>
       )}
-      {exps.map(e=>(
+      {todosExps.map(e=>(
         <Row key={e.id} style={e.kind==="inc"?{borderColor:"rgba(74,222,128,0.2)",background:"rgba(74,222,128,0.04)"}:{}}>
           <div style={{fontSize:22,width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:10,background:e.kind==="inc"?"rgba(74,222,128,0.12)":"rgba(255,255,255,0.06)"}}>{e.emoji}</div>
           <div style={{flex:1}}>
@@ -362,7 +367,7 @@ const DEFAULT_MARKETS = [
   {id:"higa",        label:"Higa Atacado", emoji:"🟡"},
 ];
 
-function Config({ markets, setMarkets }) {
+function Config({ markets, setMarkets, existentes, onImport }) {
   const [cats,setCats]       = useState(CATS);
   const [sec,setSec]         = useState("mercados");
   const [showNewCat,setShowNewCat] = useState(false);
@@ -377,7 +382,7 @@ function Config({ markets, setMarkets }) {
   function delMkt(id){if(markets.length<=1)return;setMarkets(p=>p.filter(m=>m.id!==id));}
 
   const inpStyle={width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#e2e8f0",padding:"10px 13px",fontSize:14,outline:"none",marginBottom:10,boxSizing:"border-box"};
-  const secs=[{id:"mercados",l:"🛒 Mercados"},{id:"categorias",l:"📂 Categorias"},{id:"perfil",l:"👤 Perfil"},{id:"dados",l:"🗄️ Dados"}];
+  const secs=[{id:"importar",l:"📥 Importar"},{id:"mercados",l:"🛒 Mercados"},{id:"categorias",l:"📂 Categorias"},{id:"perfil",l:"👤 Perfil"},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16}}>
@@ -387,6 +392,9 @@ function Config({ markets, setMarkets }) {
           <button key={s.id} style={{background:sec===s.id?"rgba(99,102,241,0.2)":"rgba(255,255,255,0.04)",border:sec===s.id?"1px solid rgba(99,102,241,0.4)":"1px solid rgba(255,255,255,0.08)",color:sec===s.id?"#818cf8":"#64748b",borderRadius:99,padding:"6px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}} onClick={()=>setSec(s.id)}>{s.l}</button>
         ))}
       </div>
+
+      {/* ── IMPORTAR ── */}
+      {sec==="importar"&&<Importador onImport={onImport} existentes={existentes}/>}
 
       {/* ── MERCADOS ── */}
       {sec==="mercados"&&<>
@@ -641,13 +649,272 @@ Responda em português, máx 150 palavras, prático e direto.`;
   );
 }
 
+
+// ── IMPORTADOR BANCÁRIO ───────────────────────────────────
+const CAT_LIST = ["moradia","alimentacao","transporte","saude","educacao","lazer","vestuario","outros"];
+const CAT_LABELS = {moradia:"Moradia",alimentacao:"Alimentação",transporte:"Transporte",saude:"Saúde",educacao:"Educação",lazer:"Lazer",vestuario:"Vestuário",outros:"Outros"};
+
+function detectBank(text) {
+  const t = text.toLowerCase();
+  if (t.includes("nu pagamentos") || t.includes("nubank") || (t.includes("date") && t.includes("title") && t.includes("amount"))) return "nubank_card";
+  if (t.includes("data lançamento") || t.includes("data lancamento") || t.includes("bradesco")) return "bradesco";
+  if (t.includes("data") && t.includes("descrição") && t.includes("valor") && !t.includes("bradesco")) return "nubank_account";
+  return "unknown";
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  const header = lines[0].split(",").map(h => h.trim().replace(/"/g,"").toLowerCase());
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const cols = [];
+    let cur = "", inQ = false;
+    for (const ch of line) {
+      if (ch === '"') inQ = !inQ;
+      else if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ""; }
+      else cur += ch;
+    }
+    cols.push(cur.trim());
+    const row = {};
+    header.forEach((h, i) => row[h] = (cols[i]||"").replace(/"/g,"").trim());
+    return row;
+  });
+}
+
+function parseNubankCard(rows) {
+  return rows.map(r => {
+    const val = parseFloat((r.amount||"0").replace(",","."));
+    return { date: r.date||"", desc: r.title||r.description||"", value: Math.abs(val), kind: "exp", source: "nubank_card" };
+  }).filter(r => r.date && r.value > 0);
+}
+
+function parseNubankAccount(rows) {
+  return rows.map(r => {
+    const val = parseFloat((r["valor"]||r["value"]||"0").replace(",","."));
+    const desc = r["descrição"]||r["descricao"]||r["description"]||"";
+    const date = r["data"]||r["date"]||"";
+    return { date, desc, value: Math.abs(val), kind: val >= 0 ? "inc" : "exp", source: "nubank_account" };
+  }).filter(r => r.date && r.value > 0);
+}
+
+function parseBradesco(rows) {
+  return rows.map(r => {
+    const keys = Object.keys(r);
+    const dateKey = keys.find(k => k.includes("data"));
+    const descKey = keys.find(k => k.includes("hist") || k.includes("desc") || k.includes("lançamento") || k.includes("lancamento"));
+    const valKey  = keys.find(k => k.includes("valor") || k.includes("crédito") || k.includes("débito") || k.includes("credito") || k.includes("debito"));
+    const val = parseFloat(((r[valKey]||"0")).replace(/\./g,"").replace(",","."));
+    const desc = r[descKey]||"";
+    const date = r[dateKey]||"";
+    return { date, desc, value: Math.abs(val), kind: val >= 0 ? "inc" : "exp", source: "bradesco" };
+  }).filter(r => r.date && r.value > 0 && r.desc);
+}
+
+function deduplicar(novos, existentes) {
+  return novos.filter(n => {
+    return !existentes.some(e =>
+      e.value === n.value &&
+      e.date === n.date &&
+      e.desc?.toLowerCase().slice(0,12) === n.desc?.toLowerCase().slice(0,12)
+    );
+  });
+}
+
+async function categorizarIA(itens) {
+  if (!GEMINI_KEY || GEMINI_KEY === "SUA_CHAVE_AQUI") {
+    return itens.map(i => ({ ...i, cat: "outros" }));
+  }
+  const sys = `Você é um categorizador de transações bancárias brasileiras.
+Categorias disponíveis: moradia, alimentacao, transporte, saude, educacao, lazer, vestuario, outros.
+Responda APENAS JSON array sem markdown: [{"i":0,"cat":"categoria"}]
+Regras: iFood/restaurante/mercado=alimentacao, uber/99/gasolina/estacionamento=transporte, 
+farmácia/médico/hospital=saude, netflix/spotify/cinema/jogo=lazer, shopping/roupa/calçado=vestuario,
+aluguel/condomínio/luz/água/internet=moradia, escola/curso/livro=educacao, resto=outros`;
+  const lista = itens.map((it,i) => `${i}:${it.desc}`).join("\n");
+  try {
+    const txt = await askGemini(sys, lista);
+    const clean = txt.replace(/\`\`\`json|\`\`\`/g,"").trim();
+    const cats = JSON.parse(clean);
+    return itens.map((it, i) => {
+      const found = cats.find(c => c.i === i);
+      return { ...it, cat: found?.cat || "outros" };
+    });
+  } catch {
+    return itens.map(i => ({ ...i, cat: "outros" }));
+  }
+}
+
+function Importador({ onImport, existentes }) {
+  const [step, setStep]       = useState("upload"); // upload | preview | done
+  const [bank, setBank]       = useState(null);
+  const [preview, setPreview] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg]         = useState("");
+  const [editing, setEditing] = useState(null);
+  const fileRef = useRef(null);
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true); setMsg("Lendo arquivo...");
+    const text = await file.text();
+    const tipo = detectBank(text);
+    setBank(tipo);
+    const rows = parseCSV(text);
+    let parsed = [];
+    if (tipo === "nubank_card")    parsed = parseNubankCard(rows);
+    else if (tipo === "nubank_account") parsed = parseNubankAccount(rows);
+    else if (tipo === "bradesco")  parsed = parseBradesco(rows);
+    else { setMsg("❌ Formato não reconhecido. Tente exportar novamente."); setLoading(false); return; }
+
+    const semDup = deduplicar(parsed, existentes);
+    const diff = parsed.length - semDup.length;
+    setMsg(`🤖 Categorizando ${semDup.length} lançamentos com IA...`);
+    const categorizados = await categorizarIA(semDup);
+    setPreview(categorizados);
+    setStep("preview");
+    setMsg(diff > 0 ? `ℹ️ ${diff} duplicata(s) ignorada(s)` : "");
+    setLoading(false);
+  }
+
+  function confirmar() {
+    const fmt = (d) => {
+      // normalizar data para DD/MM
+      const parts = d.split(/[-\/]/);
+      if (parts.length === 3) {
+        if (parts[0].length === 4) return `${parts[2]}/${parts[1]}`; // YYYY-MM-DD
+        return `${parts[0]}/${parts[1]}`; // DD/MM/YYYY
+      }
+      return d;
+    };
+    const novos = preview.map(p => ({
+      id: `imp_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      desc: p.desc,
+      kind: p.kind,
+      cat: p.cat,
+      type: p.kind === "inc" ? "Importado" : undefined,
+      emoji: p.kind === "inc" ? "🏦" : (CAT_LABELS[p.cat] ? "📦" : "📦"),
+      value: p.value,
+      date: fmt(p.date),
+      source: p.source,
+    }));
+    onImport(novos);
+    setStep("done");
+  }
+
+  const bankName = { nubank_card:"Nubank Cartão", nubank_account:"Nubank Conta", bradesco:"Bradesco", unknown:"Desconhecido" };
+  const inpStyle = {background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#e2e8f0",padding:"8px 10px",fontSize:13,outline:"none",width:"100%"};
+
+  return (
+    <div style={{padding:16}}>
+      {/* STEP: UPLOAD */}
+      {step==="upload"&&<>
+        <div style={{background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:14,padding:20,marginBottom:16,textAlign:"center"}}>
+          <div style={{fontSize:36,marginBottom:10}}>🏦</div>
+          <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>Importar extrato bancário</div>
+          <div style={{fontSize:13,color:"#64748b",lineHeight:1.6,marginBottom:16}}>Selecione o CSV exportado do Nubank ou Bradesco. Os dados ficam só no seu celular.</div>
+          <input ref={fileRef} type="file" accept=".csv" style={{display:"none"}} onChange={handleFile}/>
+          <button style={{width:"100%",background:"linear-gradient(135deg,#4f46e5,#4338ca)",border:"none",color:"white",borderRadius:10,padding:13,fontSize:14,fontWeight:700,cursor:"pointer"}} onClick={()=>fileRef.current?.click()}>
+            {loading ? "Processando..." : "📂 Selecionar arquivo CSV"}
+          </button>
+        </div>
+
+        {loading&&<div style={{textAlign:"center",padding:20}}>
+          <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:10}}><span className="dot"/><span className="dot"/><span className="dot"/></div>
+          <div style={{fontSize:13,color:"#64748b"}}>{msg}</div>
+        </div>}
+        {msg&&!loading&&<div style={{fontSize:13,color:"#f87171",textAlign:"center",marginTop:8}}>{msg}</div>}
+
+        <div style={{marginTop:8}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:12}}>Como exportar o CSV</div>
+          {[
+            {bank:"💜 Nubank Cartão", steps:["Abra o app Nubank","Toque em 'Cartão de crédito'","Vá em 'Todos os lançamentos'","Toque nos 3 pontinhos ···","Exportar por e-mail → abra o CSV"]},
+            {bank:"💜 Nubank Conta", steps:["Abra o app Nubank","Vá em 'Extrato'","Toque nos 3 pontinhos ···","Exportar extrato → CSV"]},
+            {bank:"🔴 Bradesco", steps:["Acesse o app ou internet banking","Vá em Extrato","Selecione o período","Exportar → CSV ou OFX"]},
+          ].map(b=>(
+            <div key={b.bank} style={{background:"rgba(255,255,255,0.03)",borderRadius:12,padding:"12px 14px",marginBottom:10,border:"1px solid rgba(255,255,255,0.06)"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>{b.bank}</div>
+              {b.steps.map((s,i)=><div key={i} style={{fontSize:12,color:"#64748b",padding:"2px 0"}}>{i+1}. {s}</div>)}
+            </div>
+          ))}
+        </div>
+      </>}
+
+      {/* STEP: PREVIEW */}
+      {step==="preview"&&<>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{bankName[bank]}</div>
+            <div style={{fontSize:12,color:"#64748b"}}>{preview.length} lançamentos prontos para importar</div>
+          </div>
+          <button style={{fontSize:11,color:"#64748b",background:"none",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,padding:"4px 10px",cursor:"pointer"}} onClick={()=>{setStep("upload");setPreview([]);setMsg("");}}>← Voltar</button>
+        </div>
+        {msg&&<div style={{fontSize:12,color:"#818cf8",background:"rgba(99,102,241,0.08)",borderRadius:10,padding:"8px 12px",marginBottom:12}}>{msg}</div>}
+
+        {/* Lista prévia — editável */}
+        <div style={{marginBottom:14}}>
+          {preview.map((p,i)=>(
+            <div key={i} style={{background:"rgba(255,255,255,0.03)",borderRadius:12,padding:"10px 12px",marginBottom:8,border:"1px solid rgba(255,255,255,0.06)"}}>
+              {editing===i ? (
+                <div>
+                  <div style={{fontSize:11,color:"#818cf8",fontWeight:600,marginBottom:8,textTransform:"uppercase"}}>Editando</div>
+                  <input style={{...inpStyle,marginBottom:8}} value={p.desc} onChange={e=>setPreview(prev=>prev.map((x,j)=>j===i?{...x,desc:e.target.value}:x))} placeholder="Descrição"/>
+                  <div style={{display:"flex",gap:8,marginBottom:8}}>
+                    <select style={{...inpStyle,flex:1}} value={p.cat} onChange={e=>setPreview(prev=>prev.map((x,j)=>j===i?{...x,cat:e.target.value}:x))}>
+                      {CAT_LIST.map(c=><option key={c} value={c}>{CAT_LABELS[c]}</option>)}
+                    </select>
+                    <select style={{...inpStyle,width:110}} value={p.kind} onChange={e=>setPreview(prev=>prev.map((x,j)=>j===i?{...x,kind:e.target.value}:x))}>
+                      <option value="exp">💸 Gasto</option>
+                      <option value="inc">💰 Entrada</option>
+                    </select>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",borderRadius:8,padding:8,fontSize:13,cursor:"pointer"}} onClick={()=>setEditing(null)}>Feito</button>
+                    <button style={{flex:1,background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",color:"#f87171",borderRadius:8,padding:8,fontSize:13,cursor:"pointer"}} onClick={()=>{setPreview(prev=>prev.filter((_,j)=>j!==i));setEditing(null);}}>Remover</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{display:"flex",alignItems:"center",gap:10}} onClick={()=>setEditing(i)}>
+                  <div style={{fontSize:11,color:"#475569",width:36,flexShrink:0}}>{p.date?.slice(0,5)}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.desc}</div>
+                    <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{CAT_LABELS[p.cat]||p.cat}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:13,fontWeight:700,color:p.kind==="inc"?"#4ade80":"#f87171"}}>{p.kind==="inc"?"+":"-"}R${p.value.toFixed(2)}</div>
+                    <div style={{fontSize:10,color:"#475569"}}>✏️ editar</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button style={{width:"100%",background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:"white",borderRadius:12,padding:14,fontSize:15,fontWeight:800,cursor:"pointer"}} onClick={confirmar}>
+          ✅ Importar {preview.length} lançamentos
+        </button>
+      </>}
+
+      {/* STEP: DONE */}
+      {step==="done"&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+        <div style={{fontSize:60,marginBottom:16}}>🎉</div>
+        <div style={{fontSize:20,fontWeight:800,color:"#4ade80",marginBottom:8}}>Importado com sucesso!</div>
+        <div style={{fontSize:14,color:"#64748b",marginBottom:24}}>Os lançamentos já aparecem na aba Gastos e nos gráficos.</div>
+        <button style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",borderRadius:10,padding:"10px 24px",fontSize:14,cursor:"pointer"}} onClick={()=>setStep("upload")}>Importar outro arquivo</button>
+      </div>}
+    </div>
+  );
+}
+
 // ── APP ───────────────────────────────────────────────────
 function App() {
   const [tab,setTab]=useState("dashboard");
   const [markets,setMarkets]=useState(DEFAULT_MARKETS);
+  const [openGastos,setOpenGastos]=useState(null);
+  const [allExps,setAllExps]=useState([]);
+  function handleImport(novos){ setAllExps(p=>[...novos,...p]); }
   const TABS=[{id:"dashboard",emoji:"📊",label:"Resumo"},{id:"graficos",emoji:"📈",label:"Gráficos"},{id:"orcamento",emoji:"💰",label:"Orçamento"},{id:"gastos",emoji:"💸",label:"Gastos"},{id:"mercado",emoji:"🛒",label:"Mercado"},{id:"ia",emoji:"🤖",label:"IA"},{id:"config",emoji:"⚙️",label:"Config"}];
   return (
-    <div style={{fontFamily:"'Outfit',sans-serif",background:"#080e1d",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto"}}>
+    <div style={{fontFamily:"'Outfit',sans-serif",background:"#080e1d",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto",paddingTop:"env(safe-area-inset-top)"}}>
       {/* Header */}
       <div style={{background:"linear-gradient(135deg,#0d1b3e,#162547)",padding:"16px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
         <div>
@@ -673,16 +940,16 @@ function App() {
         {tab==="dashboard" && <Dashboard/>}
         {tab==="graficos"  && <Graficos/>}
         {tab==="orcamento" && <Orcamento/>}
-        {tab==="gastos"    && <Gastos/>}
+        {tab==="gastos"    && <Gastos openWith={openGastos} onOpened={()=>setOpenGastos(null)} importados={allExps}/>}
         {tab==="mercado"   && <Mercado markets={markets}/>}
         {tab==="ia"        && <IAChat/>}
-        {tab==="config"    && <Config markets={markets} setMarkets={setMarkets}/>}
+        {tab==="config"    && <Config markets={markets} setMarkets={setMarkets} existentes={allExps} onImport={handleImport}/>}
       </div>
 
       {/* FABs */}
-      {tab!=="ia"&&<div style={{position:"fixed",bottom:78,right:"calc(50% - 230px)",display:"flex",flexDirection:"column",gap:8,zIndex:49}}>
-        <button style={{width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:"white",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(34,197,94,0.35)",fontWeight:700}} onClick={()=>setTab("gastos")}>+💰</button>
-        <button style={{width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,#ef4444,#dc2626)",border:"none",color:"white",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(239,68,68,0.35)",fontWeight:700}} onClick={()=>setTab("gastos")}>+💸</button>
+      {tab!=="ia"&&tab!=="config"&&<div style={{position:"fixed",bottom:78,right:16,display:"flex",flexDirection:"column",gap:8,zIndex:49}}>
+        <button style={{width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:"white",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(34,197,94,0.35)",fontWeight:700}} onClick={()=>{setTab("gastos");setOpenGastos("income");}}>+💰</button>
+        <button style={{width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,#ef4444,#dc2626)",border:"none",color:"white",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(239,68,68,0.35)",fontWeight:700}} onClick={()=>{setTab("gastos");setOpenGastos("expense");}}>+💸</button>
       </div>}
 
       {/* Nav — scrollável para caber 7 abas */}
