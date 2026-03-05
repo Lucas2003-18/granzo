@@ -428,22 +428,38 @@ function Mercado({ markets }) {
   const count = Object.values(sel).filter(Boolean).length;
 
   async function buscar() {
-    if (GEMINI_KEY==="SUA_CHAVE_AQUI") { setErro("⚠️ Configure a chave do Gemini no App.jsx linha 1"); return; }
+    if (GEMINI_KEY==="SUA_CHAVE_AQUI") { setErro("Configure a chave do Gemini no App.jsx linha 3"); return; }
     setLoading(true); setResult(null); setErro("");
     const items    = Object.keys(sel).filter(k=>sel[k]);
     const mktNames = markets.map(m=>m.label);
-    const sys = `Você é um especialista em preços de supermercados brasileiros. Estime preços realistas para Campinas SP em ${new Date().getFullYear()}.
-Responda SOMENTE com JSON válido, sem texto adicional, sem markdown, sem backticks:
-{"items":[{"name":"nome do produto","prices":{"Mercado1":0.00}}],"recommendation":"Nome do Mercado","totalByMarket":{"Mercado1":0.00},"savings":0.00,"tip":"dica curta"}`;
-    const msg = `Estime preços para estes produtos: ${items.join(", ")}. Nos mercados: ${mktNames.join(", ")}. Retorne JSON conforme especificado.`;
+    const mktObj   = Object.fromEntries(mktNames.map(m=>[m,9.99]));
+    const mktTotal = Object.fromEntries(mktNames.map(m=>[m,99.99]));
+    const exemplo  = JSON.stringify({
+      items: items.map(n=>({ name:n, prices:{...mktObj} })),
+      recommendation: mktNames[0],
+      totalByMarket: {...mktTotal},
+      savings: 10.00,
+      tip: "Compre aos sabados para melhores ofertas"
+    });
+    const sys = "Voce e um assistente que retorna APENAS JSON puro. Sem markdown, sem backticks, sem texto antes ou depois. Apenas o objeto JSON.";
+    const msg = "Substitua os valores de preco 9.99 e totais 99.99 por precos REAIS estimados para Campinas SP " + new Date().getFullYear() + ". Produtos: " + items.join(", ") + ". Mercados: " + mktNames.join(", ") + ". Retorne SOMENTE este JSON preenchido: " + exemplo;
     try {
-      const txt = await askGemini(sys, msg, 1500);
-      const start = txt.indexOf("{"), end = txt.lastIndexOf("}");
-      if (start===-1||end===-1) throw new Error("JSON não encontrado na resposta");
-      const parsed = JSON.parse(txt.slice(start,end+1));
+      const txt = await askGemini(sys, msg, 2000);
+      let parsed = null;
+      try { parsed = JSON.parse(txt.trim()); } catch {}
+      if (!parsed) {
+        const s = txt.indexOf("{"), e2 = txt.lastIndexOf("}");
+        if (s !== -1 && e2 !== -1) try { parsed = JSON.parse(txt.slice(s, e2+1)); } catch {}
+      }
+      if (!parsed) {
+        const clean = txt.replace(/```json|```/gi,"").trim();
+        const s = clean.indexOf("{"), e2 = clean.lastIndexOf("}");
+        if (s !== -1 && e2 !== -1) try { parsed = JSON.parse(clean.slice(s, e2+1)); } catch {}
+      }
+      if (!parsed) throw new Error("Modelo nao retornou JSON valido. Tente novamente.");
       setResult(parsed);
-    } catch(e) {
-      setErro(`Erro: ${e.message}. Verifique a chave do Gemini e tente novamente.`);
+    } catch(err) {
+      setErro(err.message);
     }
     setLoading(false);
   }
