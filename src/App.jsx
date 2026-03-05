@@ -2,22 +2,31 @@ import { useState, useRef, useEffect } from "react";
 
 const GEMINI_KEY = "AIzaSyA-gx5FUXaJfJ4IWU7MciY-gLlUk6D0TII";
 
-async function askGemini(sys, msg, maxTokens = 1000) {
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: sys + "\n\n" + msg }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens }
-      })
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+async function askGemini(sys, msg, maxTokens = 1000, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    if (i > 0) await delay(2000 * i);
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite-preview-06-17:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: sys + "\n\n" + msg }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens }
+        })
+      }
+    );
+    if (r.status === 429) {
+      if (i < retries - 1) continue;
+      throw new Error("Limite atingido. Aguarde um momento e tente novamente.");
     }
-  );
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const d = await r.json();
-  if (d.error) throw new Error(d.error.message);
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message);
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  }
 }
 
 const fmt = v => Number(v).toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
