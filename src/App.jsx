@@ -6,9 +6,13 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 
 async function askGemini(sys, msg, maxTokens = 1000, retries = 3) {
   for (let i = 0; i < retries; i++) {
-    if (i > 0) await delay(2000 * i);
+    if (i > 0) {
+      const wait = 2000 * i; // 2s, 4s...
+      console.log(`Aguardando ${wait}ms antes de tentar novamente...`);
+      await delay(wait);
+    }
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite-preview-06-17:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -19,8 +23,8 @@ async function askGemini(sys, msg, maxTokens = 1000, retries = 3) {
       }
     );
     if (r.status === 429) {
-      if (i < retries - 1) continue;
-      throw new Error("Limite atingido. Aguarde um momento e tente novamente.");
+      if (i < retries - 1) continue; // tenta de novo
+      throw new Error("Limite de requisições atingido. Aguarde um momento e tente novamente.");
     }
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
@@ -211,7 +215,7 @@ function Orcamento({ exps, cats, setCats }) {
 function Gastos({ exps, setExps, cats, openWith, onOpened }) {
   const [show, setShow] = useState(false);
   const [mode, setMode] = useState("expense");
-  const [form, setForm] = useState({ desc:"", value:"", cat:"alimentacao", date:"" });
+  const [form, setForm] = useState({ desc:"", value:"", cat:"alimentacao", date:"", payment:"dinheiro", parcelas:1, vencimento:"10" });
   const todayStr = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"});
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState({});
@@ -237,17 +241,45 @@ function Gastos({ exps, setExps, cats, openWith, onOpened }) {
 
   function add() {
     if (!form.desc || !form.value) return;
-    const cat = cats.find(c=>c.id===form.cat);
-    setExps(p=>[{
-      id: Date.now(), desc:form.desc,
-      kind: mode==="expense"?"exp":"inc",
-      cat: mode==="expense"?form.cat:undefined,
-      type: mode==="income"?"Manual":undefined,
-      emoji: mode==="expense"?(cat?.emoji||"📦"):"💰",
-      value: +form.value,
-      date: form.date ? form.date.slice(0,5) : new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),
-    },...p]);
-    setForm({ desc:"", value:"", cat:"alimentacao", date:"" });
+    const cat      = cats.find(c => c.id === form.cat);
+    const isCard   = mode === "expense" && form.payment === "cartao";
+    const parcelas = isCard ? Math.max(1, +form.parcelas || 1) : 1;
+    const total    = +form.value;
+    const venc     = +form.vencimento || 10;
+    const baseDate = form.date ? new Date(form.date + "T12:00:00") : new Date();
+
+    const novos = Array.from({ length: parcelas }, (_, i) => {
+      let d;
+      if (isCard) {
+        d = new Date(baseDate);
+        // Se a compra foi feita ANTES do vencimento, primeira parcela é neste mês; senão, mês que vem
+        const offsetMeses = baseDate.getDate() < venc ? 0 : 1;
+        d.setMonth(d.getMonth() + offsetMeses + i);
+        d.setDate(venc);
+      } else {
+        d = baseDate;
+      }
+      const dateStr  = d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" });
+      const descStr  = parcelas > 1 ? `${form.desc} (${i+1}/${parcelas})` : form.desc;
+      const valor    = i < parcelas - 1
+        ? Math.floor((total / parcelas) * 100) / 100
+        : +(total - Math.floor((total / parcelas) * 100) / 100 * (parcelas - 1)).toFixed(2); // última parcela absorve centavos
+
+      return {
+        id:      Date.now() + i,
+        desc:    descStr,
+        kind:    mode === "expense" ? "exp" : "inc",
+        cat:     mode === "expense" ? form.cat : undefined,
+        type:    mode === "income"  ? "Manual" : undefined,
+        emoji:   isCard ? "💳" : (mode === "expense" ? (cat?.emoji || "📦") : "💰"),
+        value:   valor,
+        date:    dateStr,
+        payment: isCard ? "cartao" : "dinheiro",
+      };
+    });
+
+    setExps(p => [...novos, ...p]);
+    setForm({ desc:"", value:"", cat:"alimentacao", date:"", payment:"dinheiro", parcelas:1, vencimento:"10" });
     setShow(false);
   }
 
@@ -292,6 +324,41 @@ function Gastos({ exps, setExps, cats, openWith, onOpened }) {
             <select style={{ ...inp(), marginBottom:10 }} value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}>
               {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
             </select>
+          )}
+          {mode==="expense" && (
+            <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+              {[["dinheiro","💵 Débito/Pix"],["cartao","💳 Cartão"]].map(([v,l])=>(
+                <button key={v} style={{ flex:1, borderRadius:10, padding:"9px 0", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+                  background:form.payment===v?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.05)",
+                  border:form.payment===v?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.1)",
+                  color:form.payment===v?"#818cf8":"#94a3b8" }}
+                  onClick={()=>setForm(p=>({...p,payment:v}))}>{l}</button>
+              ))}
+            </div>
+          )}
+          {mode==="expense" && form.payment==="cartao" && (
+            <div style={{ background:"rgba(99,102,241,0.07)", border:"1px solid rgba(99,102,241,0.2)", borderRadius:12, padding:12, marginBottom:10 }}>
+              <div style={{ fontSize:11, color:"#818cf8", fontWeight:700, textTransform:"uppercase", marginBottom:10 }}>💳 Configurar parcelamento</div>
+              <div style={{ display:"flex", gap:8, marginBottom:8 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>Parcelas</div>
+                  <select style={inp()} value={form.parcelas} onChange={e=>setForm(p=>({...p,parcelas:+e.target.value}))}>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(n=><option key={n} value={n}>{n}x {n>1?"de "+fmt(+form.value/n||0):""}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>Vencimento (dia)</div>
+                  <select style={inp()} value={form.vencimento} onChange={e=>setForm(p=>({...p,vencimento:e.target.value}))}>
+                    {[1,5,7,10,12,15,17,20,25,28].map(d=><option key={d} value={d}>Dia {d}</option>)}
+                  </select>
+                </div>
+              </div>
+              {form.parcelas > 1 && (
+                <div style={{ fontSize:12, color:"#64748b", lineHeight:1.5 }}>
+                  💡 {form.parcelas}x de {fmt(+form.value/form.parcelas||0)} — lançadas no dia {form.vencimento} de cada mês
+                </div>
+              )}
+            </div>
           )}
           <div style={{ display:"flex", gap:8 }}>
             <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{ border:"1px solid rgba(255,255,255,0.1)" })} onClick={()=>setShow(false)}>Cancelar</button>
