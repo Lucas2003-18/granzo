@@ -41,6 +41,9 @@ const CATS_DEF = [
   { id:"transporte",  label:"Transporte",  emoji:"🚗", budget:400,  color:"#f59e0b" },
   { id:"saude",       label:"Saúde",       emoji:"💊", budget:300,  color:"#f472b6" },
   { id:"lazer",       label:"Lazer",       emoji:"🎬", budget:200,  color:"#fb923c" },
+  { id:"educacao",    label:"Educação",    emoji:"📚", budget:300,  color:"#a78bfa" },
+  { id:"vestuario",   label:"Vestuário",   emoji:"👕", budget:200,  color:"#38bdf8" },
+  { id:"investimento",label:"Investimento",emoji:"📈", budget:0,    color:"#34d399" },
   { id:"outros",      label:"Outros",      emoji:"📦", budget:200,  color:"#94a3b8" },
 ];
 
@@ -394,19 +397,37 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide }) {
           </div>
         </div>
         {editId===e.id && (
-          <div style={{ background:"rgba(17,24,39,0.98)", border:"1px solid rgba(99,102,241,0.3)", borderRadius:14, padding:16, marginTop:-4, marginBottom:8 }}>
-            <div style={{ fontSize:13, fontWeight:700, color:"#818cf8", marginBottom:12 }}>✏️ Editando lançamento</div>
-            <input style={{ ...inp(), marginBottom:8 }} placeholder="Descrição" value={editForm.desc} onChange={e=>setEditForm(p=>({...p,desc:e.target.value}))}/>
-            <input style={{ ...inp(), marginBottom:8 }} type="number" placeholder="Valor" value={editForm.value} onChange={e=>setEditForm(p=>({...p,value:e.target.value}))}/>
-            <input style={{ ...inp(), marginBottom:8, colorScheme:"dark" }} type="date" value={editForm.date?.length===5?("2025-"+editForm.date.split("/").reverse().join("-")):editForm.date} onChange={e=>{const d=new Date(e.target.value);const str=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});setEditForm(p=>({...p,date:str}));}}/>
-            <div style={{ display:"flex", gap:8, marginBottom:8 }}>
-              <select style={{ ...inp(), flex:1 }} value={editForm.kind} onChange={e=>setEditForm(p=>({...p,kind:e.target.value}))}>
-                <option value="exp">💸 Gasto</option>
-                <option value="inc">💰 Entrada</option>
-              </select>
-              {editForm.kind==="exp" && <select style={{ ...inp(), flex:1 }} value={editForm.cat} onChange={e=>setEditForm(p=>({...p,cat:e.target.value}))}>
+          <div style={{ background:"rgba(17,24,39,0.98)", border:"1px solid rgba(99,102,241,0.4)", borderRadius:14, padding:16, marginTop:-4, marginBottom:8 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:"#818cf8", marginBottom:14 }}>✏️ Editando lançamento</div>
+            <div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>Tipo</div>
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              {[["inc","💰 Entrada","#4ade80"],["exp","💸 Gasto","#f87171"]].map(([v,l,c])=>(
+                <button key={v} style={{ flex:1, borderRadius:10, padding:"9px 0", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit",
+                  background:editForm.kind===v?`${c}22`:"rgba(255,255,255,0.05)",
+                  border:editForm.kind===v?`1px solid ${c}55`:"1px solid rgba(255,255,255,0.1)",
+                  color:editForm.kind===v?c:"#94a3b8" }}
+                  onClick={()=>setEditForm(p=>({...p,kind:v}))}>{l}</button>
+              ))}
+            </div>
+            {editForm.kind==="exp" && <>
+              <div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>Categoria</div>
+              <select style={{ ...inp(), marginBottom:12 }} value={editForm.cat||"outros"} onChange={e=>setEditForm(p=>({...p,cat:e.target.value}))}>
                 {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-              </select>}
+              </select>
+            </>}
+            <div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>Descrição</div>
+            <input style={{ ...inp(), marginBottom:12 }} placeholder="Descrição" value={editForm.desc} onChange={e=>setEditForm(p=>({...p,desc:e.target.value}))}/>
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>Valor (R$)</div>
+                <input style={inp()} type="number" value={editForm.value} onChange={e=>setEditForm(p=>({...p,value:e.target.value}))}/>
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:11, color:"#64748b", marginBottom:4 }}>Data</div>
+                <input style={{ ...inp(), colorScheme:"dark" }} type="date"
+                  value={(() => { const pts=(editForm.date||"").split("/"); if(pts.length>=2){const y=new Date().getFullYear();return `${y}-${pts[1].padStart(2,"0")}-${pts[0].padStart(2,"0")}`;}return ""; })()}
+                  onChange={e=>{ if(!e.target.value)return; const d=new Date(e.target.value+"T12:00:00"); setEditForm(p=>({...p,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})); }}/>
+              </div>
             </div>
             <div style={{ display:"flex", gap:8 }}>
               <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{ border:"1px solid rgba(255,255,255,0.1)" })} onClick={()=>setEditId(null)}>Cancelar</button>
@@ -728,17 +749,33 @@ function Importador({ exps, setExps, cats }) {
       const parsed = parseTxs(rows, tipo);
       const semDup = parsed.filter(n=>!exps.some(e=>e.value===n.value&&e.date===n.date&&(e.desc||"").slice(0,10)===(n.desc||"").slice(0,10)));
       const dupCount = parsed.length - semDup.length;
-      // Categorização simples sem IA (para não travar)
-      const catted = semDup.map(p=>{
-        const d=p.desc.toLowerCase();
-        let cat="outros";
-        if(d.includes("ifood")||d.includes("restaur")||d.includes("lanche")||d.includes("mercado")||d.includes("superm")) cat="alimentacao";
-        else if(d.includes("uber")||d.includes("gasolina")||d.includes("estacion")||d.includes("onibus")||d.includes("ônibus")) cat="transporte";
-        else if(d.includes("farmac")||d.includes("médico")||d.includes("medico")||d.includes("hospital")||d.includes("plano")) cat="saude";
-        else if(d.includes("netflix")||d.includes("spotify")||d.includes("cinema")||d.includes("jogo")) cat="lazer";
-        else if(d.includes("aluguel")||d.includes("condom")||d.includes("luz")||d.includes("água")||d.includes("internet")) cat="moradia";
-        return { ...p, cat };
-      });
+      // Categorização automática por palavras-chave
+      function categorizarDesc(desc, kind) {
+        if (kind === "inc") return "inc"; // entradas não têm categoria de gasto
+        const d = desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+        // Alimentação
+        if (/ifood|rappi|uber.?eat|james|restaur|lanche|pizza|burguer|mcdon|subway|sushi|padaria|mercado|superm|carrefour|atacadao|enxuto|higa|extra|pao.?de.?acucar|hortifrut|acougue|peixar|bebida|sorvete/.test(d)) return "alimentacao";
+        // Transporte
+        if (/uber|99pop|cabify|taxi|gasolina|combustiv|posto|shell|ipiranga|br.?distrib|estacion|onibus|metro|trem|passagem|pedágio|pedagio|autopeça|autopeca|oficina|mecanica|detran|ipva|seguro.?auto/.test(d)) return "transporte";
+        // Saúde
+        if (/farmac|drogari|remedio|medico|medica|hospital|clinica|consulta|exame|laborat|dentist|odontos|plano.?saude|unimed|amil|bradesco.?saude|notredame|hapvida|academia|gym|crossfit/.test(d)) return "saude";
+        // Lazer
+        if (/netflix|spotify|amazon|disney|hbo|youtube|prime|deezer|apple.?music|cinema|teatro|show|ingresso|jogo|steam|playstation|xbox|nintendo|bar |balada|clube|viagem|hotel|airbnb|booking/.test(d)) return "lazer";
+        // Moradia
+        if (/aluguel|condom|agua |energia|luz |enel|cpfl|sabesp|internet|vivo|claro|tim|oi |net |sky |telefon|gás|gas |seguro.?resid|iptu|contas|manutencao/.test(d)) return "moradia";
+        // Educação
+        if (/escola|faculdade|univers|curso|mensalid|material|livro|papelaria|udemy|alura|coursera|duolingo/.test(d)) return "educacao";
+        // Vestuário
+        if (/renner|riachuelo|c&a|cea |hm |zara|marisa|shein|shopee|amazon.*roupa|calcado|sapato|tenis |roupa/.test(d)) return "vestuario";
+        // Investimento / transferência
+        if (/invest|aplicac|poupanca|tesouro|fundo|acao|cdb|lci|lca|previd|previdenc|transferen|ted|doc|pix.?para/.test(d)) return "investimento";
+        return "outros";
+      }
+
+      const catted = semDup.map(p=>({
+        ...p,
+        cat: categorizarDesc(p.desc, p.kind)
+      }));
       setPreview(catted);
       setMsg(dupCount>0?`ℹ️ ${dupCount} item(s) já existiam e foram ignorados`:"");
       setStep("preview");
@@ -939,12 +976,20 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps }) {
 
       {sec==="dados" && <div style={CARD}>
         <div style={{ fontSize:14, fontWeight:700, color:"#e2e8f0", marginBottom:8 }}>🗄️ Dados</div>
-        <div style={{ fontSize:13, color:"#64748b", marginBottom:16 }}>{exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados</div>
+        <div style={{ fontSize:13, color:"#64748b", marginBottom:16 }}>
+          💾 Dados salvos automaticamente<br/>
+          {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados
+        </div>
         <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{ marginBottom:10 })} onClick={()=>{
           const blob=new Blob([JSON.stringify({exps,cats,markets},null,2)],{type:"application/json"});
           const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`meufinanceiro-backup.json`;a.click();
         }}>📤 Exportar backup JSON</button>
-        <button style={btn("rgba(248,113,113,0.1)","#f87171",{ border:"1px solid rgba(248,113,113,0.3)" })} onClick={()=>{setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);}}>🗑️ Apagar todos os dados</button>
+        <button style={btn("rgba(248,113,113,0.1)","#f87171",{ border:"1px solid rgba(248,113,113,0.3)" })} onClick={()=>{
+          if(window.confirm("Apagar TODOS os dados? Esta ação não pode ser desfeita.")){
+            setExps([]); setCats(CATS_DEF); setMarkets(MKTS_DEF);
+            try{localStorage.removeItem("mf_exps");localStorage.removeItem("mf_cats");localStorage.removeItem("mf_mkts");}catch{}
+          }
+        }}>🗑️ Apagar todos os dados</button>
       </div>}
     </div>
   );
@@ -953,12 +998,18 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps }) {
 // ── APP ROOT ───────────────────────────────────────────────
 export default function App() {
   const [tab,     setTab]     = useState("dashboard");
-  const [exps,    setExps]    = useState([]);
-  const [cats,    setCats]    = useState(CATS_DEF);
-  const [markets, setMarkets] = useState(MKTS_DEF);
   const [openWith, setOpenWith] = useState(null);
   const [hideVals, setHideVals] = useState(false);
-  const mask = v => hideVals ? "R$ ••••" : v;
+
+  // ── Persistência: carrega do localStorage na inicialização
+  const [exps,    setExps]    = useState(()=>{ try{ const v=localStorage.getItem("mf_exps");   return v?JSON.parse(v):[]; }catch{return [];} });
+  const [cats,    setCats]    = useState(()=>{ try{ const v=localStorage.getItem("mf_cats");   return v?JSON.parse(v):CATS_DEF; }catch{return CATS_DEF;} });
+  const [markets, setMarkets] = useState(()=>{ try{ const v=localStorage.getItem("mf_mkts");   return v?JSON.parse(v):MKTS_DEF; }catch{return MKTS_DEF;} });
+
+  // ── Salva automaticamente sempre que mudar
+  useEffect(()=>{ try{ localStorage.setItem("mf_exps", JSON.stringify(exps)); }catch{} }, [exps]);
+  useEffect(()=>{ try{ localStorage.setItem("mf_cats", JSON.stringify(cats)); }catch{} }, [cats]);
+  useEffect(()=>{ try{ localStorage.setItem("mf_mkts", JSON.stringify(markets)); }catch{} }, [markets]);
 
   const totalInc = exps.filter(e=>e.kind==="inc").reduce((s,e)=>s+e.value,0);
   const totalExp = exps.filter(e=>e.kind==="exp").reduce((s,e)=>s+e.value,0);
