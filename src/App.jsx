@@ -76,19 +76,19 @@ function SecTitle({ t }) {
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────
-function Dashboard({ exps, cats }) {
+function Dashboard({ exps, cats, hide }) {
   const totalInc = exps.filter(e=>e.kind==="inc").reduce((s,e)=>s+e.value,0);
   const totalExp = exps.filter(e=>e.kind==="exp").reduce((s,e)=>s+e.value,0);
   const saldo    = totalInc - totalExp;
   return (
     <div style={{ padding:16, paddingBottom:100 }}>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:14 }}>
-        {[["Renda",fmt(totalInc),"#4ade80"],["Gastos",fmt(totalExp),"#f87171"],["Saldo",fmt(saldo),saldo>=0?"#60a5fa":"#f87171"],["Lançamentos",exps.length+" itens","#a78bfa"]].map(([l,v,c])=>(
+        {[["Renda",fmt(totalInc),"#4ade80"],["Gastos",fmt(totalExp),"#f87171"],["Saldo",fmt(saldo),saldo>=0?"#60a5fa":"#f87171"],["Lançamentos",exps.length+" itens","#a78bfa"]].map(([l,v,c])=>{const vv=hide&&l!=="Lançamentos"?"••••":v; return(
           <div key={l} style={{ background:"rgba(255,255,255,0.04)", borderRadius:12, padding:"12px 10px", border:`1px solid ${c}33`, textAlign:"center" }}>
             <div style={{ fontSize:9, color:"#64748b", textTransform:"uppercase", marginBottom:3 }}>{l}</div>
-            <div style={{ fontSize:15, fontWeight:800, color:c }}>{v}</div>
+            <div style={{ fontSize:15, fontWeight:800, color:c }}>{vv}</div>
           </div>
-        ))}
+        );})}
       </div>
       <SecTitle t="Por categoria"/>
       {cats.map(cat=>{
@@ -99,7 +99,7 @@ function Dashboard({ exps, cats }) {
           <div style={{ flex:1 }}>
             <div style={{ display:"flex", justifyContent:"space-between" }}>
               <span style={{ fontSize:13, fontWeight:600, color:"#e2e8f0" }}>{cat.label}</span>
-              <span style={{ fontSize:12, color:spent>cat.budget?"#f87171":"#64748b" }}>{fmt(spent)}/{fmt(cat.budget)}</span>
+              <span style={{ fontSize:12, color:spent>cat.budget?"#f87171":"#64748b" }}>{hide?"••••/••••":(fmt(spent)+"/"+fmt(cat.budget))}</span>
             </div>
             <Bar pct={pct} color={spent>cat.budget?"#f87171":pct>75?"#f59e0b":cat.color}/>
           </div>
@@ -122,7 +122,7 @@ function Dashboard({ exps, cats }) {
 }
 
 // ── GRÁFICOS ───────────────────────────────────────────────
-function Graficos({ exps, cats }) {
+function Graficos({ exps, cats, hide }) {
   const gastos=exps.filter(e=>e.kind==="exp");
   const pieData=cats.map(c=>({...c,spent:gastos.filter(e=>e.cat===c.id).reduce((s,e)=>s+e.value,0)})).filter(c=>c.spent>0);
   const pieTotal=pieData.reduce((s,c)=>s+c.spent,0);
@@ -146,7 +146,7 @@ function Graficos({ exps, cats }) {
             <div key={c.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"4px 0" }}>
               <div style={{ width:10, height:10, borderRadius:2, background:c.color }}/>
               <span style={{ flex:1, fontSize:13, color:"#cbd5e1" }}>{c.emoji} {c.label}</span>
-              <span style={{ fontSize:13, fontWeight:700, color:c.color }}>{fmt(c.spent)}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:c.color }}>{hide?"••••":fmt(c.spent)}</span>
               <span style={{ fontSize:11, color:"#64748b", width:34, textAlign:"right" }}>{((c.spent/pieTotal)*100).toFixed(0)}%</span>
             </div>
           ))}
@@ -184,7 +184,7 @@ function Graficos({ exps, cats }) {
 }
 
 // ── ORÇAMENTO ──────────────────────────────────────────────
-function Orcamento({ exps, cats, setCats }) {
+function Orcamento({ exps, cats, setCats, hide }) {
   const gastos=exps.filter(e=>e.kind==="exp");
   return (
     <div style={{ padding:16, paddingBottom:100 }}>
@@ -196,7 +196,7 @@ function Orcamento({ exps, cats, setCats }) {
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
             <div style={{ width:36, height:36, borderRadius:10, background:`${cat.color}22`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20 }}>{cat.emoji}</div>
             <span style={{ flex:1, fontSize:14, fontWeight:700, color:"#e2e8f0" }}>{cat.label}</span>
-            <span style={{ fontSize:12, color:over?"#f87171":"#64748b" }}>{fmt(spent)} gasto</span>
+            <span style={{ fontSize:12, color:over?"#f87171":"#64748b" }}>{hide?"••••":fmt(spent)} gasto</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
             <span style={{ fontSize:12, color:"#64748b" }}>Limite R$</span>
@@ -212,7 +212,7 @@ function Orcamento({ exps, cats, setCats }) {
 }
 
 // ── GASTOS ─────────────────────────────────────────────────
-function Gastos({ exps, setExps, cats, openWith, onOpened }) {
+function Gastos({ exps, setExps, cats, openWith, onOpened, hide }) {
   const [show, setShow] = useState(false);
   const [mode, setMode] = useState("expense");
   const [form, setForm] = useState({ desc:"", value:"", cat:"alimentacao", date:"", payment:"dinheiro", parcelas:1, vencimento:"10" });
@@ -386,7 +386,7 @@ function Gastos({ exps, setExps, cats, openWith, onOpened }) {
             <div style={{ fontSize:11, color:"#475569" }}>{e.kind==="inc"?(e.type||"Entrada"):(cat?.label||"Outros")} · {e.date}</div>
           </div>
           <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
-            <span style={{ fontSize:14, fontWeight:700, color:e.kind==="inc"?"#4ade80":"#f87171" }}>{e.kind==="inc"?"+":"-"}{fmt(e.value)}</span>
+            <span style={{ fontSize:14, fontWeight:700, color:e.kind==="inc"?"#4ade80":"#f87171" }}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
             <div style={{ display:"flex", gap:6 }}>
               <button style={{ fontSize:10, color:"#818cf8", background:"none", border:"none", cursor:"pointer" }} onClick={()=>startEdit(e)}>✏️</button>
               <button style={{ fontSize:10, color:"#475569", background:"none", border:"none", cursor:"pointer" }} onClick={()=>setExps(p=>p.filter(x=>x.id!==e.id))}>✕</button>
@@ -623,7 +623,7 @@ Dados do usuário: Renda=${fmt(totalInc)}, Gastos=${fmt(totalExp)}, Saldo=${fmt(
 Categorias: ${catResumo}.
 Responda em português, máx 120 palavras, seja direto e motivador.`;
     try {
-      const txt = await askGemini(sys, msg, 400);
+      const txt = await askGemini(sys, msg, 1200);
       setMsgs(p=>[...p,{role:"ai",text:txt||"Não consegui responder. Tente novamente."}]);
     } catch(e) {
       setMsgs(p=>[...p,{role:"ai",text:`Erro de conexão: ${e.message}. Verifique sua chave do Gemini.`}]);
@@ -716,11 +716,9 @@ function Importador({ exps, setExps, cats }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg]         = useState("");
   const [editing, setEditing] = useState(null);
-  const fileRef = useRef(null);
 
   async function handleFile(e) {
     const file = e.target.files?.[0]; if (!file) return;
-    e.target.value = "";
     setLoading(true); setMsg("Lendo arquivo...");
     try {
       const text = await file.text();
@@ -766,10 +764,10 @@ function Importador({ exps, setExps, cats }) {
           <div style={{ fontSize:36, marginBottom:10 }}>🏦</div>
           <div style={{ fontSize:15, fontWeight:700, color:"#e2e8f0", marginBottom:8 }}>Importar extrato bancário</div>
           <div style={{ fontSize:13, color:"#64748b", lineHeight:1.6, marginBottom:16 }}>CSV do Nubank ou Bradesco. Os dados ficam só no seu celular.</div>
-          <input ref={fileRef} type="file" accept=".csv" style={{ display:"none" }} onChange={handleFile}/>
-          <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)",undefined,{ opacity:loading?0.6:1 })} onClick={()=>!loading&&fileRef.current?.click()}>
+          <label style={{ display:"block", width:"100%", background:"linear-gradient(135deg,#4f46e5,#4338ca)", borderRadius:10, padding:"11px 0", fontSize:14, fontWeight:700, cursor:"pointer", textAlign:"center", color:"white", fontFamily:"inherit", opacity:loading?0.6:1, boxSizing:"border-box" }}>
             {loading?"⏳ Processando...":"📂 Selecionar arquivo CSV"}
-          </button>
+            <input type="file" accept=".csv,.CSV" style={{ display:"none" }} onChange={handleFile} disabled={loading}/>
+          </label>
         </div>
         {loading && <div style={{ textAlign:"center", padding:16 }}>
           <div style={{ display:"flex", justifyContent:"center", gap:6, marginBottom:8 }}><span className="dot"/><span className="dot"/><span className="dot"/></div>
@@ -959,6 +957,8 @@ export default function App() {
   const [cats,    setCats]    = useState(CATS_DEF);
   const [markets, setMarkets] = useState(MKTS_DEF);
   const [openWith, setOpenWith] = useState(null);
+  const [hideVals, setHideVals] = useState(false);
+  const mask = v => hideVals ? "R$ ••••" : v;
 
   const totalInc = exps.filter(e=>e.kind==="inc").reduce((s,e)=>s+e.value,0);
   const totalExp = exps.filter(e=>e.kind==="exp").reduce((s,e)=>s+e.value,0);
@@ -999,18 +999,19 @@ export default function App() {
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ textAlign:"right" }}>
             <div style={{ fontSize:10, color:"#475569", marginBottom:1 }}>Saldo</div>
-            <div style={{ fontSize:17, fontWeight:800, color:saldo>=0?"#4ade80":"#f87171" }}>{fmt(saldo)}</div>
+            <div style={{ fontSize:17, fontWeight:800, color:saldo>=0?"#4ade80":"#f87171" }}>{hideVals?"R$ ••••":fmt(saldo)}</div>
           </div>
+          <button style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, color:"#94a3b8", fontSize:18, padding:"6px 8px", cursor:"pointer" }} onClick={()=>setHideVals(v=>!v)}>{hideVals?"🙈":"👁️"}</button>
           <button style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:10, color:"#94a3b8", fontSize:18, padding:"6px 8px", cursor:"pointer" }} onClick={()=>setTab("config")}>⚙️</button>
         </div>
       </div>
 
       {/* Conteúdo */}
       <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
-        {tab==="dashboard" && <Dashboard exps={exps} cats={cats}/>}
-        {tab==="graficos"  && <Graficos  exps={exps} cats={cats}/>}
-        {tab==="orcamento" && <Orcamento exps={exps} cats={cats} setCats={setCats}/>}
-        {tab==="gastos"    && <Gastos    exps={exps} setExps={setExps} cats={cats} openWith={openWith} onOpened={()=>setOpenWith(null)}/>}
+        {tab==="dashboard" && <Dashboard exps={exps} cats={cats} hide={hideVals}/>}
+        {tab==="graficos"  && <Graficos  exps={exps} cats={cats} hide={hideVals}/>}
+        {tab==="orcamento" && <Orcamento exps={exps} cats={cats} setCats={setCats} hide={hideVals}/>}
+        {tab==="gastos"    && <Gastos    exps={exps} setExps={setExps} cats={cats} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals}/>}
         {tab==="mercado"   && <Mercado   markets={markets}/>}
         {tab==="ia"        && <IAChat    exps={exps} cats={cats}/>}
         {tab==="config"    && <Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps}/>}
