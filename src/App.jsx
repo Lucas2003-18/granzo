@@ -29,14 +29,26 @@ async function askGemini(sys, msg, maxTokens=1000, retries=3) {
 function categorizar(desc, kind) {
   if (kind==="inc") return null;
   const d = desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  if (/ifood|rappi|uber.?eat|james|restaur|lanche|pizza|burguer|mcdon|subway|sushi|padaria|mercado|superm|carrefour|atacadao|enxuto|higa|extra|pao.?de.?acucar|hortifrut|acougue|peixar|bebida|sorvete/.test(d)) return "alimentacao";
-  if (/uber|99pop|cabify|taxi|gasolina|combustiv|posto|shell|ipiranga|estacion|onibus|metro|trem|passagem|pedagio|autopeca|oficina|mecanica|detran|ipva|seguro.?auto/.test(d)) return "transporte";
+  // Ignorar pagamento de fatura do cartão (não é gasto novo)
+  if (/pagamento de fatura/.test(d)) return "_ignorar";
+  // Pet (Bethoven)
+  if (/pet.?camp|veterinar|petshop|petz|cobasi|racao|bethoven/.test(d)) return "pet";
+  // Alimentação — inclui estabelecimentos reais do extrato
+  if (/ifood|rappi|uber.?eat|james|99.?food|melfood|restaur|lanche|pizza|burguer|mcdon|subway|sushi|padaria|superm|carrefour|atacadao|enxuto|higa|extra|pao.?de.?acucar|hortifrut|acougue|peixar|bebida|sorvete|supermercado|jim\.com|kamikase|espaco.?nobre|d.?burger|cacau/.test(d)) return "alimentacao";
+  // Transporte — inclui postos reais
+  if (/uber|99pop|cabify|taxi|gasolina|combustiv|posto|shell|ipiranga|chiminazzo|diamante.?auto|pauliceia|estacion|onibus|metro|trem|passagem|pedagio|autopeca|oficina|mecanica|detran|ipva|seguro.?auto|ancar.?park/.test(d)) return "transporte";
+  // Saúde
   if (/farmac|drogari|remedio|medico|medica|hospital|clinica|consulta|exame|laborat|dentist|odontos|plano.?saude|unimed|amil|notredame|hapvida|academia|gym|crossfit/.test(d)) return "saude";
-  if (/netflix|spotify|amazon|disney|hbo|youtube|prime|deezer|apple.?music|cinema|teatro|show|ingresso|jogo|steam|playstation|xbox|nintendo|balada|clube|viagem|hotel|airbnb|booking/.test(d)) return "lazer";
-  if (/aluguel|condom|energia|enel|cpfl|sabesp|internet|vivo|claro|tim|sky |telefon|gas |seguro.?resid|iptu|manutencao/.test(d)) return "moradia";
+  // Lazer — inclui EBANX/PAGBRASIL (assinaturas internacionais), EA9 (esportes)
+  if (/netflix|spotify|amazon|disney|hbo|youtube|prime|deezer|apple.?music|cinema|teatro|show|ingresso|jogo|steam|playstation|xbox|nintendo|balada|clube|viagem|hotel|airbnb|booking|ebanx|pagbrasil|ea9/.test(d)) return "lazer";
+  // Moradia — inclui HM 72 (aluguel real do Lucas)
+  if (/aluguel|condom|energia|enel|cpfl|sabesp|internet|vivo|claro|tim|sky |telefon|gas |seguro.?resid|iptu|manutencao|hm.?72|empreendimento.?imob|london.?point/.test(d)) return "moradia";
+  // Educação
   if (/escola|faculdade|univers|curso|mensalid|material|livro|papelaria|udemy|alura|coursera|duolingo/.test(d)) return "educacao";
+  // Vestuário
   if (/renner|riachuelo|c&a|cea |hm |zara|marisa|shein|shopee|calcado|sapato|tenis |roupa/.test(d)) return "vestuario";
-  if (/invest|aplicac|poupanca|tesouro|fundo|cdb|lci|lca|previd|previdenc|transferen|ted|doc|pix.?para/.test(d)) return "investimento";
+  // Investimento — aplicações e RDB
+  if (/aplicac|aplicacao|rdb|poupanca|tesouro|fundo|cdb|lci|lca|previd|previdenc/.test(d)) return "investimento";
   return "outros";
 }
 
@@ -59,6 +71,7 @@ const CATS_DEF = [
   { id:"lazer",        label:"Lazer",        emoji:"🎬", budget:200,  color:"#fb923c" },
   { id:"educacao",     label:"Educação",     emoji:"📚", budget:300,  color:"#a78bfa" },
   { id:"vestuario",    label:"Vestuário",    emoji:"👕", budget:200,  color:"#38bdf8" },
+  { id:"pet",          label:"Bethoven 🐾",  emoji:"🐶", budget:300,  color:"#f97316" },
   { id:"investimento", label:"Investimento", emoji:"📈", budget:0,    color:"#34d399" },
   { id:"outros",       label:"Outros",       emoji:"📦", budget:200,  color:"#94a3b8" },
 ];
@@ -869,11 +882,17 @@ Responda em português. Seja específico com os números. Máx 150 palavras.`;
 
 function detectIncType(desc) {
   const d = (desc||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  // Salário: transferência recebida de si mesmo (Lucas transferindo do Bradesco/CEF para Nubank)
+  if (/transferencia recebida.*lucas rafael/.test(d)) return "salario";
   if (/salario|salário|pro.?labore|prolabore|pagamento.?folha|holerite|vencimento/.test(d)) return "salario";
-  if (/pix|ted|doc|transf|transferen/.test(d)) return "transferencia";
-  if (/rendimento|juros|dividendo|cdb|lci|lca|fundo|tesouro|invest/.test(d)) return "investimento_ret";
+  // Retorno de investimento
+  if (/devolucao.*aplicac|devolução.*aplicac|rendimento|juros|dividendo|cdb|lci|lca|fundo|tesouro/.test(d)) return "investimento_ret";
+  if (/credito em conta|crédito em conta/.test(d)) return "investimento_ret";
+  // Reembolso → transferência
+  if (/reembolso|transferencia recebida|transferência recebida/.test(d)) return "transferencia";
+  if (/pix|ted|doc|transf/.test(d)) return "transferencia";
   if (/freelance|freela|servico|serviço|consultor|comissao|comissão|bico|extra/.test(d)) return "extra";
-  return null; // null = usuário decide na tela de preview
+  return null;
 }
 
 // ── IMPORTADOR ─────────────────────────────────────────────
@@ -881,7 +900,24 @@ function detectBank(text){const t=text.toLowerCase();if(t.includes("date")&&t.in
 function parseCSVRows(text){const lines=text.trim().split(/\r?\n/);const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,"").toLowerCase());return lines.slice(1).filter(l=>l.trim()).map(line=>{const cols=[];let cur="",inQ=false;for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){cols.push(cur.trim());cur="";}else cur+=ch;}cols.push(cur.trim());return Object.fromEntries(header.map((h,i)=>[h,(cols[i]||"").replace(/"/g,"").trim()]));});}
 function parseTxs(rows,tipo){
   if(tipo==="nubank_card")return rows.map(r=>({date:r.date||"",desc:r.title||r.description||"",value:Math.abs(parseFloat((r.amount||"0").replace(",","."))),kind:"exp",source:"Nubank Cartão"})).filter(r=>r.date&&r.value>0);
-  if(tipo==="nubank_conta")return rows.map(r=>{const v=parseFloat((r["valor"]||r["value"]||"0").replace(",","."));return{date:r["data"]||r["date"]||"",desc:r["descrição"]||r["descricao"]||"",value:Math.abs(v),kind:v>=0?"inc":"exp",source:"Nubank Conta"};}).filter(r=>r.date&&r.value>0);
+  if(tipo==="nubank_conta")return rows.map(r=>{
+    const v=parseFloat((r["valor"]||r["value"]||"0").replace(",","."));
+    const desc=r["descrição"]||r["descricao"]||"";
+    const dl=desc.toLowerCase();
+    // Aplicações: saem como negativo mas são investimento
+    const isAplicacao=/aplicac|aplicação|rdb/.test(dl);
+    // Devolução de aplicação: entra como positivo, é retorno de investimento
+    const isDevolucao=/devolucao|devolução/.test(dl);
+    return {
+      date:r["data"]||r["date"]||"",
+      desc,
+      value:Math.abs(v),
+      kind: isDevolucao?"inc":(v>=0?"inc":"exp"),
+      incType: isDevolucao?"investimento_ret":undefined,
+      cat: isAplicacao?"investimento":undefined,
+      source:"Nubank Conta"
+    };
+  }).filter(r=>r.date&&r.value>0);
   if(tipo==="bradesco")return rows.map(r=>{const keys=Object.keys(r);const dK=keys.find(k=>k.includes("data")),descK=keys.find(k=>k.includes("hist")||k.includes("desc")),vK=keys.find(k=>k.includes("valor")||k.includes("créd")||k.includes("déb"));const v=parseFloat((r[vK]||"0").replace(/\./g,"").replace(",","."));return{date:r[dK]||"",desc:r[descK]||"",value:Math.abs(v),kind:v>=0?"inc":"exp",source:"Bradesco"};}).filter(r=>r.date&&r.value>0&&r.desc);
   return [];
 }
@@ -906,9 +942,9 @@ function Importador({ exps, setExps, cats }){
       const dupCount=parsed.length-semDup.length;
       const catted=semDup.map(p=>({
         ...p,
-        cat: categorizar(p.desc,p.kind)||"outros",
-        incType: p.kind==="inc" ? (detectIncType(p.desc)||"outro") : undefined,
-      }));
+        cat: p.cat || categorizar(p.desc,p.kind) || "outros",
+        incType: p.kind==="inc" ? (p.incType || detectIncType(p.desc) || "outro") : undefined,
+      })).filter(p=>p.cat!=="_ignorar");
       setPreview(catted);
       setMsg(dupCount>0?`ℹ️ ${dupCount} duplicata(s) ignorada(s)`:"");
       setStep("preview");
