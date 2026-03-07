@@ -1087,8 +1087,9 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
             <div style={{fontSize:20,fontWeight:800,color:"#818cf8"}}>{fmt(fixas.filter(f=>f.ativo).reduce((s,f)=>s+f.valor,0))}<span style={{fontSize:12,fontWeight:400}}>/mês</span></div>
           </div>
         )}
-      </>}}
-      {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats}/>
+      </>}
+      {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats}/>}
+      {sec==="mercados"&&<>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>Mercados</div>
           <button style={{fontSize:11,background:"rgba(99,102,241,0.15)",color:"#818cf8",border:"1px solid rgba(99,102,241,0.3)",borderRadius:8,padding:"4px 12px",cursor:"pointer"}} onClick={()=>setShowNM(!showNM)}>+ Novo</button>
