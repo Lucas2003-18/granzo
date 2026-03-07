@@ -41,6 +41,16 @@ function categorizar(desc, kind) {
 }
 
 // ── CONSTANTES ─────────────────────────────────────────────
+// incType: "salario" | "extra" | "transferencia" | "investimento_ret" | "outro"
+// Apenas salario + extra contam como RENDA real
+const INC_TIPOS = [
+  { id:"salario",        label:"Salário/Pró-labore", emoji:"💼" },
+  { id:"extra",          label:"Renda extra",         emoji:"💵" },
+  { id:"transferencia",  label:"Transferência recebida", emoji:"🔄" },
+  { id:"investimento_ret",label:"Retorno de investimento", emoji:"📈" },
+  { id:"outro",          label:"Outro",               emoji:"💰" },
+];
+
 const CATS_DEF = [
   { id:"moradia",      label:"Moradia",      emoji:"🏠", budget:1500, color:"#60a5fa" },
   { id:"alimentacao",  label:"Alimentação",  emoji:"🛒", budget:800,  color:"#4ade80" },
@@ -51,6 +61,13 @@ const CATS_DEF = [
   { id:"vestuario",    label:"Vestuário",    emoji:"👕", budget:200,  color:"#38bdf8" },
   { id:"investimento", label:"Investimento", emoji:"📈", budget:0,    color:"#34d399" },
   { id:"outros",       label:"Outros",       emoji:"📦", budget:200,  color:"#94a3b8" },
+];
+
+// Despesas fixas padrão
+const FIXAS_DEF = [
+  { id:"fx1", desc:"Aluguel",    valor:0, cat:"moradia",   emoji:"🏠", ativo:true },
+  { id:"fx2", desc:"Internet",   valor:0, cat:"moradia",   emoji:"📶", ativo:true },
+  { id:"fx3", desc:"Plano de saúde", valor:0, cat:"saude", emoji:"💊", ativo:true },
 ];
 const MKTS_DEF = [
   {id:"carrefour",label:"Carrefour",emoji:"🔵"},
@@ -91,14 +108,22 @@ function AlertBox({tipo,texto}) {
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────
-function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps }) {
+function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, mesAtual }) {
   const gastos  = exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
-  const entradas= exps.filter(e=>e.kind==="inc");
   const invests = exps.filter(e=>e.cat==="investimento");
-  const totalInc= entradas.reduce((s,e)=>s+e.value,0);
   const totalExp= gastos.reduce((s,e)=>s+e.value,0);
   const totalInv= invests.reduce((s,e)=>s+e.value,0);
+
+  // Renda REAL = só salário + renda extra (exclui transferências e retornos)
+  const entRenda= exps.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType));
+  // Transferências e retornos de invest ficam separados
+  const entTransf=exps.filter(e=>e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"));
+  const totalInc= entRenda.reduce((s,e)=>s+e.value,0);
+  const totalTransf=entTransf.reduce((s,e)=>s+e.value,0);
   const txPoup  = totalInc>0?((totalInc-totalExp)/totalInc)*100:0;
+
+  // Total de fixas ativas com valor configurado
+  const totalFixas = (fixas||[]).filter(f=>f.ativo&&f.valor>0).reduce((s,f)=>s+f.valor,0);
 
   // Comparativo mês anterior
   let mesAnterior=null, diffPct=null;
@@ -109,12 +134,12 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps }) {
     if(totAnt>0){mesAnterior=MESES_CURTO[+mesAnt];diffPct=((totalExp-totAnt)/totAnt)*100;}
   }
 
-  // Projeção do mês
+  // Projeção: só faz sentido no mês atual, não em meses passados
   let projecao=null;
-  if(mesFiltro!=="todos"&&gastos.length>0){
+  if(mesFiltro!=="todos"&&mesFiltro===mesAtual&&gastos.length>0){
     const hoje=new Date().getDate();
     const diasMes=new Date(new Date().getFullYear(),+mesFiltro,0).getDate();
-    if(hoje<diasMes) projecao=(totalExp/hoje)*diasMes;
+    if(hoje>0&&hoje<diasMes) projecao=(totalExp/hoje)*diasMes;
   }
 
   const top3=[...gastos].sort((a,b)=>b.value-a.value).slice(0,3);
@@ -135,7 +160,7 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps }) {
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
         {[
-          ["Renda",fmt(totalInc),"#4ade80"],
+          ["Salário/Renda",fmt(totalInc),"#4ade80"],
           ["Gastos",fmt(totalExp),"#f87171"],
           ["Saldo",fmt(totalInc-totalExp),(totalInc-totalExp)>=0?"#60a5fa":"#f87171"],
           ["Poupança",txPoup.toFixed(0)+"%",txPoup>=20?"#4ade80":txPoup>=10?"#f59e0b":"#f87171"],
@@ -148,11 +173,15 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps }) {
       </div>
 
       {/* Métricas extras */}
-      {!hide&&(totalInv>0||diffPct!==null||projecao!==null)&&(
+      {!hide&&(totalInv>0||totalTransf>0||diffPct!==null||projecao!==null)&&(
         <div style={{display:"flex",gap:8,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
           {totalInv>0&&<div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:10,padding:"8px 12px",flexShrink:0}}>
             <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Investido</div>
             <div style={{fontSize:13,fontWeight:700,color:"#34d399"}}>{fmt(totalInv)}</div>
+          </div>}
+          {totalTransf>0&&<div style={{background:"rgba(148,163,184,0.08)",border:"1px solid rgba(148,163,184,0.2)",borderRadius:10,padding:"8px 12px",flexShrink:0}}>
+            <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Transferências</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#94a3b8"}}>{fmt(totalTransf)}</div>
           </div>}
           {diffPct!==null&&<div style={{background:diffPct>0?"rgba(248,113,113,0.08)":"rgba(74,222,128,0.08)",border:`1px solid ${diffPct>0?"rgba(248,113,113,0.2)":"rgba(74,222,128,0.2)"}`,borderRadius:10,padding:"8px 12px",flexShrink:0}}>
             <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Vs {mesAnterior}</div>
@@ -192,6 +221,32 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps }) {
           <span style={{fontSize:14,color:"#475569",flexShrink:0}}>›</span>
         </div>;
       })}
+
+      {/* Despesas Fixas */}
+      {fixas&&fixas.filter(f=>f.ativo&&f.valor>0).length>0&&<>
+        <SecTitle t="Despesas fixas" sub={`Total: ${hide?"••••":fmt(totalFixas)}/mês`}/>
+        {fixas.filter(f=>f.ativo&&f.valor>0).map(f=>{
+          const cat=cats.find(c=>c.id===f.cat);
+          // Verifica se há lançamento real no mês filtrado com descrição parecida
+          const descMatch=new RegExp(f.desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(" ")[0],"i");
+          const jaLancado=exps.some(e=>{
+            const p=e.date?.split("/");
+            const mesOk=mesFiltro==="todos"||(p?.length>=2&&p[1]===mesFiltro);
+            return mesOk&&e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[\u0300-\u036f]/g,""));
+          });
+          return <div key={f.id} style={{...ROW,borderLeft:`3px solid ${jaLancado?"#4ade80":"#f59e0b"}`}}>
+            <span style={{fontSize:20}}>{f.emoji}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{f.desc}</div>
+              <div style={{fontSize:11,color:"#475569"}}>{cat?.label||"Outros"} · todo mês</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
+              <span style={{fontSize:13,fontWeight:700,color:"#94a3b8"}}>{hide?"••••":fmt(f.valor)}</span>
+              <span style={{fontSize:10,color:jaLancado?"#4ade80":"#f59e0b",fontWeight:700}}>{jaLancado?"✓ lançado":"⚠️ pendente"}</span>
+            </div>
+          </div>;
+        })}
+      </>}
 
       {/* Maiores gastos */}
       {top3.length>0&&<>
@@ -258,7 +313,8 @@ function Graficos({ exps, cats, hide, allExps }) {
   const mesesDisp=[...new Set(allExps.map(e=>{const p=e.date?.split("/");return p?.length>=2?p[1]:null;}).filter(Boolean))].sort();
   const evolucao=mesesDisp.map(m=>({
     mes:MESES_CURTO[+m],
-    inc:allExps.filter(e=>e.kind==="inc"&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
+    inc:allExps.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
+    transf:allExps.filter(e=>e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret")&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
     exp:allExps.filter(e=>e.kind==="exp"&&e.cat!=="investimento"&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
     inv:allExps.filter(e=>e.cat==="investimento"&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
   }));
@@ -277,8 +333,9 @@ function Graficos({ exps, cats, hide, allExps }) {
                 <line key={f} x1={0} y1={chartH*(1-f)} x2={evolucao.length*64} y2={chartH*(1-f)} stroke="rgba(255,255,255,0.05)" strokeWidth={1}/>
               ))}
               {evolucao.map((e,i)=>{
-                const x=i*64+6,hInc=(e.inc/maxEv)*chartH,hExp=(e.exp/maxEv)*chartH;
+                const x=i*64+6,hInc=(e.inc/maxEv)*chartH,hExp=(e.exp/maxEv)*chartH,hTransf=((e.inc+e.transf)/maxEv)*chartH;
                 return <g key={i}>
+                  {e.transf>0&&<rect x={x} y={chartH-hTransf} width={barW} height={hTransf-hInc} rx={0} fill="rgba(148,163,184,0.35)"/>}
                   <rect x={x} y={chartH-hInc} width={barW} height={hInc} rx={3} fill="rgba(74,222,128,0.7)"/>
                   <rect x={x+barW+3} y={chartH-hExp} width={barW} height={hExp} rx={3} fill={e.exp>e.inc?"rgba(248,113,113,0.85)":"rgba(248,113,113,0.5)"}/>
                   <text x={x+barW+1} y={chartH+14} textAnchor="middle" fill="#64748b" fontSize="11" fontFamily="Outfit,sans-serif">{e.mes}</text>
@@ -287,8 +344,8 @@ function Graficos({ exps, cats, hide, allExps }) {
               })}
             </svg>
           </div>
-          <div style={{display:"flex",gap:16,marginTop:10}}>
-            {[["rgba(74,222,128,0.7)","Renda"],["rgba(248,113,113,0.7)","Gastos"],["#34d399","Investimento"]].map(([c,l])=>(
+          <div style={{display:"flex",gap:14,marginTop:10,flexWrap:"wrap"}}>
+            {[["rgba(74,222,128,0.7)","Salário/Renda"],["rgba(148,163,184,0.5)","Transferências"],["rgba(248,113,113,0.7)","Gastos"],["#34d399","Investimento"]].map(([c,l])=>(
               <div key={l} style={{display:"flex",alignItems:"center",gap:5}}>
                 <div style={{width:10,height:10,borderRadius:2,background:c}}/><span style={{fontSize:11,color:"#94a3b8"}}>{l}</span>
               </div>
@@ -349,12 +406,17 @@ function Graficos({ exps, cats, hide, allExps }) {
 }
 
 // ── ORÇAMENTO ──────────────────────────────────────────────
-function Orcamento({ exps, cats, setCats, hide }) {
+function Orcamento({ exps, cats, setCats, hide, mesFiltro }) {
   const gastos=exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
   const totalOrc=cats.filter(c=>c.budget>0&&c.id!=="investimento").reduce((s,c)=>s+c.budget,0);
   const totalGasto=gastos.reduce((s,e)=>s+e.value,0);
+  const isTodos=mesFiltro==="todos";
+  const mesesCount=isTodos?Math.max(1,[...new Set(exps.map(e=>e.date?.split("/")?.[1]).filter(Boolean))].length):1;
   return (
     <div style={{padding:16,paddingBottom:100}}>
+      {isTodos&&mesesCount>1&&(
+        <AlertBox tipo="warn" texto={`⚠️ Você está vendo ${mesesCount} meses acumulados. Os limites são mensais — use o filtro de mês no topo para comparar corretamente.`}/>
+      )}
       <div style={{...CARD,background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",marginBottom:16}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
           <div style={{fontSize:13,color:"#818cf8",fontWeight:700}}>Total orçado</div>
@@ -395,7 +457,7 @@ function Orcamento({ exps, cats, setCats, hide }) {
 function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catFiltro, onClearCat }) {
   const [show,    setShow]    = useState(false);
   const [mode,    setMode]    = useState("expense");
-  const [form,    setForm]    = useState({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10"});
+  const [form,    setForm]    = useState({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario"});
   const [editId,  setEditId]  = useState(null);
   const [editForm,setEditForm]= useState({});
   const [busca,   setBusca]   = useState("");
@@ -404,10 +466,11 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
 
   useEffect(()=>{ if(openWith){setMode(openWith);setShow(true);if(onOpened)onOpened();} },[openWith]);
 
-  function startEdit(e){setEditId(e.id);setEditForm({desc:e.desc,value:e.value,cat:e.cat||"outros",kind:e.kind,date:e.date||""});}
+  function startEdit(e){setEditId(e.id);setEditForm({desc:e.desc,value:e.value,cat:e.cat||"outros",kind:e.kind,date:e.date||"",incType:e.incType||"salario"});}
   function saveEdit(){
     const cat=cats.find(c=>c.id===editForm.cat);
-    setExps(p=>p.map(e=>e.id===editId?{...e,...editForm,value:+editForm.value,emoji:editForm.kind==="inc"?"💰":(cat?.emoji||"📦")}:e));
+    const incEmoji=INC_TIPOS.find(t=>t.id===editForm.incType)?.emoji||"💰";
+    setExps(p=>p.map(e=>e.id===editId?{...e,...editForm,value:+editForm.value,incType:editForm.kind==="inc"?editForm.incType:undefined,emoji:editForm.kind==="inc"?incEmoji:(cat?.emoji||"📦")}:e));
     setEditId(null);
   }
 
@@ -422,10 +485,10 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
       let d=new Date(baseDate);
       if(isCard){const off=d.getDate()<venc?0:1;d.setMonth(d.getMonth()+off+i);d.setDate(venc);}
       const parValor=i<parcelas-1?Math.floor((total/parcelas)*100)/100:+(total-Math.floor((total/parcelas)*100)/100*(parcelas-1)).toFixed(2);
-      return {id:Date.now()+i,desc:parcelas>1?`${form.desc} (${i+1}/${parcelas})`:form.desc,kind:mode==="expense"?"exp":"inc",cat:mode==="expense"?form.cat:undefined,type:mode==="income"?"Manual":undefined,emoji:isCard?"💳":(mode==="expense"?(cat?.emoji||"📦"):"💰"),value:parValor,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),payment:isCard?"cartao":"dinheiro"};
+      return {id:Date.now()+i,desc:parcelas>1?`${form.desc} (${i+1}/${parcelas})`:form.desc,kind:mode==="expense"?"exp":"inc",cat:mode==="expense"?form.cat:undefined,incType:mode==="income"?form.incType:undefined,type:mode==="income"?"Manual":undefined,emoji:isCard?"💳":(mode==="expense"?(cat?.emoji||"📦"):(INC_TIPOS.find(t=>t.id===form.incType)?.emoji||"💰")),value:parValor,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),payment:isCard?"cartao":"dinheiro"};
     });
     setExps(p=>[...novos,...p]);
-    setForm({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10"});
+    setForm({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario"});
     setShow(false);
   }
 
@@ -493,6 +556,19 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
           <input style={{...inp(),marginBottom:10}} placeholder="Descrição" value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/>
           <input style={{...inp(),marginBottom:10}} type="number" placeholder="Valor (R$)" value={form.value} onChange={e=>setForm(p=>({...p,value:e.target.value}))}/>
           <input style={{...inp(),marginBottom:10,colorScheme:"dark"}} type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/>
+          {mode==="income"&&(
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Tipo de entrada</div>
+              <select style={inp()} value={form.incType} onChange={e=>setForm(p=>({...p,incType:e.target.value}))}>
+                {INC_TIPOS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+              </select>
+              {(form.incType==="transferencia"||form.incType==="investimento_ret")&&(
+                <div style={{fontSize:11,color:"#f59e0b",marginTop:6,padding:"6px 10px",background:"rgba(245,158,11,0.08)",borderRadius:8}}>
+                  ⚠️ Esta entrada não será contada como renda — não afeta o KPI "Salário/Renda".
+                </div>
+              )}
+            </div>
+          )}
           {mode==="expense"&&<select style={{...inp(),marginBottom:10}} value={form.cat} onChange={e=>setForm(p=>({...p,cat:e.target.value}))}>
             {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
           </select>}
@@ -582,6 +658,12 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
                 <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Categoria</div>
                 <select style={{...inp(),marginBottom:12}} value={editForm.cat||"outros"} onChange={e=>setEditForm(p=>({...p,cat:e.target.value}))}>
                   {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                </select>
+              </>}
+              {editForm.kind==="inc"&&<>
+                <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Tipo de entrada</div>
+                <select style={{...inp(),marginBottom:12}} value={editForm.incType||"salario"} onChange={e=>setEditForm(p=>({...p,incType:e.target.value}))}>
+                  {INC_TIPOS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
                 </select>
               </>}
               <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Descrição</div>
@@ -716,11 +798,12 @@ function IAChat({ exps, cats }) {
   const [loading, setLoading] = useState(false);
   const ref = useRef(null);
 
-  const gastos =exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
-  const totalInc=exps.filter(e=>e.kind==="inc").reduce((s,e)=>s+e.value,0);
-  const totalExp=gastos.reduce((s,e)=>s+e.value,0);
-  const totalInv=exps.filter(e=>e.cat==="investimento").reduce((s,e)=>s+e.value,0);
-  const txPoup=totalInc>0?((totalInc-totalExp)/totalInc*100).toFixed(1)+"%":"N/A";
+  const gastos   = exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
+  const totalInc = exps.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)).reduce((s,e)=>s+e.value,0);
+  const totalTransf = exps.filter(e=>e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret")).reduce((s,e)=>s+e.value,0);
+  const totalExp = gastos.reduce((s,e)=>s+e.value,0);
+  const totalInv = exps.filter(e=>e.cat==="investimento").reduce((s,e)=>s+e.value,0);
+  const txPoup   = totalInc>0?((totalInc-totalExp)/totalInc*100).toFixed(1)+"%":"N/A";
 
   async function send(){
     const msg=input.trim();if(!msg||loading)return;
@@ -730,10 +813,14 @@ function IAChat({ exps, cats }) {
     const catRes=cats.map(c=>{const s=gastos.filter(e=>e.cat===c.id).reduce((a,e)=>a+e.value,0);return `${c.label}: ${fmt(s)}/${fmt(c.budget)}`;}).join("; ");
     const top3=[...gastos].sort((a,b)=>b.value-a.value).slice(0,3).map(e=>e.desc+" "+fmt(e.value)).join(", ");
     const sys=`Você é um consultor financeiro pessoal brasileiro, empático e direto.
-Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-totalExp)} | Investimentos ${fmt(totalInv)} | Taxa poupança ${txPoup}
-Categorias: ${catRes}
-Maiores gastos: ${top3}
-Responda em português, seja específico com os números. Máx 150 palavras.`;
+Dados do usuário:
+- Salário/Renda real: ${fmt(totalInc)} (excluindo transferências e retornos)
+- Gastos: ${fmt(totalExp)} | Saldo: ${fmt(totalInc-totalExp)}
+- Investimentos aportados: ${fmt(totalInv)} | Taxa de poupança: ${txPoup}
+${totalTransf>0?`- Transferências/retornos recebidos (não contam como renda): ${fmt(totalTransf)}`:""}
+- Categorias: ${catRes}
+- Maiores gastos: ${top3}
+Responda em português. Seja específico com os números. Máx 150 palavras.`;
     try{const txt=await askGemini(sys,msg,1200);setMsgs(p=>[...p,{role:"ai",text:txt||"Não consegui responder."}]);}
     catch(e){setMsgs(p=>[...p,{role:"ai",text:`Erro: ${e.message}`}]);}
     setLoading(false);
@@ -780,8 +867,14 @@ Responda em português, seja específico com os números. Máx 150 palavras.`;
   );
 }
 
-// ── IMPORTADOR ─────────────────────────────────────────────
-function detectBank(text){const t=text.toLowerCase();if(t.includes("date")&&t.includes("title")&&t.includes("amount"))return "nubank_card";if(t.includes("data")&&(t.includes("descrição")||t.includes("descricao"))&&t.includes("valor"))return "nubank_conta";if(t.includes("bradesco")||t.includes("histórico")||t.includes("historico"))return "bradesco";return "unknown";}
+function detectIncType(desc) {
+  const d = (desc||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  if (/salario|salário|pro.?labore|prolabore|pagamento.?folha|holerite|vencimento/.test(d)) return "salario";
+  if (/pix|ted|doc|transf|transferen/.test(d)) return "transferencia";
+  if (/rendimento|juros|dividendo|cdb|lci|lca|fundo|tesouro|invest/.test(d)) return "investimento_ret";
+  if (/freelance|freela|servico|serviço|consultor|comissao|comissão|bico|extra/.test(d)) return "extra";
+  return null; // null = usuário decide na tela de preview
+}{const t=text.toLowerCase();if(t.includes("date")&&t.includes("title")&&t.includes("amount"))return "nubank_card";if(t.includes("data")&&(t.includes("descrição")||t.includes("descricao"))&&t.includes("valor"))return "nubank_conta";if(t.includes("bradesco")||t.includes("histórico")||t.includes("historico"))return "bradesco";return "unknown";}
 function parseCSVRows(text){const lines=text.trim().split(/\r?\n/);const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,"").toLowerCase());return lines.slice(1).filter(l=>l.trim()).map(line=>{const cols=[];let cur="",inQ=false;for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){cols.push(cur.trim());cur="";}else cur+=ch;}cols.push(cur.trim());return Object.fromEntries(header.map((h,i)=>[h,(cols[i]||"").replace(/"/g,"").trim()]));});}
 function parseTxs(rows,tipo){
   if(tipo==="nubank_card")return rows.map(r=>({date:r.date||"",desc:r.title||r.description||"",value:Math.abs(parseFloat((r.amount||"0").replace(",","."))),kind:"exp",source:"Nubank Cartão"})).filter(r=>r.date&&r.value>0);
@@ -808,7 +901,11 @@ function Importador({ exps, setExps, cats }){
       const parsed=parseTxs(rows,tipo);
       const semDup=parsed.filter(n=>!exps.some(e=>e.value===n.value&&e.date===n.date&&(e.desc||"").slice(0,10)===(n.desc||"").slice(0,10)));
       const dupCount=parsed.length-semDup.length;
-      const catted=semDup.map(p=>({...p,cat:categorizar(p.desc,p.kind)||"outros"}));
+      const catted=semDup.map(p=>({
+        ...p,
+        cat: categorizar(p.desc,p.kind)||"outros",
+        incType: p.kind==="inc" ? (detectIncType(p.desc)||"outro") : undefined,
+      }));
       setPreview(catted);
       setMsg(dupCount>0?`ℹ️ ${dupCount} duplicata(s) ignorada(s)`:"");
       setStep("preview");
@@ -821,7 +918,7 @@ function Importador({ exps, setExps, cats }){
       const pts=p.date.split(/[-\/]/);
       const dateStr=pts.length===3&&pts[0].length===4?`${pts[2]}/${pts[1]}`:pts.slice(0,2).join("/");
       const cat=cats.find(c=>c.id===p.cat);
-      return {id:`imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,desc:p.desc,kind:p.kind,cat:p.cat,type:p.kind==="inc"?p.source:undefined,emoji:p.kind==="inc"?"🏦":(cat?.emoji||"📦"),value:p.value,date:dateStr,source:p.source};
+      return {id:`imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,desc:p.desc,kind:p.kind,cat:p.cat,incType:p.incType,type:p.kind==="inc"?p.source:undefined,emoji:p.kind==="inc"?(INC_TIPOS.find(t=>t.id===p.incType)?.emoji||"🏦"):(cat?.emoji||"📦"),value:p.value,date:dateStr,source:p.source};
     });
     setExps(prev=>[...novos,...prev]);
     setStep("done");
@@ -862,10 +959,18 @@ function Importador({ exps, setExps, cats }){
         {preview.map((p,i)=>(
           <div key={i} style={CARD}>
             {editing===i?<>
-              <select style={{...inp(),marginBottom:8}} value={p.cat||"outros"} onChange={e=>setPreview(prev=>prev.map((x,j)=>j===i?{...x,cat:e.target.value}:x))}>
+              {p.kind==="inc"&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Tipo de entrada</div>
+                  <select style={inp()} value={p.incType||"outro"} onChange={e=>setPreview(prev=>prev.map((x,j)=>j===i?{...x,incType:e.target.value}:x))}>
+                    {INC_TIPOS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
+                  </select>
+                </div>
+              )}
+              {p.kind==="exp"&&<select style={{...inp(),marginBottom:8}} value={p.cat||"outros"} onChange={e=>setPreview(prev=>prev.map((x,j)=>j===i?{...x,cat:e.target.value}:x))}>
                 {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
-              </select>
-              <select style={{...inp(),marginBottom:8}} value={p.kind} onChange={e=>setPreview(prev=>prev.map((x,j)=>j===i?{...x,kind:e.target.value}:x))}>
+              </select>}
+              <select style={{...inp(),marginBottom:8}} value={p.kind} onChange={e=>setPreview(prev=>prev.map((x,j)=>j===i?{...x,kind:e.target.value,incType:e.target.value==="inc"?"outro":undefined}:x))}>
                 <option value="exp">💸 Gasto</option>
                 <option value="inc">💰 Entrada</option>
               </select>
@@ -878,7 +983,12 @@ function Importador({ exps, setExps, cats }){
                 <div style={{fontSize:11,color:"#475569",width:36,flexShrink:0}}>{p.date?.slice(0,5)}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.desc}</div>
-                  <div style={{fontSize:11,color:"#64748b"}}>{cats.find(c=>c.id===p.cat)?.label||p.cat} · {p.source}</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>
+                    {p.kind==="inc"
+                      ? (INC_TIPOS.find(t=>t.id===p.incType)?.label||"Entrada")
+                      : (cats.find(c=>c.id===p.cat)?.label||p.cat)
+                    } · {p.source}
+                  </div>
                 </div>
                 <div style={{flexShrink:0,textAlign:"right"}}>
                   <div style={{fontSize:13,fontWeight:700,color:p.kind==="inc"?"#4ade80":"#f87171"}}>{p.kind==="inc"?"+":"-"}{fmt(p.value)}</div>
@@ -904,13 +1014,14 @@ function Importador({ exps, setExps, cats }){
 }
 
 // ── CONFIG ─────────────────────────────────────────────────
-function Config({ cats, setCats, markets, setMarkets, exps, setExps }){
+function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas }){
   const [sec,setsec]=useState("importar");
   const [showNM,setShowNM]=useState(false);
   const [newMkt,setNewMkt]=useState({label:"",emoji:"🏪"});
   const [showNC,setShowNC]=useState(false);
   const [newCat,setNewCat]=useState({label:"",emoji:"📁",budget:200,color:"#60a5fa"});
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"dados",l:"🗄️ Dados"}];
+  const [novaFixa,setNovaFixa]=useState({desc:"",valor:"",cat:"moradia",emoji:"📌"});
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -920,8 +1031,64 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps }){
             onClick={()=>setsec(s.id)}>{s.l}</button>
         ))}
       </div>
-      {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats}/>}
-      {sec==="mercados"&&<>
+      {sec==="fixas"&&<>
+        <div style={{fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.6}}>
+          Despesas que aparecem todo mês (aluguel, internet...). Aparecem no Resumo como referência — não são lançadas automaticamente.
+        </div>
+        {/* Nova fixa */}
+        <div style={{...CARD,background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#818cf8",marginBottom:12}}>+ Nova despesa fixa</div>
+          <div style={{display:"flex",gap:8,marginBottom:8}}>
+            <input style={inp({width:52,textAlign:"center",fontSize:20,padding:8})} placeholder="📌" value={novaFixa.emoji} onChange={e=>setNovaFixa(p=>({...p,emoji:e.target.value}))}/>
+            <input style={inp({flex:1})} placeholder="Descrição (ex: Aluguel)" value={novaFixa.desc} onChange={e=>setNovaFixa(p=>({...p,desc:e.target.value}))}/>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:8}}>
+            <input style={inp({flex:1})} type="number" placeholder="Valor R$" value={novaFixa.valor} onChange={e=>setNovaFixa(p=>({...p,valor:e.target.value}))}/>
+            <select style={inp({flex:1})} value={novaFixa.cat} onChange={e=>setNovaFixa(p=>({...p,cat:e.target.value}))}>
+              {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+            </select>
+          </div>
+          <button style={btn("linear-gradient(135deg,#22c55e,#16a34a)")} onClick={()=>{
+            if(!novaFixa.desc||!novaFixa.valor) return;
+            setFixas(p=>[...p,{id:`fx${Date.now()}`,desc:novaFixa.desc,valor:+novaFixa.valor,cat:novaFixa.cat,emoji:novaFixa.emoji||"📌",ativo:true}]);
+            setNovaFixa({desc:"",valor:"",cat:"moradia",emoji:"📌"});
+          }}>Adicionar</button>
+        </div>
+        {/* Lista fixas */}
+        {fixas.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#475569",fontSize:13}}>Nenhuma despesa fixa cadastrada</div>}
+        {fixas.map((f,i)=>(
+          <div key={f.id} style={{...CARD,borderLeft:`3px solid ${f.ativo?"#818cf8":"rgba(255,255,255,0.1)"}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:22}}>{f.emoji}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{f.desc}</div>
+                <div style={{fontSize:11,color:"#64748b"}}>{cats.find(c=>c.id===f.cat)?.label||"Outros"} · {fmt(f.valor)}/mês</div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {/* Toggle ativo */}
+                <button style={{background:f.ativo?"rgba(99,102,241,0.2)":"rgba(255,255,255,0.06)",border:f.ativo?"1px solid rgba(99,102,241,0.4)":"1px solid rgba(255,255,255,0.1)",color:f.ativo?"#818cf8":"#475569",borderRadius:8,padding:"4px 10px",fontSize:11,cursor:"pointer"}}
+                  onClick={()=>setFixas(p=>p.map((x,j)=>j===i?{...x,ativo:!x.ativo}:x))}>
+                  {f.ativo?"✓ Ativa":"Pausada"}
+                </button>
+                <button style={{fontSize:11,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>setFixas(p=>p.filter((_,j)=>j!==i))}>✕</button>
+              </div>
+            </div>
+            {/* Editar valor inline */}
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:10}}>
+              <span style={{fontSize:12,color:"#64748b",flexShrink:0}}>Valor R$</span>
+              <input style={inp({flex:1,padding:"7px 12px",fontSize:14,fontWeight:700})} type="number" value={f.valor}
+                onChange={e=>setFixas(p=>p.map((x,j)=>j===i?{...x,valor:+e.target.value}:x))}/>
+            </div>
+          </div>
+        ))}
+        {fixas.length>0&&(
+          <div style={{...CARD,background:"rgba(99,102,241,0.06)",border:"1px solid rgba(99,102,241,0.15)",textAlign:"center"}}>
+            <div style={{fontSize:12,color:"#64748b"}}>Total fixas ativas</div>
+            <div style={{fontSize:20,fontWeight:800,color:"#818cf8"}}>{fmt(fixas.filter(f=>f.ativo).reduce((s,f)=>s+f.valor,0))}<span style={{fontSize:12,fontWeight:400}}>/mês</span></div>
+          </div>
+        )}
+      </>}}
+      {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats}/>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>Mercados</div>
           <button style={{fontSize:11,background:"rgba(99,102,241,0.15)",color:"#818cf8",border:"1px solid rgba(99,102,241,0.3)",borderRadius:8,padding:"4px 12px",cursor:"pointer"}} onClick={()=>setShowNM(!showNM)}>+ Novo</button>
@@ -977,16 +1144,16 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps }){
         <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🗄️ Dados</div>
         <div style={{fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.6}}>
           💾 Salvamento automático ativo<br/>
-          {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados
+          {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados · {fixas.length} fixas
         </div>
         <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{marginBottom:10})} onClick={()=>{
-          const blob=new Blob([JSON.stringify({exps,cats,markets},null,2)],{type:"application/json"});
+          const blob=new Blob([JSON.stringify({exps,cats,markets,fixas},null,2)],{type:"application/json"});
           const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`meufinanceiro-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();
         }}>📤 Exportar backup JSON</button>
         <button style={btn("rgba(248,113,113,0.1)","#f87171",{border:"1px solid rgba(248,113,113,0.3)"})} onClick={()=>{
           if(window.confirm("Apagar TODOS os dados?")){
-            setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);
-            try{localStorage.removeItem("mf_exps");localStorage.removeItem("mf_cats");localStorage.removeItem("mf_mkts");}catch{}
+            setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);
+            try{localStorage.removeItem("mf_exps");localStorage.removeItem("mf_cats");localStorage.removeItem("mf_mkts");localStorage.removeItem("mf_fixas");}catch{}
           }
         }}>🗑️ Apagar todos os dados</button>
       </div>}
@@ -1000,22 +1167,29 @@ export default function App() {
   const [openWith, setOpenWith]= useState(null);
   const [hideVals, setHideVals]= useState(false);
   const [catModal, setCatModal]= useState(null);
+  const [toast,    setToast]   = useState("");
 
   const [exps,    setExps]    = useState(()=>{ try{const v=localStorage.getItem("mf_exps");return v?JSON.parse(v):[]}catch{return []} });
   const [cats,    setCats]    = useState(()=>{ try{const v=localStorage.getItem("mf_cats");return v?JSON.parse(v):CATS_DEF}catch{return CATS_DEF} });
   const [markets, setMarkets] = useState(()=>{ try{const v=localStorage.getItem("mf_mkts");return v?JSON.parse(v):MKTS_DEF}catch{return MKTS_DEF} });
+  const [fixas,   setFixas]   = useState(()=>{ try{const v=localStorage.getItem("mf_fixas");return v?JSON.parse(v):FIXAS_DEF}catch{return FIXAS_DEF} });
 
-  useEffect(()=>{ try{localStorage.setItem("mf_exps",JSON.stringify(exps))}catch{} },[exps]);
-  useEffect(()=>{ try{localStorage.setItem("mf_cats",JSON.stringify(cats))}catch{} },[cats]);
+  function showToast(msg){setToast(msg);setTimeout(()=>setToast(""),2000);}
+
+  useEffect(()=>{ try{localStorage.setItem("mf_exps",JSON.stringify(exps));showToast("✓ Salvo");}catch{} },[exps]);
+  useEffect(()=>{ try{localStorage.setItem("mf_cats",JSON.stringify(cats));showToast("✓ Salvo");}catch{} },[cats]);
   useEffect(()=>{ try{localStorage.setItem("mf_mkts",JSON.stringify(markets))}catch{} },[markets]);
+  useEffect(()=>{ try{localStorage.setItem("mf_fixas",JSON.stringify(fixas));showToast("✓ Salvo");}catch{} },[fixas]);
 
   const mesesDisp=[...new Set(exps.map(e=>{const p=e.date?.split("/");return p?.length>=2?p[1]:null;}).filter(Boolean))].sort();
   const [mesFiltro,setMesFiltro]=useState("todos");
 
+  // Bug 9: Projeção só faz sentido no mês atual
+  const mesAtual = String(new Date().getMonth()+1).padStart(2,"0");
   const expsFiltrados=mesFiltro==="todos"?exps:exps.filter(e=>{const p=e.date?.split("/");return p?.length>=2&&p[1]===mesFiltro;});
 
-  // Saldo exclui investimentos dos gastos
-  const totalInc=expsFiltrados.filter(e=>e.kind==="inc").reduce((s,e)=>s+e.value,0);
+  // Saldo: apenas renda real (salário/extra) menos gastos (sem investimentos)
+  const totalInc=expsFiltrados.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)).reduce((s,e)=>s+e.value,0);
   const totalExp=expsFiltrados.filter(e=>e.kind==="exp"&&e.cat!=="investimento").reduce((s,e)=>s+e.value,0);
   const saldo=totalInc-totalExp;
 
@@ -1042,6 +1216,13 @@ export default function App() {
         @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
         ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:99px;}
       `}</style>
+
+      {/* Toast */}
+      {toast&&(
+        <div style={{position:"fixed",top:"calc(env(safe-area-inset-top,0px) + 12px)",left:"50%",transform:"translateX(-50%)",background:"rgba(74,222,128,0.15)",border:"1px solid rgba(74,222,128,0.35)",backdropFilter:"blur(12px)",borderRadius:99,padding:"6px 18px",fontSize:12,fontWeight:700,color:"#4ade80",zIndex:999,whiteSpace:"nowrap",pointerEvents:"none",transition:"opacity 0.3s"}}>
+          {toast}
+        </div>
+      )}
 
       {/* Header */}
       <div style={{background:"linear-gradient(135deg,#0d1b3e,#162547)",borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0}}>
@@ -1075,13 +1256,13 @@ export default function App() {
 
       {/* Conteúdo */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
-        {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps}/>}
+        {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps} fixas={fixas} mesAtual={mesAtual}/>}
         {tab==="graficos" &&<Graficos  exps={expsFiltrados} cats={cats} hide={hideVals} allExps={exps}/>}
-        {tab==="orcamento"&&<Orcamento exps={expsFiltrados} cats={cats} setCats={setCats} hide={hideVals}/>}
+        {tab==="orcamento"&&<Orcamento exps={expsFiltrados} cats={cats} setCats={setCats} hide={hideVals} mesFiltro={mesFiltro}/>}
         {tab==="gastos"   &&<Gastos    exps={exps} setExps={setExps} cats={cats} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals} mesFiltro={mesFiltro} catFiltro={catModal} onClearCat={()=>setCatModal(null)}/>}
         {tab==="mercado"  &&<Mercado   markets={markets}/>}
         {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats}/>}
-        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps}/>}
+        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas}/>}
       </div>
 
       {/* FABs */}
