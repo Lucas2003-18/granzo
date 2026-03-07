@@ -874,7 +874,10 @@ function detectIncType(desc) {
   if (/rendimento|juros|dividendo|cdb|lci|lca|fundo|tesouro|invest/.test(d)) return "investimento_ret";
   if (/freelance|freela|servico|serviço|consultor|comissao|comissão|bico|extra/.test(d)) return "extra";
   return null; // null = usuário decide na tela de preview
-}{const t=text.toLowerCase();if(t.includes("date")&&t.includes("title")&&t.includes("amount"))return "nubank_card";if(t.includes("data")&&(t.includes("descrição")||t.includes("descricao"))&&t.includes("valor"))return "nubank_conta";if(t.includes("bradesco")||t.includes("histórico")||t.includes("historico"))return "bradesco";return "unknown";}
+}
+
+// ── IMPORTADOR ─────────────────────────────────────────────
+function detectBank(text){const t=text.toLowerCase();if(t.includes("date")&&t.includes("title")&&t.includes("amount"))return "nubank_card";if(t.includes("data")&&(t.includes("descrição")||t.includes("descricao"))&&t.includes("valor"))return "nubank_conta";if(t.includes("bradesco")||t.includes("histórico")||t.includes("historico"))return "bradesco";return "unknown";}
 function parseCSVRows(text){const lines=text.trim().split(/\r?\n/);const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,"").toLowerCase());return lines.slice(1).filter(l=>l.trim()).map(line=>{const cols=[];let cur="",inQ=false;for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){cols.push(cur.trim());cur="";}else cur+=ch;}cols.push(cur.trim());return Object.fromEntries(header.map((h,i)=>[h,(cols[i]||"").replace(/"/g,"").trim()]));});}
 function parseTxs(rows,tipo){
   if(tipo==="nubank_card")return rows.map(r=>({date:r.date||"",desc:r.title||r.description||"",value:Math.abs(parseFloat((r.amount||"0").replace(",","."))),kind:"exp",source:"Nubank Cartão"})).filter(r=>r.date&&r.value>0);
