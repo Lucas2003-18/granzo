@@ -212,8 +212,12 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
         const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
         const pct=spent/cat.budget*100;
         if(pct<80) return null;
-        return <AlertBox key={cat.id} tipo={pct>=100?"err":"warn"}
-          texto={pct>=100?`${cat.emoji} ${cat.label} estourou o limite! (${fmt(spent)} de ${fmt(cat.budget)})`:`${cat.emoji} ${cat.label} em ${pct.toFixed(0)}% do limite`}/>;
+        if(pct>100) return <AlertBox key={cat.id} tipo="err"
+          texto={`${cat.emoji} ${cat.label} estourou o limite! (${hide?"••••":fmt(spent)} de ${hide?"••••":fmt(cat.budget)})`}/>;
+        if(pct===100) return <AlertBox key={cat.id} tipo="ok"
+          texto={`${cat.emoji} ${cat.label} atingiu exatamente o limite — ${hide?"••••":fmt(cat.budget)} ✓`}/>;
+        return <AlertBox key={cat.id} tipo="warn"
+          texto={`${cat.emoji} ${cat.label} em ${pct.toFixed(0)}% do limite (${hide?"••••":fmt(spent)} de ${hide?"••••":fmt(cat.budget)})`}/>;
       })}
 
       {/* Categorias */}
@@ -299,13 +303,15 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
         return db.localeCompare(da)||b.id-a.id;
       }).slice(0,6).map(e=>{
         const cat=cats.find(c=>c.id===e.cat);
-        return <div key={e.id} style={{...ROW,...(e.kind==="inc"?{borderColor:"rgba(74,222,128,0.2)",background:"rgba(74,222,128,0.04)"}:{})}}>
-          <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?"rgba(74,222,128,0.12)":"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{e.emoji||cat?.emoji||"📦"}</div>
+        const isTransf=e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"||e.incType==="outro");
+        const incLabel=e.kind==="inc"?(INC_TIPOS.find(t=>t.id===e.incType)?.label||e.type||"Entrada"):null;
+        return <div key={e.id} style={{...ROW,...(e.kind==="inc"?{borderColor:isTransf?"rgba(148,163,184,0.2)":"rgba(74,222,128,0.2)",background:isTransf?"rgba(148,163,184,0.03)":"rgba(74,222,128,0.04)"}:{})}}>
+          <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransf?"rgba(148,163,184,0.1)":"rgba(74,222,128,0.12)"):"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{e.emoji||cat?.emoji||"📦"}</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
-            <div style={{fontSize:11,color:"#475569"}}>{e.kind==="inc"?(e.type||"Entrada"):(cat?.label||"Outros")} · {e.date}</div>
+            <div style={{fontSize:11,color:"#475569"}}>{e.kind==="inc"?incLabel:(cat?.label||"Outros")} · {e.date}</div>
           </div>
-          <span style={{fontSize:13,fontWeight:700,color:e.kind==="inc"?"#4ade80":"#f87171",flexShrink:0}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
+          <span style={{fontSize:13,fontWeight:700,color:e.kind==="inc"?(isTransf?"#94a3b8":"#4ade80"):"#f87171",flexShrink:0}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
         </div>;
       })}
     </div>
@@ -440,16 +446,21 @@ function Orcamento({ exps, cats, setCats, hide, mesFiltro }) {
       </div>
       {cats.map((cat,idx)=>{
         const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
-        const pct=cat.budget>0?Math.min(100,(spent/cat.budget)*100):0;
+        const rawPct=cat.budget>0?(spent/cat.budget)*100:0;
+        const pct=Math.min(100,rawPct);
         const over=cat.budget>0&&spent>cat.budget;
-        return <div key={cat.id} style={{...CARD,padding:14,borderLeft:`3px solid ${over?"#f87171":cat.color}`}}>
+        const exact=cat.budget>0&&spent===cat.budget;
+        const borderColor=over?"#f87171":exact?"#4ade80":cat.color;
+        const barColor=over?"#f87171":exact?"#4ade80":pct>75?"#f59e0b":cat.color;
+        return <div key={cat.id} style={{...CARD,padding:14,borderLeft:`3px solid ${borderColor}`}}>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
             <div style={{width:36,height:36,borderRadius:10,background:`${cat.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{cat.emoji}</div>
             <div style={{flex:1}}>
               <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{cat.label}</div>
               {over&&<div style={{fontSize:11,color:"#f87171"}}>⚠️ Excedido em {hide?"••••":fmt(spent-cat.budget)}</div>}
+              {exact&&<div style={{fontSize:11,color:"#4ade80"}}>✓ Limite atingido exatamente</div>}
             </div>
-            <span style={{fontSize:12,color:over?"#f87171":"#64748b"}}>{hide?"••••":fmt(spent)}</span>
+            <span style={{fontSize:12,color:over?"#f87171":exact?"#4ade80":"#64748b"}}>{hide?"••••":fmt(spent)}</span>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
             <span style={{fontSize:12,color:"#64748b",flexShrink:0}}>Limite R$</span>
@@ -457,8 +468,10 @@ function Orcamento({ exps, cats, setCats, hide, mesFiltro }) {
               onChange={e=>setCats(p=>p.map((c,i)=>i===idx?{...c,budget:+e.target.value}:c))}/>
           </div>
           {cat.budget>0&&<>
-            <Bar pct={pct} color={over?"#f87171":pct>75?"#f59e0b":cat.color}/>
-            <div style={{fontSize:11,color:"#64748b",marginTop:4}}>{pct.toFixed(0)}% · {hide?"••••":fmt(Math.max(0,cat.budget-spent))} restante</div>
+            <Bar pct={pct} color={barColor}/>
+            <div style={{fontSize:11,color:"#64748b",marginTop:4}}>
+              {rawPct.toFixed(0)}% · {over?<span style={{color:"#f87171"}}>{hide?"••••":fmt(spent-cat.budget)} acima</span>:exact?<span style={{color:"#4ade80"}}>no limite ✓</span>:<span>{hide?"••••":fmt(cat.budget-spent)} restante</span>}
+            </div>
           </>}
         </div>;
       })}
@@ -521,7 +534,9 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
     return db.localeCompare(da)||b.id-a.id;
   });
 
-  const totalFilt=expsFilt.filter(e=>e.kind==="exp").reduce((s,e)=>s+e.value,0);
+  const totalFilt   = expsFilt.filter(e=>e.kind==="exp").reduce((s,e)=>s+e.value,0);
+  const totalIncFilt= expsFilt.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)).reduce((s,e)=>s+e.value,0);
+  const totalTransfFilt=expsFilt.filter(e=>e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"||e.incType==="outro")).reduce((s,e)=>s+e.value,0);
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -552,8 +567,11 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
       </div>
 
       {(mesFiltro!=="todos"||catFiltro||busca)&&(
-        <div style={{fontSize:12,color:"#64748b",marginBottom:10,padding:"6px 10px",background:"rgba(255,255,255,0.03)",borderRadius:8}}>
-          {sorted.length} lançamento(s) · Gastos: {hide?"••••":fmt(totalFilt)}
+        <div style={{fontSize:12,color:"#64748b",marginBottom:10,padding:"8px 12px",background:"rgba(255,255,255,0.03)",borderRadius:8,display:"flex",gap:12,flexWrap:"wrap"}}>
+          <span>📋 {sorted.length} lançamentos</span>
+          {totalFilt>0&&<span style={{color:"#f87171"}}>💸 {hide?"••••":fmt(totalFilt)}</span>}
+          {totalIncFilt>0&&<span style={{color:"#4ade80"}}>💼 {hide?"••••":fmt(totalIncFilt)}</span>}
+          {totalTransfFilt>0&&<span style={{color:"#94a3b8"}}>🔄 {hide?"••••":fmt(totalTransfFilt)}</span>}
         </div>
       )}
 
@@ -642,15 +660,24 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
       {/* Lista */}
       {sorted.map(e=>{
         const cat=cats.find(c=>c.id===e.cat);
+        const incLabel=e.kind==="inc"?(INC_TIPOS.find(t=>t.id===e.incType)?.label||e.type||"Entrada"):null;
+        const isTransf=e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"||e.incType==="outro");
+        const rowBg=e.kind==="inc"
+          ?isTransf?"rgba(148,163,184,0.04)":"rgba(74,222,128,0.04)"
+          :{};
+        const rowBorder=e.kind==="inc"
+          ?isTransf?"rgba(148,163,184,0.2)":"rgba(74,222,128,0.2)"
+          :undefined;
+        const valColor=e.kind==="inc"?(isTransf?"#94a3b8":"#4ade80"):"#f87171";
         return <div key={e.id}>
-          <div style={{...ROW,...(e.kind==="inc"?{borderColor:"rgba(74,222,128,0.2)",background:"rgba(74,222,128,0.04)"}:{})}}>
-            <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?"rgba(74,222,128,0.12)":"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{e.emoji||cat?.emoji||"📦"}</div>
+          <div style={{...ROW,...(e.kind==="inc"?{borderColor:rowBorder,background:rowBg}:{})}}>
+            <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransf?"rgba(148,163,184,0.1)":"rgba(74,222,128,0.12)"):"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{e.emoji||cat?.emoji||"📦"}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
-              <div style={{fontSize:11,color:"#475569"}}>{e.kind==="inc"?(e.type||"Entrada"):(cat?.label||"Outros")} · {e.date}</div>
+              <div style={{fontSize:11,color:"#475569"}}>{e.kind==="inc"?incLabel:(cat?.label||"Outros")} · {e.date}</div>
             </div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-              <span style={{fontSize:14,fontWeight:700,color:e.kind==="inc"?"#4ade80":"#f87171"}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
+              <span style={{fontSize:14,fontWeight:700,color:valColor}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
               <div style={{display:"flex",gap:4}}>
                 <button style={{fontSize:11,color:"#818cf8",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>startEdit(e)}>✏️</button>
                 <button style={{fontSize:11,color:"#475569",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>setConfirm(e.id)}>🗑️</button>
@@ -1188,8 +1215,27 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
         </div>
         <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{marginBottom:10})} onClick={()=>{
           const blob=new Blob([JSON.stringify({exps,cats,markets,fixas},null,2)],{type:"application/json"});
-          const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`meufinanceiro-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");a.href=url;a.download=`meufinanceiro-backup-${new Date().toISOString().slice(0,10)}.json`;
+          document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
         }}>📤 Exportar backup JSON</button>
+        <label style={{display:"block",width:"100%",background:"rgba(99,102,241,0.12)",border:"1px solid rgba(99,102,241,0.3)",color:"#818cf8",borderRadius:12,padding:"11px 0",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"center",fontFamily:"inherit",marginBottom:10,boxSizing:"border-box"}}>
+          📥 Importar backup JSON
+          <input type="file" accept=".json" style={{display:"none"}} onChange={async e=>{
+            const file=e.target.files?.[0];if(!file)return;
+            try{
+              const text=await file.text();
+              const data=JSON.parse(text);
+              if(!data.exps||!Array.isArray(data.exps)) throw new Error("Arquivo inválido");
+              if(!window.confirm(`Restaurar backup?\n${data.exps.length} lançamentos · ${(data.cats||[]).length} categorias\n\nIsso VAI SUBSTITUIR os dados atuais.`)) return;
+              setExps(data.exps||[]);
+              setCats(data.cats||CATS_DEF);
+              setMarkets(data.markets||MKTS_DEF);
+              setFixas(data.fixas||FIXAS_DEF);
+            }catch(err){alert("Erro ao importar: "+err.message);}
+            e.target.value="";
+          }}/>
+        </label>
         <button style={btn("rgba(248,113,113,0.1)","#f87171",{border:"1px solid rgba(248,113,113,0.3)"})} onClick={()=>{
           if(window.confirm("Apagar TODOS os dados?")){
             setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);
