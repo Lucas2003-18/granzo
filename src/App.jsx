@@ -1214,10 +1214,25 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados · {fixas.length} fixas
         </div>
         <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{marginBottom:10})} onClick={()=>{
-          const blob=new Blob([JSON.stringify({exps,cats,markets,fixas},null,2)],{type:"application/json"});
-          const url=URL.createObjectURL(blob);
-          const a=document.createElement("a");a.href=url;a.download=`meufinanceiro-backup-${new Date().toISOString().slice(0,10)}.json`;
-          document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
+          const json=JSON.stringify({exps,cats,markets,fixas},null,2);
+          // Abre modal com textarea para copiar manualmente - funciona em qualquer WebView
+          const overlay=document.createElement("div");
+          overlay.style.cssText="position:fixed;inset:0;background:rgba(8,14,29,0.98);z-index:9999;display:flex;flex-direction:column;padding:16px;box-sizing:border-box;";
+          overlay.innerHTML=`
+            <div style="color:#e2e8f0;font-size:15px;font-weight:700;margin-bottom:8px;">📋 Copie o JSON abaixo</div>
+            <div style="color:#64748b;font-size:12px;margin-bottom:12px;">Selecione tudo → Copie → Cole no Google Keep, Drive ou Notes</div>
+            <textarea id="backup-json" style="flex:1;background:#0f172a;color:#4ade80;border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:12px;font-size:11px;font-family:monospace;resize:none;outline:none;" readonly>${json}</textarea>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button id="btn-select-all" style="flex:1;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:white;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Selecionar tudo</button>
+              <button id="btn-fechar" style="flex:1;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Fechar</button>
+            </div>`;
+          document.body.appendChild(overlay);
+          const ta=overlay.querySelector("#backup-json");
+          const btnSel=overlay.querySelector("#btn-select-all");
+          const btnFch=overlay.querySelector("#btn-fechar");
+          setTimeout(()=>{ta.focus();ta.select();},100);
+          btnSel.onclick=()=>{ta.focus();ta.select();try{document.execCommand("copy");btnSel.textContent="✓ Copiado!";}catch{}};
+          btnFch.onclick=()=>document.body.removeChild(overlay);
         }}>📤 Exportar backup JSON</button>
         <label style={{display:"block",width:"100%",background:"rgba(99,102,241,0.12)",border:"1px solid rgba(99,102,241,0.3)",color:"#818cf8",borderRadius:12,padding:"11px 0",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"center",fontFamily:"inherit",marginBottom:10,boxSizing:"border-box"}}>
           📥 Importar backup JSON
