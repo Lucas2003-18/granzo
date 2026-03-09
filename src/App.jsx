@@ -6,6 +6,14 @@ const GEMINI_KEY = "AIzaSyA-gx5FUXaJfJ4IWU7MciY-gLlUk6D0TII";
 const delay = ms => new Promise(r => setTimeout(r, ms));
 const fmt   = v  => Number(v).toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
 const fmtPct= v  => (v>=0?"+":"")+v.toFixed(1)+"%";
+// Normaliza "DD/MM" ou "DD/MM/YYYY" → "YYYYMMDD" para sort correto
+function dateKey(d){
+  if(!d) return "00000000";
+  const p=d.split("/");
+  if(p.length>=3) return p[2].padStart(4,"0")+p[1].padStart(2,"0")+p[0].padStart(2,"0");
+  const y=String(new Date().getFullYear());
+  return y+( p[1]?.padStart(2,"0")||"00")+(p[0]?.padStart(2,"0")||"00");
+}
 const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const MESES_CURTO = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -56,11 +64,12 @@ function categorizar(desc, kind) {
 // incType: "salario" | "extra" | "transferencia" | "investimento_ret" | "outro"
 // Apenas salario + extra contam como RENDA real
 const INC_TIPOS = [
-  { id:"salario",        label:"Salário/Pró-labore", emoji:"💼" },
-  { id:"extra",          label:"Renda extra",         emoji:"💵" },
-  { id:"transferencia",  label:"Transferência recebida", emoji:"🔄" },
+  { id:"salario",        label:"Salário/Pró-labore",     emoji:"💼" },
+  { id:"extra",          label:"Renda extra",             emoji:"💵" },
+  { id:"transferencia",  label:"Transferência recebida",  emoji:"🔄" },
+  { id:"transf_interna", label:"Transferência entre contas", emoji:"↔️" },
   { id:"investimento_ret",label:"Retorno de investimento", emoji:"📈" },
-  { id:"outro",          label:"Outro",               emoji:"💰" },
+  { id:"outro",          label:"Outro",                   emoji:"💰" },
 ];
 
 const CATS_DEF = [
@@ -92,6 +101,13 @@ const MKTS_DEF = [
 const GROCERY = ["Frango (kg)","Carne moída (kg)","Leite integral (L)","Arroz 5kg","Feijão 1kg","Óleo de soja","Macarrão 500g","Pão de forma","Ovos (dz)","Manteiga 200g","Sabão em pó","Detergente 500ml"];
 const PRESETS = ["#60a5fa","#4ade80","#f59e0b","#f472b6","#a78bfa","#fb923c","#34d399","#94a3b8","#f87171","#38bdf8"];
 
+// ── CONTAS ─────────────────────────────────────────────────
+const CONTAS_DEF = [
+  { id:"bradesco", label:"Bradesco", emoji:"🔴", color:"#f87171" },
+  { id:"nubank",   label:"Nubank",   emoji:"💜", color:"#a78bfa" },
+  { id:"geral",    label:"Geral",    emoji:"🏦", color:"#94a3b8" },
+];
+
 // ── ESTILOS ────────────────────────────────────────────────
 function inp(extra) { return {width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,color:"#e2e8f0",padding:"11px 13px",fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box",...extra}; }
 function btn(bg,c="#fff",extra) { return {background:bg,border:"none",color:c,borderRadius:10,padding:"11px 0",fontSize:14,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:"inherit",...extra}; }
@@ -121,7 +137,7 @@ function AlertBox({tipo,texto}) {
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────
-function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, mesAtual }) {
+function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, fixas, mesAtual, reservas, meta }) {
   const gastos  = exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
   const invests = exps.filter(e=>e.cat==="investimento");
   const totalExp= gastos.reduce((s,e)=>s+e.value,0);
@@ -130,7 +146,7 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
   // Renda REAL = só salário + renda extra (exclui transferências e retornos)
   const entRenda= exps.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType));
   // Transferências e retornos de invest ficam separados
-  const entTransf=exps.filter(e=>e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"));
+  const entTransf=exps.filter(e=>e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret")&&e.incType!=="transf_interna");
   const totalInc= entRenda.reduce((s,e)=>s+e.value,0);
   const totalTransf=entTransf.reduce((s,e)=>s+e.value,0);
   const txPoup  = totalInc>0?((totalInc-totalExp)/totalInc)*100:0;
@@ -138,13 +154,22 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
   // Total de fixas ativas com valor configurado
   const totalFixas = (fixas||[]).filter(f=>f.ativo&&f.valor>0).reduce((s,f)=>s+f.valor,0);
 
-  // Comparativo mês anterior
+  // Comparativo mês anterior — com ano correto
   let mesAnterior=null, diffPct=null;
   if (mesFiltro!=="todos") {
-    const mn=+mesFiltro, mesAnt=mn===1?"12":String(mn-1).padStart(2,"0");
-    const expsAnt=allExps.filter(e=>{ const p=e.date?.split("/"); return p?.length>=2&&p[1]===mesAnt&&e.kind==="exp"&&e.cat!=="investimento"; });
+    const [anoAtualStr,mesAtualStr]=mesFiltro.split("-");
+    const anoAtual=+anoAtualStr, mesAtualN=+mesAtualStr;
+    const anoAnt=mesAtualN===1?anoAtual-1:anoAtual;
+    const mesAnt=mesAtualN===1?12:mesAtualN-1;
+    const mesAntPad=String(mesAnt).padStart(2,"0");
+    const anoAntPad=String(anoAnt);
+    const expsAnt=allExps.filter(e=>{
+      const p=e.date?.split("/");if(!p||p.length<2)return false;
+      const eAno=p.length>=3?p[2]:String(new Date().getFullYear());
+      return p[1]===mesAntPad&&eAno===anoAntPad&&e.kind==="exp"&&e.cat!=="investimento";
+    });
     const totAnt=expsAnt.reduce((s,e)=>s+e.value,0);
-    if(totAnt>0){mesAnterior=MESES_CURTO[+mesAnt];diffPct=((totalExp-totAnt)/totAnt)*100;}
+    if(totAnt>0){mesAnterior=MESES_CURTO[mesAnt];diffPct=((totalExp-totAnt)/totAnt)*100;}
   }
 
   // Projeção: só faz sentido no mês atual, não em meses passados
@@ -170,6 +195,17 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
+      {/* Alerta fixas pendentes */}
+      {mesFiltro!=="todos"&&fixas&&(()=>{
+        const pendentes=fixas.filter(f=>{
+          if(!f.ativo||!f.valor) return false;
+          const descMatch=new RegExp(f.desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(" ")[0],"i");
+          return !exps.some(e=>e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")));
+        });
+        if(pendentes.length===0) return null;
+        return <AlertBox tipo="warn" texto={`⏰ ${pendentes.length} despesa${pendentes.length>1?"s":""} fixa${pendentes.length>1?"s":""} pendente${pendentes.length>1?"s":""} este mês: ${pendentes.map(f=>f.desc).join(", ")}`}/>;
+      })()}
+
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
         {[
@@ -206,6 +242,99 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
           </div>}
         </div>
       )}
+
+      {/* Por conta */}
+      {(()=>{
+        const contasDef=contas||CONTAS_DEF;
+        const contasComDados=contasDef.filter(c=>c.id!=="geral"&&exps.some(e=>e.conta===c.id));
+        if(contasComDados.length===0) return null;
+        return <>
+          <div style={{margin:"14px 0 8px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.1em"}}>Por conta</div>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:14}}>
+            {contasDef.filter(c=>c.id!=="geral").map(c=>{
+              const cExps=exps.filter(e=>e.conta===c.id||(!e.conta&&c.id==="geral"));
+              const cInc=cExps.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)).reduce((s,e)=>s+e.value,0);
+              const cExp=cExps.filter(e=>e.kind==="exp"&&e.cat!=="investimento").reduce((s,e)=>s+e.value,0);
+              const cTransfEnv=cExps.filter(e=>e.kind==="exp"&&e.incType==="transf_interna").reduce((s,e)=>s+e.value,0);
+              const cTransfRec=cExps.filter(e=>e.kind==="inc"&&e.incType==="transf_interna").reduce((s,e)=>s+e.value,0);
+              const saldo=cInc-cExp;
+              if(cInc===0&&cExp===0) return null;
+              return <div key={c.id} style={{flex:1,background:`${c.color}0f`,border:`1px solid ${c.color}33`,borderRadius:12,padding:"10px 10px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                  <span style={{fontSize:14}}>{c.emoji}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:c.color}}>{c.label}</span>
+                </div>
+                {cInc>0&&<div style={{fontSize:10,color:"#64748b"}}>💼 <span style={{color:"#4ade80"}}>{hide?"••••":fmt(cInc)}</span></div>}
+                {cExp>0&&<div style={{fontSize:10,color:"#64748b"}}>💸 <span style={{color:"#f87171"}}>{hide?"••••":fmt(cExp)}</span></div>}
+                {cTransfRec>0&&<div style={{fontSize:10,color:"#64748b"}}>↔️ <span style={{color:"#94a3b8"}}>{hide?"••••":fmt(cTransfRec)}</span></div>}
+                <div style={{marginTop:6,paddingTop:6,borderTop:`1px solid ${c.color}22`,fontSize:11,fontWeight:800,color:saldo>=0?"#4ade80":"#f87171"}}>{hide?"••••":fmt(saldo)}</div>
+              </div>;
+            })}
+          </div>
+        </>;
+      })()}
+
+      {/* Reservas resumo */}
+      {reservas&&reservas.length>0&&(()=>{
+        const totalRes=reservas.reduce((s,r)=>s+r.saldo,0);
+        return <>
+          <div style={{margin:"14px 0 8px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.1em"}}>Reservas / Caixinhas</div>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
+            {reservas.map(r=>{
+              const pct=r.meta>0?Math.min(100,(r.saldo/r.meta)*100):null;
+              return <div key={r.id} style={{flexShrink:0,minWidth:120,background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:12,padding:"10px 12px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
+                  <span style={{fontSize:16}}>{r.emoji}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"#818cf8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.nome}</span>
+                </div>
+                <div style={{fontSize:15,fontWeight:800,color:"#e2e8f0"}}>{hide?"••••":fmt(r.saldo)}</div>
+                {r.meta>0&&<>
+                  <Bar pct={pct} color={pct>=100?"#4ade80":"#818cf8"}/>
+                  <div style={{fontSize:9,color:"#64748b"}}>{pct.toFixed(0)}% de {hide?"••••":fmt(r.meta)}</div>
+                </>}
+              </div>;
+            })}
+            <div style={{flexShrink:0,minWidth:100,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"10px 12px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}>
+              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Total</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#818cf8"}}>{hide?"••••":fmt(totalRes)}</div>
+            </div>
+          </div>
+        </>;
+      })()}
+
+      {/* Meta de economia */}
+      {mesFiltro!=="todos"&&totalInc>0&&(()=>{
+        try{
+        if(!meta||meta<=0) return null;
+        const poupado=totalInc-totalExp;
+        const pct=Math.min(100,(poupado/meta)*100);
+        const ok=poupado>=meta;
+        return <div style={{...CARD,marginBottom:14,borderLeft:`3px solid ${ok?"#4ade80":pct>60?"#f59e0b":"#f87171"}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>🎯 Meta de economia</div>
+            <div style={{fontSize:12,color:ok?"#4ade80":pct>60?"#f59e0b":"#f87171",fontWeight:700}}>
+              {ok?"✓ Atingida!":pct.toFixed(0)+"%"}
+            </div>
+          </div>
+          <Bar pct={pct} color={ok?"#4ade80":pct>60?"#f59e0b":"#f87171"}/>
+          <div style={{fontSize:11,color:"#64748b",marginTop:4}}>
+            {hide?"••••":fmt(Math.max(0,poupado))} poupado de {hide?"••••":fmt(meta)} planejados
+            {!ok&&poupado<meta&&<span style={{color:"#f87171"}}> · faltam {hide?"••••":fmt(meta-poupado)}</span>}
+          </div>
+        </div>;}catch{return null;}
+      })()}
+
+      {/* Aviso lançamentos sem conta */}
+      {(()=>{
+        const semConta=exps.filter(e=>!e.conta||e.conta==="geral").length;
+        const temMultiConta=(contas||CONTAS_DEF).filter(c=>c.id!=="geral").length>=2;
+        if(!temMultiConta||semConta===0) return null;
+        return <AlertBox tipo="info" texto={`🏦 ${semConta} lançamento${semConta>1?"s":""} sem conta definida — vá em Gastos e edite para atribuir ao Bradesco ou Nubank.`}/>;
+      })()}
 
       {/* Alertas orçamento */}
       {cats.filter(c=>c.budget>0&&c.id!=="investimento").map(cat=>{
@@ -248,7 +377,9 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
           const descMatch=new RegExp(f.desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(" ")[0],"i");
           const jaLancado=exps.some(e=>{
             const p=e.date?.split("/");
-            const mesOk=mesFiltro==="todos"||(p?.length>=2&&p[1]===mesFiltro);
+            if(!p||p.length<2) return false;
+            const anoMesE=p.length>=3?`${p[2]}-${p[1]}`:`${new Date().getFullYear()}-${p[1]}`;
+            const mesOk=mesFiltro==="todos"||anoMesE===mesFiltro;
             return mesOk&&e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[\u0300-\u036f]/g,""));
           });
           return <div key={f.id} style={{...ROW,borderLeft:`3px solid ${jaLancado?"#4ade80":"#f59e0b"}`}}>
@@ -297,11 +428,7 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
 
       {/* Últimos lançamentos */}
       <SecTitle t="Últimos lançamentos"/>
-      {[...exps].sort((a,b)=>{
-        const da=a.date?.split("/").reverse().join("")||"";
-        const db=b.date?.split("/").reverse().join("")||"";
-        return db.localeCompare(da)||b.id-a.id;
-      }).slice(0,6).map(e=>{
+      {[...allExps].sort((a,b)=>dateKey(b.date).localeCompare(dateKey(a.date))||b.id-a.id).slice(0,6).map(e=>{
         const cat=cats.find(c=>c.id===e.cat);
         const isTransf=e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"||e.incType==="outro");
         const incLabel=e.kind==="inc"?(INC_TIPOS.find(t=>t.id===e.incType)?.label||e.type||"Entrada"):null;
@@ -314,6 +441,16 @@ function Dashboard({ exps, cats, hide, onCatClick, mesFiltro, allExps, fixas, me
           <span style={{fontSize:13,fontWeight:700,color:e.kind==="inc"?(isTransf?"#94a3b8":"#4ade80"):"#f87171",flexShrink:0}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
         </div>;
       })}
+      {/* Estado vazio */}
+      {exps.length===0&&(
+        <div style={{textAlign:"center",padding:"60px 20px",color:"#475569"}}>
+          <div style={{fontSize:52,marginBottom:12}}>📊</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#94a3b8",marginBottom:8}}>Nenhum lançamento ainda</div>
+          <div style={{fontSize:13,lineHeight:1.7,marginBottom:20}}>
+            Comece registrando seus gastos e receitas,<br/>ou importe um extrato em <strong style={{color:"#818cf8"}}>⚙️ Config → Importar</strong>.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -328,17 +465,32 @@ function Graficos({ exps, cats, hide, allExps }) {
   const slices=pieData.map(d=>{const a=(d.spent/pieTotal)*Math.PI*2,sa=cum;cum+=a;return{...d,sa,ea:cum};});
   function arc(sa,ea){const x1=cx+r*Math.cos(sa),y1=cy+r*Math.sin(sa),x2=cx+r*Math.cos(ea),y2=cy+r*Math.sin(ea);return `M${cx} ${cy} L${x1} ${y1} A${r} ${r} 0 ${ea-sa>Math.PI?1:0} 1 ${x2} ${y2}Z`;}
 
-  // Evolução mensal
-  const mesesDisp=[...new Set(allExps.map(e=>{const p=e.date?.split("/");return p?.length>=2?p[1]:null;}).filter(Boolean))].sort();
-  const evolucao=mesesDisp.map(m=>({
-    mes:MESES_CURTO[+m],
-    inc:allExps.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
-    transf:allExps.filter(e=>e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret")&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
-    exp:allExps.filter(e=>e.kind==="exp"&&e.cat!=="investimento"&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
-    inv:allExps.filter(e=>e.cat==="investimento"&&e.date?.split("/")?.[1]===m).reduce((s,e)=>s+e.value,0),
-  }));
+  // Evolução mensal — com ano para não misturar Jan/2026 com Jan/2027
+  function getAnoMes(e){const p=e.date?.split("/");if(!p||p.length<2)return null;return p.length>=3?`${p[2]}-${p[1]}`:`${new Date().getFullYear()}-${p[1]}`;}
+  const mesesDisp=[...new Set(allExps.map(getAnoMes).filter(Boolean))].sort();
+  const evolucao=mesesDisp.map(m=>{
+    const [ano,mes]=m.split("-");
+    const label=MESES_CURTO[+mes]+(mesesDisp.some(x=>x.split("-")[0]!==ano)?"'"+ano.slice(2):"");
+    const inc =allExps.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)&&getAnoMes(e)===m).reduce((s,e)=>s+e.value,0);
+    const transf=allExps.filter(e=>e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret")&&getAnoMes(e)===m).reduce((s,e)=>s+e.value,0);
+    const exp =allExps.filter(e=>e.kind==="exp"&&e.cat!=="investimento"&&getAnoMes(e)===m).reduce((s,e)=>s+e.value,0);
+    const inv =allExps.filter(e=>e.cat==="investimento"&&getAnoMes(e)===m).reduce((s,e)=>s+e.value,0);
+    return {m,label,inc,transf,exp,inv,saldo:inc-exp};
+  });
   const maxEv=Math.max(...evolucao.flatMap(e=>[e.inc,e.exp]),1);
   const chartH=110,barW=22;
+
+  // Gráfico de linha — evolução do saldo acumulado
+  const saldoAcum=evolucao.reduce((acc,e,i)=>{
+    const prev=i>0?acc[i-1].saldo:0;
+    return [...acc,{label:e.label,saldo:prev+e.saldo}];
+  },[]);
+  const minSaldo=Math.min(...saldoAcum.map(e=>e.saldo),0);
+  const maxSaldo=Math.max(...saldoAcum.map(e=>e.saldo),1);
+  const lineH=90,linePad=20;
+  function saldoY(v){return lineH-((v-minSaldo)/(maxSaldo-minSaldo||1))*(lineH-linePad)+linePad/2;}
+  const lineW=Math.max(saldoAcum.length*64,280);
+  const pts=saldoAcum.map((e,i)=>`${i*64+16},${saldoY(e.saldo)}`).join(" ");
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -357,7 +509,7 @@ function Graficos({ exps, cats, hide, allExps }) {
                   {e.transf>0&&<rect x={x} y={chartH-hTransf} width={barW} height={hTransf-hInc} rx={0} fill="rgba(148,163,184,0.35)"/>}
                   <rect x={x} y={chartH-hInc} width={barW} height={hInc} rx={3} fill="rgba(74,222,128,0.7)"/>
                   <rect x={x+barW+3} y={chartH-hExp} width={barW} height={hExp} rx={3} fill={e.exp>e.inc?"rgba(248,113,113,0.85)":"rgba(248,113,113,0.5)"}/>
-                  <text x={x+barW+1} y={chartH+14} textAnchor="middle" fill="#64748b" fontSize="11" fontFamily="Outfit,sans-serif">{e.mes}</text>
+                  <text x={x+barW+1} y={chartH+14} textAnchor="middle" fill="#64748b" fontSize="11" fontFamily="Outfit,sans-serif">{e.label}</text>
                   {e.inv>0&&<text x={x+barW+1} y={chartH-hExp-8} textAnchor="middle" fill="#34d399" fontSize="9">💹</text>}
                 </g>;
               })}
@@ -369,6 +521,38 @@ function Graficos({ exps, cats, hide, allExps }) {
                 <div style={{width:10,height:10,borderRadius:2,background:c}}/><span style={{fontSize:11,color:"#94a3b8"}}>{l}</span>
               </div>
             ))}
+          </div>
+        </div>
+      </>}
+
+      {/* Linha de saldo acumulado */}
+      {saldoAcum.length>=2&&<>
+        <SecTitle t="Saldo acumulado" sub="Evolução do patrimônio mês a mês"/>
+        <div style={CARD}>
+          <div style={{overflowX:"auto"}}>
+            <svg width={lineW} height={lineH+28} style={{display:"block",overflow:"visible"}}>
+              {/* Linha zero */}
+              {minSaldo<0&&<line x1={0} y1={saldoY(0)} x2={lineW} y2={saldoY(0)} stroke="rgba(255,255,255,0.1)" strokeWidth={1} strokeDasharray="4,3"/>}
+              {/* Área preenchida */}
+              <defs>
+                <linearGradient id="saldoGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#4ade80":"#f87171"} stopOpacity="0.25"/>
+                  <stop offset="100%" stopColor={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#4ade80":"#f87171"} stopOpacity="0.02"/>
+                </linearGradient>
+              </defs>
+              <polygon points={`${saldoAcum.map((e,i)=>`${i*64+16},${saldoY(e.saldo)}`).join(" ")} ${(saldoAcum.length-1)*64+16},${lineH} 16,${lineH}`} fill="url(#saldoGrad)"/>
+              {/* Linha principal */}
+              <polyline points={pts} fill="none" stroke={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#4ade80":"#f87171"} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+              {/* Pontos e labels */}
+              {saldoAcum.map((e,i)=>{
+                const x=i*64+16,y=saldoY(e.saldo),pos=e.saldo>=0;
+                return <g key={i}>
+                  <circle cx={x} cy={y} r={4} fill={pos?"#4ade80":"#f87171"} stroke="#080e1d" strokeWidth={2}/>
+                  <text x={x} y={y-(pos?10:-3)} textAnchor="middle" fill={pos?"#4ade80":"#f87171"} fontSize="9" fontFamily="Outfit,sans-serif" fontWeight="700">{hide?"••":fmt(e.saldo).replace("R$","").trim()}</text>
+                  <text x={x} y={lineH+16} textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="Outfit,sans-serif">{e.label}</text>
+                </g>;
+              })}
+            </svg>
           </div>
         </div>
       </>}
@@ -430,7 +614,7 @@ function Orcamento({ exps, cats, setCats, hide, mesFiltro }) {
   const totalOrc=cats.filter(c=>c.budget>0&&c.id!=="investimento").reduce((s,c)=>s+c.budget,0);
   const totalGasto=gastos.reduce((s,e)=>s+e.value,0);
   const isTodos=mesFiltro==="todos";
-  const mesesCount=isTodos?Math.max(1,[...new Set(exps.map(e=>e.date?.split("/")?.[1]).filter(Boolean))].length):1;
+  const mesesCount=isTodos?Math.max(1,[...new Set(exps.map(e=>{const p=e.date?.split("/");if(!p||p.length<2)return null;return p.length>=3?`${p[2]}-${p[1]}`:`${new Date().getFullYear()}-${p[1]}`;}).filter(Boolean))].length):1;
   return (
     <div style={{padding:16,paddingBottom:100}}>
       {isTodos&&mesesCount>1&&(
@@ -480,23 +664,24 @@ function Orcamento({ exps, cats, setCats, hide, mesFiltro }) {
 }
 
 // ── GASTOS ─────────────────────────────────────────────────
-function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catFiltro, onClearCat }) {
+function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFiltro, catFiltro, onClearCat }) {
   const [show,    setShow]    = useState(false);
   const [mode,    setMode]    = useState("expense");
-  const [form,    setForm]    = useState({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario"});
+  const [form,    setForm]    = useState({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario",conta:"nubank"});
   const [editId,  setEditId]  = useState(null);
   const [editForm,setEditForm]= useState({});
   const [busca,   setBusca]   = useState("");
   const [ordenar, setOrdenar] = useState("data");
   const [confirm, setConfirm] = useState(null);
+  const [contaFiltro, setContaFiltro] = useState(null);
 
   useEffect(()=>{ if(openWith){setMode(openWith);setShow(true);if(onOpened)onOpened();} },[openWith]);
 
-  function startEdit(e){setEditId(e.id);setEditForm({desc:e.desc,value:e.value,cat:e.cat||"outros",kind:e.kind,date:e.date||"",incType:e.incType||"salario"});}
+  function startEdit(e){setEditId(e.id);setEditForm({desc:e.desc,value:e.value,cat:e.cat||"outros",kind:e.kind,date:e.date||"",incType:e.incType||"salario",conta:e.conta||"geral"});}
   function saveEdit(){
     const cat=cats.find(c=>c.id===editForm.cat);
     const incEmoji=INC_TIPOS.find(t=>t.id===editForm.incType)?.emoji||"💰";
-    setExps(p=>p.map(e=>e.id===editId?{...e,...editForm,value:+editForm.value,incType:editForm.kind==="inc"?editForm.incType:undefined,emoji:editForm.kind==="inc"?incEmoji:(cat?.emoji||"📦")}:e));
+    setExps(p=>p.map(e=>e.id===editId?{...e,...editForm,value:+editForm.value,incType:editForm.kind==="inc"?editForm.incType:undefined,emoji:editForm.kind==="inc"?incEmoji:(cat?.emoji||"📦"),conta:editForm.conta||"geral"}:e));
     setEditId(null);
   }
 
@@ -507,14 +692,15 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
     const parcelas=isCard?Math.max(1,+form.parcelas||1):1;
     const total=+form.value,venc=+form.vencimento||10;
     const baseDate=form.date?new Date(form.date+"T12:00:00"):new Date();
+    // Garante que a data é sempre preenchida (default = hoje)
     const novos=Array.from({length:parcelas},(_,i)=>{
       let d=new Date(baseDate);
       if(isCard){const off=d.getDate()<venc?0:1;d.setMonth(d.getMonth()+off+i);d.setDate(venc);}
       const parValor=i<parcelas-1?Math.floor((total/parcelas)*100)/100:+(total-Math.floor((total/parcelas)*100)/100*(parcelas-1)).toFixed(2);
-      return {id:Date.now()+i,desc:parcelas>1?`${form.desc} (${i+1}/${parcelas})`:form.desc,kind:mode==="expense"?"exp":"inc",cat:mode==="expense"?form.cat:undefined,incType:mode==="income"?form.incType:undefined,type:mode==="income"?"Manual":undefined,emoji:isCard?"💳":(mode==="expense"?(cat?.emoji||"📦"):(INC_TIPOS.find(t=>t.id===form.incType)?.emoji||"💰")),value:parValor,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}),payment:isCard?"cartao":"dinheiro"};
+      return {id:Date.now()+i,desc:parcelas>1?`${form.desc} (${i+1}/${parcelas})`:form.desc,kind:mode==="expense"?"exp":"inc",cat:mode==="expense"?form.cat:undefined,incType:mode==="income"?form.incType:undefined,type:mode==="income"?"Manual":undefined,emoji:isCard?"💳":(mode==="expense"?(cat?.emoji||"📦"):(INC_TIPOS.find(t=>t.id===form.incType)?.emoji||"💰")),value:parValor,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),payment:isCard?"cartao":"dinheiro",conta:form.conta||"geral"};
     });
     setExps(p=>[...novos,...p]);
-    setForm({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario"});
+    setForm({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario",conta:"nubank"});
     setShow(false);
   }
 
@@ -523,15 +709,14 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
     const mesOk=!mesFiltro||mesFiltro==="todos"||(p?.length>=2&&p[1]===mesFiltro);
     const catOk=!catFiltro||e.cat===catFiltro.id;
     const buscaOk=!busca||(e.desc||"").toLowerCase().includes(busca.toLowerCase());
-    return mesOk&&catOk&&buscaOk;
+    const contaOk=!contaFiltro||e.conta===contaFiltro;
+    return mesOk&&catOk&&buscaOk&&contaOk;
   });
 
   const sorted=[...expsFilt].sort((a,b)=>{
     if(ordenar==="valor") return b.value-a.value;
     if(ordenar==="cat")   return (a.cat||"").localeCompare(b.cat||"");
-    const da=a.date?.split("/").reverse().join("")||"";
-    const db=b.date?.split("/").reverse().join("")||"";
-    return db.localeCompare(da)||b.id-a.id;
+    return dateKey(b.date).localeCompare(dateKey(a.date))||b.id-a.id;
   });
 
   const totalFilt   = expsFilt.filter(e=>e.kind==="exp").reduce((s,e)=>s+e.value,0);
@@ -565,6 +750,16 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
           <option value="cat">🏷️ Cat.</option>
         </select>
       </div>
+      {(contas||CONTAS_DEF).filter(c=>c.id!=="geral"&&expsFilt.some(e=>e.conta===c.id||(!e.conta&&false))).length>0&&(
+        <div style={{display:"flex",gap:6,marginBottom:10}}>
+          <button style={{background:!contaFiltro?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:!contaFiltro?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:!contaFiltro?"#818cf8":"#64748b",borderRadius:99,padding:"5px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:!contaFiltro?700:400}}
+            onClick={()=>setContaFiltro(null)}>Todas</button>
+          {(contas||CONTAS_DEF).filter(c=>c.id!=="geral").map(c=>(
+            <button key={c.id} style={{background:contaFiltro===c.id?`${c.color}22`:"rgba(255,255,255,0.04)",border:contaFiltro===c.id?`1px solid ${c.color}55`:"1px solid rgba(255,255,255,0.08)",color:contaFiltro===c.id?c.color:"#64748b",borderRadius:99,padding:"5px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:contaFiltro===c.id?700:400}}
+              onClick={()=>setContaFiltro(contaFiltro===c.id?null:c.id)}>{c.emoji} {c.label}</button>
+          ))}
+        </div>
+      )}
 
       {(mesFiltro!=="todos"||catFiltro||busca)&&(
         <div style={{fontSize:12,color:"#64748b",marginBottom:10,padding:"8px 12px",background:"rgba(255,255,255,0.03)",borderRadius:8,display:"flex",gap:12,flexWrap:"wrap"}}>
@@ -586,7 +781,7 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
           </div>
           <input style={{...inp(),marginBottom:10}} placeholder="Descrição" value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/>
           <input style={{...inp(),marginBottom:10}} type="number" placeholder="Valor (R$)" value={form.value} onChange={e=>setForm(p=>({...p,value:e.target.value}))}/>
-          <input style={{...inp(),marginBottom:10,colorScheme:"dark"}} type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/>
+          <input style={{...inp(),marginBottom:10,colorScheme:"dark"}} type="date" value={form.date||new Date().toISOString().slice(0,10)} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/>
           {mode==="income"&&(
             <div style={{marginBottom:10}}>
               <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Tipo de entrada</div>
@@ -631,7 +826,16 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
               {form.parcelas>1&&<div style={{fontSize:12,color:"#64748b"}}>💡 {form.parcelas}x de {fmt(+form.value/form.parcelas||0)} — vence dia {form.vencimento}</div>}
             </div>
           )}
-          <div style={{display:"flex",gap:8}}>
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Conta</div>
+            <div style={{display:"flex",gap:6}}>
+              {(contas||CONTAS_DEF).filter(c=>c.id!=="geral").map(c=>(
+                <button key={c.id} style={{flex:1,borderRadius:10,padding:"8px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:form.conta===c.id?`${c.color}22`:"rgba(255,255,255,0.05)",border:form.conta===c.id?`1px solid ${c.color}55`:"1px solid rgba(255,255,255,0.1)",color:form.conta===c.id?c.color:"#94a3b8"}}
+                  onClick={()=>setForm(p=>({...p,conta:c.id}))}>{c.emoji} {c.label}</button>
+              ))}
+            </div>
+          </div>
+                    <div style={{display:"flex",gap:8}}>
             <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setShow(false)}>Cancelar</button>
             <button style={btn(mode==="income"?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#ef4444,#dc2626)")} onClick={add}>Salvar</button>
           </div>
@@ -639,15 +843,17 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
       )}
 
       {/* Confirmação exclusão */}
-      {confirm&&(
-        <div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:12,padding:14,marginBottom:12}}>
-          <div style={{fontSize:13,color:"#f87171",marginBottom:10}}>⚠️ Excluir este lançamento?</div>
+      {confirm&&(()=>{
+        const item=exps.find(e=>e.id===confirm);
+        return <div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:12,padding:14,marginBottom:12}}>
+          <div style={{fontSize:13,color:"#f87171",marginBottom:4}}>⚠️ Excluir este lançamento?</div>
+          {item&&<div style={{fontSize:12,color:"#94a3b8",marginBottom:10}}>{item.desc} · {item.kind==="inc"?"+":"-"}{fmt(item.value)}</div>}
           <div style={{display:"flex",gap:8}}>
             <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setConfirm(null)}>Cancelar</button>
             <button style={btn("rgba(248,113,113,0.2)","#f87171",{border:"1px solid rgba(248,113,113,0.3)"})} onClick={()=>{setExps(p=>p.filter(x=>x.id!==confirm));setConfirm(null);}}>Excluir</button>
           </div>
-        </div>
-      )}
+        </div>;
+      })()}
 
       {sorted.length===0&&!show&&(
         <div style={{textAlign:"center",padding:"40px 20px",color:"#475569"}}>
@@ -660,21 +866,26 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
       {/* Lista */}
       {sorted.map(e=>{
         const cat=cats.find(c=>c.id===e.cat);
+        const conta=(contas||CONTAS_DEF).find(c=>c.id===e.conta);
         const incLabel=e.kind==="inc"?(INC_TIPOS.find(t=>t.id===e.incType)?.label||e.type||"Entrada"):null;
         const isTransf=e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"||e.incType==="outro");
+        const isTransfInt=e.incType==="transf_interna";
         const rowBg=e.kind==="inc"
-          ?isTransf?"rgba(148,163,184,0.04)":"rgba(74,222,128,0.04)"
+          ?isTransfInt?"rgba(148,163,184,0.03)":isTransf?"rgba(148,163,184,0.04)":"rgba(74,222,128,0.04)"
           :{};
         const rowBorder=e.kind==="inc"
-          ?isTransf?"rgba(148,163,184,0.2)":"rgba(74,222,128,0.2)"
+          ?isTransfInt?"rgba(148,163,184,0.15)":isTransf?"rgba(148,163,184,0.2)":"rgba(74,222,128,0.2)"
           :undefined;
-        const valColor=e.kind==="inc"?(isTransf?"#94a3b8":"#4ade80"):"#f87171";
+        const valColor=e.kind==="inc"?(isTransfInt||isTransf?"#94a3b8":"#4ade80"):"#f87171";
         return <div key={e.id}>
           <div style={{...ROW,...(e.kind==="inc"?{borderColor:rowBorder,background:rowBg}:{})}}>
-            <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransf?"rgba(148,163,184,0.1)":"rgba(74,222,128,0.12)"):"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{e.emoji||cat?.emoji||"📦"}</div>
+            <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransfInt||isTransf?"rgba(148,163,184,0.1)":"rgba(74,222,128,0.12)"):"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{e.emoji||cat?.emoji||"📦"}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
-              <div style={{fontSize:11,color:"#475569"}}>{e.kind==="inc"?incLabel:(cat?.label||"Outros")} · {e.date}</div>
+              <div style={{fontSize:11,color:"#475569",display:"flex",alignItems:"center",gap:5}}>
+                <span>{e.kind==="inc"?incLabel:(cat?.label||"Outros")} · {e.date}</span>
+                {conta&&conta.id!=="geral"&&<span style={{background:`${conta.color}22`,color:conta.color,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,flexShrink:0}}>{conta.emoji}</span>}
+              </div>
             </div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
               <span style={{fontSize:14,fontWeight:700,color:valColor}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
@@ -716,9 +927,15 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
                 <div style={{flex:1}}>
                   <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Data</div>
                   <input style={{...inp(),colorScheme:"dark"}} type="date"
-                    value={()=>{const pts=(editForm.date||"").split("/");if(pts.length>=2)return `${new Date().getFullYear()}-${pts[1].padStart(2,"0")}-${pts[0].padStart(2,"0")}`;return "";}}
-                    onChange={e=>{if(!e.target.value)return;const d=new Date(e.target.value+"T12:00:00");setEditForm(p=>({...p,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})}));}}/>
+                    value={(()=>{const pts=(editForm.date||"").split("/");if(pts.length>=3)return `${pts[2]}-${pts[1].padStart(2,"0")}-${pts[0].padStart(2,"0")}`;if(pts.length>=2)return `${new Date().getFullYear()}-${pts[1].padStart(2,"0")}-${pts[0].padStart(2,"0")}`;return "";})()}
+                    onChange={e=>{if(!e.target.value)return;const d=new Date(e.target.value+"T12:00:00");setEditForm(p=>({...p,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"})}));}}/>
                 </div>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Conta</div>
+                <select style={inp()} value={editForm.conta||"geral"} onChange={e=>setEditForm(p=>({...p,conta:e.target.value}))}>
+                  {(contas||CONTAS_DEF).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
+                </select>
               </div>
               <div style={{display:"flex",gap:8}}>
                 <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setEditId(null)}>Cancelar</button>
@@ -733,97 +950,178 @@ function Gastos({ exps, setExps, cats, openWith, onOpened, hide, mesFiltro, catF
 }
 
 // ── MERCADO ────────────────────────────────────────────────
+// Caderninho de preços reais — o usuário registra o que pagou, o app compara
+const MERCADO_KEY="mf_precos";
+function loadPrecos(){try{const v=localStorage.getItem(MERCADO_KEY);return v?JSON.parse(v):{}}catch{return {}}}
+function savePrecos(p){try{localStorage.setItem(MERCADO_KEY,JSON.stringify(p))}catch{}}
+
 function Mercado({ markets }) {
-  const [produtos,  setProdutos] = useState(GROCERY);
-  const [sel,       setSel]      = useState({"Frango (kg)":true,"Arroz 5kg":true,"Feijão 1kg":true,"Leite integral (L)":true,"Ovos (dz)":true,"Macarrão 500g":true});
+  // precos: { "Frango (kg)": { "Carrefour": {valor:12.9, data:"15/03"}, ... }, ... }
+  const [precos,    setPrecos]   = useState(loadPrecos);
+  const [produtos,  setProdutos] = useState(()=>{
+    const saved=loadPrecos();
+    const extras=Object.keys(saved).filter(p=>!GROCERY.includes(p));
+    return [...GROCERY,...extras];
+  });
+  const [aba,       setAba]      = useState("comparar"); // "comparar" | "registrar" | "gerenciar"
+  const [selProd,   setSelProd]  = useState(null); // produto selecionado para registrar preço
+  const [selMkt,    setSelMkt]   = useState(null); // mercado selecionado
+  const [inputVal,  setInputVal] = useState("");
   const [novoProd,  setNovoProd] = useState("");
-  const [gerenciar, setGerenciar]= useState(false);
-  const [loading,   setLoading]  = useState(false);
-  const [result,    setResult]   = useState(null);
-  const [erro,      setErro]     = useState("");
-  const count=Object.values(sel).filter(Boolean).length;
+  const [filtro,    setFiltro]   = useState(""); // busca rápida
 
-  function addProd(){const n=novoProd.trim();if(!n||produtos.includes(n))return;setProdutos(p=>[...p,n]);setSel(p=>({...p,[n]:true}));setNovoProd("");}
-  function remProd(n){setProdutos(p=>p.filter(x=>x!==n));setSel(p=>{const q={...p};delete q[n];return q;});}
-
-  async function buscar(){
-    if(GEMINI_KEY==="SUA_CHAVE_AQUI"){setErro("Configure a chave do Gemini no App.jsx linha 3");return;}
-    setLoading(true);setResult(null);setErro("");
-    const items=Object.keys(sel).filter(k=>sel[k]);
-    const mktNames=markets.map(m=>m.label);
-    const sys="Voce retorna APENAS numeros. Sem texto, sem R$, sem unidades.";
-    const msg="Precos em reais Campinas SP "+new Date().getFullYear()+". Para cada produto preco em cada mercado separado por virgula. Um produto por linha. Mercados: "+mktNames.join(", ")+". Produtos: "+items.join("; ");
-    try {
-      const txt=await askGemini(sys,msg,800);
-      const extrNums=s=>s.match(/\d+[.,]\d+|\d+/g)?.map(n=>parseFloat(n.replace(",",".")))??[];
-      const linhas=txt.split(/[;\n]/).map(l=>l.trim()).filter(l=>l.length>0);
-      const matriz=items.map((_,i)=>{
-        const nums=extrNums(linhas[i]||"");
-        if(nums.length<mktNames.length){const all=extrNums(txt);const off=i*mktNames.length;return mktNames.map((_,j)=>all[off+j]||9.99);}
-        return mktNames.map((_,j)=>nums[j]||9.99);
-      });
-      const ri=items.map((nome,i)=>({name:nome,prices:Object.fromEntries(mktNames.map((m,j)=>[m,+matriz[i][j].toFixed(2)]))}));
-      const totais=Object.fromEntries(mktNames.map((m,j)=>[m,+ri.reduce((a,it)=>a+(it.prices[m]||0),0).toFixed(2)]));
-      const sorted=Object.entries(totais).sort(([,a],[,b])=>a-b);
-      setResult({items:ri,recommendation:sorted[0][0],totalByMarket:totais,savings:+(sorted[sorted.length-1][1]-sorted[0][1]).toFixed(2),tip:"Compare preço por kg ou litro para economizar mais"});
-    }catch(err){setErro(err.message);}
-    setLoading(false);
+  function salvarPreco(){
+    if(!selProd||!selMkt||!inputVal) return;
+    const v=parseFloat(inputVal.replace(",","."));
+    if(isNaN(v)||v<=0) return;
+    const hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    const novo={...precos,[selProd]:{...(precos[selProd]||{}),[selMkt]:{valor:v,data:hoje}}};
+    setPrecos(novo);savePrecos(novo);
+    setInputVal("");setSelMkt(null);
   }
+
+  function removerPreco(prod,mkt){
+    const novo={...precos};
+    if(novo[prod]){delete novo[prod][mkt];if(Object.keys(novo[prod]).length===0)delete novo[prod];}
+    setPrecos(novo);savePrecos(novo);
+  }
+
+  function addProd(){
+    const n=novoProd.trim();if(!n||produtos.includes(n))return;
+    setProdutos(p=>[...p,n]);setNovoProd("");setSelProd(n);setAba("registrar");
+  }
+
+  function remProd(n){
+    setProdutos(p=>p.filter(x=>x!==n));
+    const novo={...precos};delete novo[n];
+    setPrecos(novo);savePrecos(novo);
+  }
+
+  // Para cada produto, pega o menor preço e qual mercado
+  const comparacao=produtos.filter(p=>filtro?p.toLowerCase().includes(filtro.toLowerCase()):true).map(prod=>{
+    const mktPrecos=precos[prod]||{};
+    const entradas=Object.entries(mktPrecos);
+    if(entradas.length===0) return {prod,entradas:[],min:null,minMkt:null};
+    const min=Math.min(...entradas.map(([,v])=>v.valor));
+    const minMkt=entradas.find(([,v])=>v.valor===min)?.[0];
+    return {prod,entradas,min,minMkt};
+  });
+
+  // Total estimado por mercado (só produtos que têm preço naquele mercado)
+  const totaisMkt={};
+  markets.forEach(m=>{
+    const total=produtos.reduce((s,p)=>s+(precos[p]?.[m.label]?.valor||0),0);
+    if(total>0) totaisMkt[m.label]=total;
+  });
+  const totSorted=Object.entries(totaisMkt).sort(([,a],[,b])=>a-b);
+  const temPrecos=Object.keys(precos).length>0;
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
-      <p style={{fontSize:13,color:"#64748b",marginBottom:12,lineHeight:1.5}}>Estimativas de preços para Campinas SP. Selecione os itens:</p>
-      <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:10}}>
-        {produtos.map(item=>(
-          <div key={item} style={{position:"relative",display:"inline-flex",alignItems:"center"}}>
-            <button style={{background:sel[item]?"rgba(99,102,241,0.2)":"rgba(255,255,255,0.05)",border:sel[item]?"1px solid rgba(99,102,241,0.4)":"1px solid rgba(255,255,255,0.1)",color:sel[item]?"#818cf8":"#94a3b8",borderRadius:99,padding:"6px 12px",paddingRight:gerenciar?"28px":"12px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}
-              onClick={()=>!gerenciar&&setSel(p=>({...p,[item]:!p[item]}))}>
-              {sel[item]&&!gerenciar?"✓ ":""}{item}
-            </button>
-            {gerenciar&&<button style={{position:"absolute",right:6,background:"none",border:"none",color:"#f87171",fontSize:12,cursor:"pointer",lineHeight:1,padding:0}} onClick={()=>remProd(item)}>✕</button>}
-          </div>
+      {/* Abas */}
+      <div style={{display:"flex",gap:6,marginBottom:16}}>
+        {[["comparar","📊 Comparar"],["registrar","✏️ Registrar"],["gerenciar","⚙️ Produtos"]].map(([id,label])=>(
+          <button key={id} style={{flex:1,background:aba===id?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:aba===id?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:aba===id?"#818cf8":"#64748b",borderRadius:10,padding:"8px 4px",fontSize:12,fontWeight:aba===id?700:400,cursor:"pointer",fontFamily:"inherit"}}
+            onClick={()=>setAba(id)}>{label}</button>
         ))}
       </div>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>
-        {gerenciar?<>
-          <input style={{...inp({flex:1,padding:"8px 12px",fontSize:13})}} placeholder="Novo produto..." value={novoProd} onChange={e=>setNovoProd(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addProd()}/>
-          <button style={{background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:"white",borderRadius:10,padding:"8px 14px",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}} onClick={addProd}>+ Add</button>
-          <button style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",borderRadius:10,padding:"8px 12px",fontSize:13,cursor:"pointer"}} onClick={()=>setGerenciar(false)}>✓ OK</button>
-        </>:<button style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#64748b",borderRadius:10,padding:"8px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}} onClick={()=>setGerenciar(true)}>✏️ Gerenciar produtos</button>}
-      </div>
-      <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{opacity:loading||count===0?0.6:1,marginBottom:8})} onClick={buscar} disabled={loading||count===0}>
-        {loading?"🔍 Consultando...":count===0?"Selecione ao menos 1 item":`🛒 Comparar preços (${count} itens)`}
-      </button>
-      {loading&&<div style={{textAlign:"center",padding:20}}><div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:8}}><span className="dot"/><span className="dot"/><span className="dot"/></div><div style={{fontSize:13,color:"#64748b"}}>Buscando estimativas...</div></div>}
-      {erro&&<AlertBox tipo="err" texto={erro}/>}
-      {result&&<>
-        <div style={{background:"linear-gradient(135deg,rgba(34,197,94,0.12),rgba(16,163,74,0.06))",border:"1px solid rgba(74,222,128,0.25)",borderRadius:16,padding:20,marginTop:16,textAlign:"center"}}>
-          <div style={{fontSize:11,color:"#4ade80",textTransform:"uppercase",marginBottom:6}}>🏆 Melhor opção</div>
-          <div style={{fontSize:22,fontWeight:800,color:"#f1f5f9",marginBottom:4}}>{result.recommendation}</div>
-          <div style={{fontSize:14,color:"#94a3b8"}}>Economia estimada de <strong style={{color:"#4ade80"}}>{fmt(result.savings||0)}</strong></div>
-          {result.tip&&<div style={{fontSize:12,color:"#64748b",marginTop:8,fontStyle:"italic"}}>💡 {result.tip}</div>}
-        </div>
-        <SecTitle t="Total por mercado"/>
-        {Object.entries(result.totalByMarket||{}).sort(([,a],[,b])=>a-b).map(([m,t],i)=>(
-          <div key={m} style={{...ROW,...(i===0?{borderColor:"rgba(74,222,128,0.2)",background:"rgba(74,222,128,0.07)"}:{})}}>
-            <span style={{fontSize:16,width:24}}>{["🥇","🥈","🥉","4°","5°"][i]||"·"}</span>
-            <span style={{flex:1,fontSize:14,fontWeight:600,color:"#e2e8f0"}}>{m}</span>
-            <span style={{fontSize:14,fontWeight:700,color:i===0?"#4ade80":"#e2e8f0"}}>{fmt(t)}</span>
+
+      {/* ABA: COMPARAR */}
+      {aba==="comparar"&&<>
+        {!temPrecos&&(
+          <AlertBox tipo="info" texto="Nenhum preço registrado ainda. Vá em ✏️ Registrar para anotar os preços que você viu no mercado — o app compara automaticamente!"/>
+        )}
+        {temPrecos&&totSorted.length>=2&&(
+          <div style={{background:"linear-gradient(135deg,rgba(34,197,94,0.12),rgba(16,163,74,0.06))",border:"1px solid rgba(74,222,128,0.25)",borderRadius:16,padding:16,marginBottom:16,textAlign:"center"}}>
+            <div style={{fontSize:10,color:"#4ade80",textTransform:"uppercase",marginBottom:4}}>🏆 Mais barato (itens comparáveis)</div>
+            <div style={{fontSize:20,fontWeight:800,color:"#f1f5f9",marginBottom:2}}>{totSorted[0][0]}</div>
+            <div style={{fontSize:13,color:"#94a3b8"}}>Economia de <strong style={{color:"#4ade80"}}>{fmt(totSorted[totSorted.length-1][1]-totSorted[0][1])}</strong> vs mais caro</div>
           </div>
-        ))}
-        <SecTitle t="Por produto"/>
-        {result.items?.map(item=>{
-          const min=Math.min(...Object.values(item.prices||{}));
-          return <div key={item.name} style={CARD}>
-            <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",marginBottom:10}}>{item.name}</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {Object.entries(item.prices||{}).map(([mkt,p])=>(
-                <div key={mkt} style={{flex:"1 0 18%",background:p===min?"rgba(74,222,128,0.12)":"rgba(255,255,255,0.04)",borderRadius:8,padding:"6px 4px",textAlign:"center",border:p===min?"1px solid rgba(74,222,128,0.3)":"1px solid rgba(255,255,255,0.06)"}}>
-                  <div style={{fontSize:9,color:"#64748b",marginBottom:3}}>{mkt.split(" ")[0]}</div>
-                  <div style={{fontSize:12,fontWeight:700,color:p===min?"#4ade80":"#94a3b8"}}>{fmt(p)}</div>
-                </div>
-              ))}
+        )}
+        {temPrecos&&totSorted.length>=2&&<>
+          <SecTitle t="Total por mercado" sub="Baseado nos preços que você registrou"/>
+          {totSorted.map(([m,t],i)=>(
+            <div key={m} style={{...ROW,...(i===0?{borderColor:"rgba(74,222,128,0.2)",background:"rgba(74,222,128,0.06)"}:{})}}>
+              <span style={{fontSize:16,width:24}}>{["🥇","🥈","🥉","4°","5°"][i]||"·"}</span>
+              <span style={{flex:1,fontSize:14,fontWeight:600,color:"#e2e8f0"}}>{m}</span>
+              <span style={{fontSize:14,fontWeight:700,color:i===0?"#4ade80":"#e2e8f0"}}>{fmt(t)}</span>
             </div>
+          ))}
+        </>}
+        <SecTitle t="Preços por produto"/>
+        <input style={{...inp({marginBottom:12,padding:"9px 13px",fontSize:13})}} placeholder="🔍 Filtrar produto..." value={filtro} onChange={e=>setFiltro(e.target.value)}/>
+        {comparacao.map(({prod,entradas,min,minMkt})=>(
+          <div key={prod} style={CARD}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:entradas.length>0?10:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{prod}</div>
+              {entradas.length===0&&<button style={{fontSize:12,color:"#818cf8",background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:8,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}} onClick={()=>{setSelProd(prod);setAba("registrar");}}>+ Registrar</button>}
+              {entradas.length>0&&<span style={{fontSize:11,color:"#4ade80",fontWeight:700}}>🏆 {minMkt}</span>}
+            </div>
+            {entradas.length>0&&(
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {entradas.sort(([,a],[,b])=>a.valor-b.valor).map(([mkt,info])=>(
+                  <div key={mkt} style={{flex:"1 0 calc(33% - 6px)",background:info.valor===min?"rgba(74,222,128,0.1)":"rgba(255,255,255,0.03)",borderRadius:8,padding:"7px 6px",textAlign:"center",border:info.valor===min?"1px solid rgba(74,222,128,0.3)":"1px solid rgba(255,255,255,0.06)"}}>
+                    <div style={{fontSize:9,color:"#64748b",marginBottom:2}}>{mkt.split(" ")[0]}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:info.valor===min?"#4ade80":"#94a3b8"}}>{fmt(info.valor)}</div>
+                    <div style={{fontSize:9,color:"#475569",marginTop:1}}>{info.data}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </>}
+
+      {/* ABA: REGISTRAR */}
+      {aba==="registrar"&&<>
+        <div style={{fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.6}}>Anote o preço que você viu hoje no mercado. O app guarda o histórico e compara automaticamente.</div>
+        <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>1. Escolha o produto</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:16}}>
+          {produtos.map(p=>(
+            <button key={p} style={{background:selProd===p?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:selProd===p?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:selProd===p?"#818cf8":"#94a3b8",borderRadius:99,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:selProd===p?700:400}}
+              onClick={()=>{setSelProd(p);setSelMkt(null);setInputVal("");}}>
+              {selProd===p?"✓ ":""}{p}
+            </button>
+          ))}
+        </div>
+        {selProd&&<>
+          <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>2. Qual mercado?</div>
+          <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+            {markets.map(m=>(
+              <button key={m.id} style={{background:selMkt===m.label?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:selMkt===m.label?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:selMkt===m.label?"#818cf8":"#94a3b8",borderRadius:10,padding:"8px 14px",fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:selMkt===m.label?700:400}}
+                onClick={()=>setSelMkt(m.label)}>
+                {m.emoji} {m.label}
+              </button>
+            ))}
+          </div>
+        </>}
+        {selProd&&selMkt&&<>
+          <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>3. Preço (R$)</div>
+          <div style={{display:"flex",gap:8,marginBottom:8}}>
+            <input style={{...inp({flex:1}),fontSize:18,fontWeight:700,textAlign:"center"}} type="number" step="0.01" placeholder="0,00" value={inputVal} onChange={e=>setInputVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&salvarPreco()}/>
+            <button style={{...btn("linear-gradient(135deg,#22c55e,#16a34a)"),width:"auto",padding:"11px 20px"}} onClick={salvarPreco}>✓ Salvar</button>
+          </div>
+          {precos[selProd]?.[selMkt]&&(
+            <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>Último registrado: <strong style={{color:"#94a3b8"}}>{fmt(precos[selProd][selMkt].valor)}</strong> em {precos[selProd][selMkt].data}</div>
+          )}
+        </>}
+      </>}
+
+      {/* ABA: GERENCIAR */}
+      {aba==="gerenciar"&&<>
+        <div style={{fontSize:13,color:"#64748b",marginBottom:14}}>Adicione produtos ou remova os que não usa.</div>
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <input style={{...inp({flex:1})}} placeholder="Novo produto (ex: Sabão em pó 1kg)" value={novoProd} onChange={e=>setNovoProd(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addProd()}/>
+          <button style={{...btn("linear-gradient(135deg,#22c55e,#16a34a)"),width:"auto",padding:"11px 16px"}} onClick={addProd}>+</button>
+        </div>
+        {produtos.map(p=>{
+          const nReg=Object.keys(precos[p]||{}).length;
+          return <div key={p} style={ROW}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{p}</div>
+              <div style={{fontSize:11,color:"#475569"}}>{nReg>0?`${nReg} mercado(s) registrado(s)`:"Sem preços ainda"}</div>
+            </div>
+            <button style={{fontSize:11,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>remProd(p)}>✕</button>
           </div>;
         })}
       </>}
@@ -832,7 +1130,7 @@ function Mercado({ markets }) {
 }
 
 // ── IA CHAT ────────────────────────────────────────────────
-function IAChat({ exps, cats }) {
+function IAChat({ exps, cats, mesFiltro }) {
   const [msgs,    setMsgs]    = useState([]);
   const [input,   setInput]   = useState("");
   const [loading, setLoading] = useState(false);
@@ -852,7 +1150,9 @@ function IAChat({ exps, cats }) {
     if(GEMINI_KEY==="SUA_CHAVE_AQUI"){setMsgs(p=>[...p,{role:"ai",text:"⚠️ Configure a chave do Gemini no App.jsx linha 3."}]);setLoading(false);return;}
     const catRes=cats.map(c=>{const s=gastos.filter(e=>e.cat===c.id).reduce((a,e)=>a+e.value,0);return `${c.label}: ${fmt(s)}/${fmt(c.budget)}`;}).join("; ");
     const top3=[...gastos].sort((a,b)=>b.value-a.value).slice(0,3).map(e=>e.desc+" "+fmt(e.value)).join(", ");
+    const periodoLabel=mesFiltro&&mesFiltro!=="todos"?(()=>{const[a,m]=mesFiltro.split("-");return `${MESES[+m]}/${a}`;})():"todos os meses";
     const sys=`Você é um consultor financeiro pessoal brasileiro, empático e direto.
+Período analisado: ${periodoLabel}
 Dados do usuário:
 - Salário/Renda real: ${fmt(totalInc)} (excluindo transferências e retornos)
 - Gastos: ${fmt(totalExp)} | Saldo: ${fmt(totalInc-totalExp)}
@@ -868,6 +1168,24 @@ Responda em português. Seja específico com os números. Máx 150 palavras.`;
   }
 
   const suggs=["Onde estou gastando mais?","Como economizar este mês?","Minha taxa de poupança está boa?","Quais gastos posso cortar?","Diagnóstico das minhas finanças","Estou investindo o suficiente?"];
+  // Limpa conversa quando mês muda para o resumo ficar sempre atualizado
+  const [lastMes,setLastMes]=useState(mesFiltro);
+  useEffect(()=>{
+    if(mesFiltro!==lastMes){setMsgs([]);setLastMes(mesFiltro);}
+  },[mesFiltro]);
+
+  // Resumo automático ao abrir a aba com dados
+  useEffect(()=>{
+    if(msgs.length>0||exps.length===0||GEMINI_KEY==="SUA_CHAVE_AQUI") return;
+    const catRes=cats.map(c=>{const s=gastos.filter(e=>e.cat===c.id).reduce((a,e)=>a+e.value,0);return `${c.label}: ${fmt(s)}`;}).filter(s=>!s.includes("R$ 0")).join("; ");
+    const periodoLabelAuto=mesFiltro&&mesFiltro!=="todos"?(()=>{const[a,m]=mesFiltro.split("-");return `${MESES[+m]}/${a}`;})():"período geral";
+    const sys=`Você é um consultor financeiro pessoal brasileiro, empático e direto. Faça um resumo executivo CURTO (máx 80 palavras) dos dados de ${periodoLabelAuto}. Comece com um emoji e uma frase de diagnóstico. Depois cite 1-2 pontos de atenção específicos com números. Seja direto e útil.
+Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-totalExp)} | Poupança ${txPoup} | Categorias: ${catRes}`;
+    setLoading(true);
+    askGemini(sys,"Resumo do período",500).then(txt=>{
+      if(txt) setMsgs([{role:"ai",text:"📊 "+txt}]);
+    }).catch(()=>{}).finally(()=>setLoading(false));
+  },[]);
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 116px)"}}>
@@ -879,7 +1197,7 @@ Responda em português. Seja específico com os números. Máx 150 palavras.`;
         </div>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:10}} ref={ref}>
-        {msgs.length===0&&(
+        {msgs.length===0&&!loading&&(
           <div style={{textAlign:"center",marginTop:12}}>
             <div style={{fontSize:36,marginBottom:8}}>💬</div>
             <div style={{fontSize:13,color:"#64748b",marginBottom:16}}>Pergunte qualquer coisa sobre suas finanças!</div>
@@ -916,7 +1234,7 @@ function detectIncType(desc) {
   if (/devolucao.*aplicac|devolução.*aplicac|rendimento|juros|dividendo|cdb|lci|lca|fundo|tesouro/.test(d)) return "investimento_ret";
   if (/credito em conta|crédito em conta/.test(d)) return "investimento_ret";
   // Reembolso → transferência
-  if (/reembolso|transferencia recebida|transferência recebida/.test(d)) return "transferencia";
+  if (/reembolso/.test(d)) return "transferencia";
   if (/pix|ted|doc|transf/.test(d)) return "transferencia";
   if (/freelance|freela|servico|serviço|consultor|comissao|comissão|bico|extra/.test(d)) return "extra";
   return null;
@@ -984,7 +1302,7 @@ function Importador({ exps, setExps, cats }){
       const pts=p.date.split(/[-\/]/);
       const dateStr=pts.length===3&&pts[0].length===4?`${pts[2]}/${pts[1]}`:pts.slice(0,2).join("/");
       const cat=cats.find(c=>c.id===p.cat);
-      return {id:`imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,desc:p.desc,kind:p.kind,cat:p.cat,incType:p.incType,type:p.kind==="inc"?p.source:undefined,emoji:p.kind==="inc"?(INC_TIPOS.find(t=>t.id===p.incType)?.emoji||"🏦"):(cat?.emoji||"📦"),value:p.value,date:dateStr,source:p.source};
+      const contaId=p.source==="Nubank Conta"||p.source==="Nubank Cartão"?"nubank":p.source==="Bradesco"?"bradesco":"geral";return {id:`imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,desc:p.desc,kind:p.kind,cat:p.cat,incType:p.incType,type:p.kind==="inc"?p.source:undefined,emoji:p.kind==="inc"?(INC_TIPOS.find(t=>t.id===p.incType)?.emoji||"🏦"):(cat?.emoji||"📦"),value:p.value,date:dateStr,source:p.source,conta:contaId};
     });
     setExps(prev=>[...novos,...prev]);
     setStep("done");
@@ -1079,15 +1397,42 @@ function Importador({ exps, setExps, cats }){
   );
 }
 
+// ── META CONFIG ────────────────────────────────────────────
+function MetaConfig({ meta, setMeta }) {
+  const metaVal=meta||0;
+  function salvarMeta(v){const n=Math.max(0,+v||0);setMeta(n);}
+  return <div>
+    <div style={{fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.6}}>
+      Defina quanto quer poupar por mês. O Dashboard vai mostrar o progresso em relação à sua renda menos gastos.
+    </div>
+    <div style={CARD}>
+      <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🎯 Meta mensal de economia</div>
+      <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Valor alvo (R$)</div>
+      <div style={{display:"flex",gap:8,marginBottom:12}}>
+        <input style={{...inp({flex:1}),fontSize:18,fontWeight:700,textAlign:"center"}} type="number" step="50" value={metaVal||""} placeholder="0" onChange={e=>salvarMeta(e.target.value)}/>
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {[200,300,500,800,1000,1500].map(v=>(
+          <button key={v} style={{background:metaVal===v?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.05)",border:metaVal===v?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.1)",color:metaVal===v?"#818cf8":"#64748b",borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}
+            onClick={()=>salvarMeta(v)}>{fmt(v)}</button>
+        ))}
+      </div>
+      {metaVal>0&&<div style={{marginTop:12,fontSize:12,color:"#64748b",padding:"8px 12px",background:"rgba(99,102,241,0.06)",borderRadius:8}}>
+        💡 Meta de {fmt(metaVal)}/mês — o progresso aparece no Dashboard quando você filtra um mês específico.
+      </div>}
+    </div>
+  </div>;
+}
+
 // ── CONFIG ─────────────────────────────────────────────────
-function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas }){
+function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, meta, setMeta }){
   const [sec,setsec]=useState("importar");
   const [showNM,setShowNM]=useState(false);
   const [newMkt,setNewMkt]=useState({label:"",emoji:"🏪"});
   const [showNC,setShowNC]=useState(false);
   const [newCat,setNewCat]=useState({label:"",emoji:"📁",budget:200,color:"#60a5fa"});
   const [novaFixa,setNovaFixa]=useState({desc:"",valor:"",cat:"moradia",emoji:"📌"});
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"dados",l:"🗄️ Dados"}];
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -1207,14 +1552,43 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           </div>
         ))}
       </>}
+      {sec==="meta"&&<MetaConfig meta={meta} setMeta={setMeta}/>}
+      {sec==="contas"&&<>
+        <div style={{fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.6}}>
+          Gerencie suas contas. Transferências entre contas próprias são marcadas como neutras — não inflam renda nem gastos.
+        </div>
+        {contas.map((c,i)=>(
+          <div key={c.id} style={{...ROW,borderLeft:`3px solid ${c.color}`}}>
+            <div style={{width:36,height:36,borderRadius:10,background:`${c.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{c.emoji}</div>
+            <div style={{flex:1}}>
+              <input style={{...inp({padding:"6px 10px",fontSize:13,fontWeight:600,background:"transparent",border:"none",color:"#e2e8f0"})}} value={c.label}
+                onChange={e=>setContas(p=>p.map((x,j)=>j===i?{...x,label:e.target.value}:x))}/>
+            </div>
+            {c.id!=="geral"&&<button style={{fontSize:11,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>setContas(p=>p.filter((_,j)=>j!==i))}>✕</button>}
+          </div>
+        ))}
+        <button style={{...btn("rgba(99,102,241,0.15)","#818cf8",{border:"1px solid rgba(99,102,241,0.3)",marginTop:8})}} onClick={()=>{
+          const nome=prompt("Nome da nova conta:");
+          if(nome?.trim()) setContas(p=>[...p,{id:`c${Date.now()}`,label:nome.trim(),emoji:"🏦",color:"#94a3b8"}]);
+        }}>+ Nova conta</button>
+        <div style={{...CARD,background:"rgba(99,102,241,0.06)",border:"1px solid rgba(99,102,241,0.15)",marginTop:16}}>
+          <div style={{fontSize:12,color:"#64748b",marginBottom:6}}>💡 Como registrar transferência interna</div>
+          <div style={{fontSize:12,color:"#475569",lineHeight:1.7}}>
+            Quando transferir dinheiro entre suas contas (ex: Bradesco → Nubank):<br/>
+            1. Lance como <strong style={{color:"#94a3b8"}}>Entrada</strong> na conta destino<br/>
+            2. Selecione tipo <strong style={{color:"#94a3b8"}}>↔️ Transferência entre contas</strong><br/>
+            3. O valor aparece no extrato mas não conta como renda
+          </div>
+        </div>
+      </>}
       {sec==="dados"&&<div style={CARD}>
         <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🗄️ Dados</div>
         <div style={{fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.6}}>
           💾 Salvamento automático ativo<br/>
-          {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados · {fixas.length} fixas
+          {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados · {fixas.length} fixas · {(contas||[]).filter(c=>c.id!=="geral").length} contas
         </div>
         <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{marginBottom:10})} onClick={()=>{
-          const json=JSON.stringify({exps,cats,markets,fixas},null,2);
+          const json=JSON.stringify({exps,cats,markets,fixas,contas,reservas,meta},null,2);
           // Abre modal com textarea para copiar manualmente - funciona em qualquer WebView
           const overlay=document.createElement("div");
           overlay.style.cssText="position:fixed;inset:0;background:rgba(8,14,29,0.98);z-index:9999;display:flex;flex-direction:column;padding:16px;box-sizing:border-box;";
@@ -1247,17 +1621,222 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
               setCats(data.cats||CATS_DEF);
               setMarkets(data.markets||MKTS_DEF);
               setFixas(data.fixas||FIXAS_DEF);
+              if(data.contas) setContas(data.contas);
+              if(data.reservas) setReservas(data.reservas);
+              if(data.meta!==undefined) setMeta(data.meta);
             }catch(err){alert("Erro ao importar: "+err.message);}
             e.target.value="";
           }}/>
         </label>
         <button style={btn("rgba(248,113,113,0.1)","#f87171",{border:"1px solid rgba(248,113,113,0.3)"})} onClick={()=>{
           if(window.confirm("Apagar TODOS os dados?")){
-            setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);
-            try{localStorage.removeItem("mf_exps");localStorage.removeItem("mf_cats");localStorage.removeItem("mf_mkts");localStorage.removeItem("mf_fixas");}catch{}
+            setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);setContas(CONTAS_DEF);setReservas([]);setMeta(0);
+            try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta"].forEach(k=>localStorage.removeItem(k));}catch{}
           }
         }}>🗑️ Apagar todos os dados</button>
       </div>}
+    </div>
+  );
+}
+
+
+// ── RESERVAS ───────────────────────────────────────────────
+// reserva: { id, nome, emoji, saldo, meta, movs: [{id,tipo,valor,desc,date}] }
+function Reservas({ reservas, setReservas, hide }) {
+  const [selId,    setSelId]    = useState(null); // reserva aberta
+  const [showNew,  setShowNew]  = useState(false);
+  const [novaRes,  setNovaRes]  = useState({nome:"",emoji:"💰",meta:""});
+  const [showMov,  setShowMov]  = useState(false);
+  const [formMov,  setFormMov]  = useState({tipo:"depositar",valor:"",desc:"",date:new Date().toISOString().slice(0,10)});
+
+  const sel = reservas.find(r=>r.id===selId);
+
+  function criarReserva() {
+    if(!novaRes.nome.trim()) return;
+    const nova = {id:`res_${Date.now()}`,nome:novaRes.nome.trim(),emoji:novaRes.emoji||"💰",saldo:0,meta:+novaRes.meta||0,movs:[]};
+    setReservas(p=>[...p,nova]);
+    setNovaRes({nome:"",emoji:"💰",meta:""});
+    setShowNew(false);
+    setSelId(nova.id);
+  }
+
+  function registrarMov() {
+    if(!formMov.valor||!selId) return;
+    const v = parseFloat(formMov.valor);
+    if(isNaN(v)||v<=0) return;
+    const d = formMov.date ? new Date(formMov.date+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}) : new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"});
+    const mov = {id:`mov_${Date.now()}`,tipo:formMov.tipo,valor:v,desc:formMov.desc||formMov.tipo,date:d};
+    setReservas(p=>p.map(r=>{
+      if(r.id!==selId) return r;
+      const novoSaldo = formMov.tipo==="depositar" ? r.saldo+v : Math.max(0,r.saldo-v);
+      return {...r,saldo:novoSaldo,movs:[mov,...(r.movs||[])]};
+    }));
+    setFormMov({tipo:formMov.tipo,valor:"",desc:"",date:new Date().toISOString().slice(0,10)});
+    setShowMov(false);
+  }
+
+  function excluirReserva(id) {
+    if(!window.confirm("Excluir esta reserva e todo seu histórico?")) return;
+    setReservas(p=>p.filter(r=>r.id!==id));
+    if(selId===id) setSelId(null);
+  }
+
+  function excluirMov(resId, movId) {
+    setReservas(p=>p.map(r=>{
+      if(r.id!==resId) return r;
+      const novaMovs=r.movs.filter(m=>m.id!==movId);
+      // Recalcula saldo do zero para evitar deriva
+      const novoSaldo=novaMovs.reduce((s,m)=>m.tipo==="depositar"?s+m.valor:s-m.valor,0);
+      return {...r, saldo:Math.max(0,novoSaldo), movs:novaMovs};
+    }));
+  }
+
+  const totalReservas = reservas.reduce((s,r)=>s+r.saldo,0);
+
+  // ── Tela detalhe de uma reserva ──
+  if(sel) return (
+    <div style={{padding:16,paddingBottom:100}}>
+      <button style={{background:"none",border:"none",color:"#818cf8",fontSize:13,cursor:"pointer",padding:"0 0 12px",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}} onClick={()=>setSelId(null)}>
+        ← Voltar
+      </button>
+
+      {/* Card principal */}
+      <div style={{background:"linear-gradient(135deg,rgba(99,102,241,0.15),rgba(79,70,229,0.08))",border:"1px solid rgba(99,102,241,0.3)",borderRadius:18,padding:20,marginBottom:16,textAlign:"center"}}>
+        <div style={{fontSize:40,marginBottom:6}}>{sel.emoji}</div>
+        <div style={{fontSize:18,fontWeight:800,color:"#e2e8f0",marginBottom:4}}>{sel.nome}</div>
+        <div style={{fontSize:28,fontWeight:800,color:"#818cf8",marginBottom:sel.meta>0?8:0}}>{hide?"••••":fmt(sel.saldo)}</div>
+        {sel.meta>0&&(()=>{
+          const pct=Math.min(100,(sel.saldo/sel.meta)*100);
+          return <>
+            <Bar pct={pct} color={pct>=100?"#4ade80":"#818cf8"}/>
+            <div style={{fontSize:11,color:"#64748b",marginTop:4}}>
+              {pct.toFixed(0)}% da meta · {hide?"••••":fmt(sel.meta-sel.saldo>0?sel.meta-sel.saldo:0)} {sel.saldo>=sel.meta?"✓ Meta atingida!":"para atingir a meta"}
+            </div>
+          </>;
+        })()}
+      </div>
+
+      {/* Botões de ação */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}> 
+        <button style={{...btn("rgba(74,222,128,0.15)","#4ade80",{border:"1px solid rgba(74,222,128,0.3)",flex:1}),padding:"10px 0"}}
+          onClick={()=>{setFormMov(p=>({...p,tipo:"depositar"}));setShowMov(true);}}>+ Depositar</button>
+        <button style={{...btn("rgba(248,113,113,0.15)","#f87171",{border:"1px solid rgba(248,113,113,0.3)",flex:1}),padding:"10px 0"}}
+          onClick={()=>{setFormMov(p=>({...p,tipo:"retirar"}));setShowMov(true);}}>− Retirar</button>
+        <button style={{...btn("rgba(99,102,241,0.15)","#818cf8",{border:"1px solid rgba(99,102,241,0.3)",width:44}),padding:"10px 0"}}
+          onClick={()=>{const n=prompt("Novo nome:",sel.nome);if(n?.trim())setReservas(p=>p.map(r=>r.id===sel.id?{...r,nome:n.trim()}:r));
+          }}>✏️</button>
+        <button style={{...btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)",width:44}),padding:"10px 0"}}
+          onClick={()=>excluirReserva(sel.id)}>🗑️</button>
+      </div>
+
+      {/* Formulário movimentação */}
+      {showMov&&(
+        <div style={{background:"rgba(17,24,39,0.98)",border:"1px solid rgba(99,102,241,0.3)",borderRadius:14,padding:16,marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:formMov.tipo==="depositar"?"#4ade80":"#f87171",marginBottom:12}}>
+            {formMov.tipo==="depositar"?"💚 Depositar":"🔴 Retirar"}
+          </div>
+          <input style={{...inp(),marginBottom:10}} type="number" placeholder="Valor (R$)" value={formMov.valor} onChange={e=>setFormMov(p=>({...p,valor:e.target.value}))}/>
+          <input style={{...inp(),marginBottom:10}} placeholder="Descrição (opcional)" value={formMov.desc} onChange={e=>setFormMov(p=>({...p,desc:e.target.value}))}/>
+          <input style={{...inp({colorScheme:"dark"}),marginBottom:10}} type="date" value={formMov.date} onChange={e=>setFormMov(p=>({...p,date:e.target.value}))}/>
+          <div style={{display:"flex",gap:8}}>
+            <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setShowMov(false)}>Cancelar</button>
+            <button style={btn(formMov.tipo==="depositar"?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#ef4444,#dc2626)")} onClick={registrarMov}>Confirmar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Histórico */}
+      <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Histórico</div>
+      {(!sel.movs||sel.movs.length===0)&&(
+        <div style={{textAlign:"center",padding:"30px 0",color:"#475569",fontSize:13}}>Nenhuma movimentação ainda</div>
+      )}
+      {(sel.movs||[]).map(m=>(
+        <div key={m.id} style={{...ROW,borderLeft:`3px solid ${m.tipo==="depositar"?"#4ade80":"#f87171"}`}}>
+          <span style={{fontSize:20}}>{m.tipo==="depositar"?"⬆️":"⬇️"}</span>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{m.desc}</div>
+            <div style={{fontSize:11,color:"#475569"}}>{m.date}</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:13,fontWeight:700,color:m.tipo==="depositar"?"#4ade80":"#f87171"}}>
+              {m.tipo==="depositar"?"+":"-"}{hide?"••••":fmt(m.valor)}
+            </span>
+            <button style={{fontSize:11,color:"#475569",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>excluirMov(sel.id,m.id)}>🗑️</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // ── Tela lista de reservas ──
+  return (
+    <div style={{padding:16,paddingBottom:100}}>
+      {/* Totalizador */}
+      {reservas.length>0&&(
+        <div style={{background:"linear-gradient(135deg,rgba(99,102,241,0.12),rgba(79,70,229,0.06))",border:"1px solid rgba(99,102,241,0.25)",borderRadius:16,padding:16,marginBottom:16,textAlign:"center"}}>
+          <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>Total em reservas</div>
+          <div style={{fontSize:26,fontWeight:800,color:"#818cf8"}}>{hide?"••••":fmt(totalReservas)}</div>
+        </div>
+      )}
+
+      {/* Botão nova reserva */}
+      {!showNew&&(
+        <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)",undefined,{marginBottom:16})} onClick={()=>setShowNew(true)}>
+          + Nova reserva / caixinha
+        </button>
+      )}
+
+      {/* Formulário nova reserva */}
+      {showNew&&(
+        <div style={{background:"rgba(17,24,39,0.98)",border:"1px solid rgba(99,102,241,0.3)",borderRadius:14,padding:16,marginBottom:16}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#818cf8",marginBottom:14}}>🏦 Nova reserva</div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <input style={inp({width:52,textAlign:"center",fontSize:22,padding:8})} placeholder="💰" value={novaRes.emoji} onChange={e=>setNovaRes(p=>({...p,emoji:e.target.value}))}/>
+            <input style={inp({flex:1})} placeholder="Nome (ex: Emergência, Viagem...)" value={novaRes.nome} onChange={e=>setNovaRes(p=>({...p,nome:e.target.value}))}/>
+          </div>
+          <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Meta (opcional)</div>
+          <input style={{...inp(),marginBottom:12}} type="number" placeholder="R$ 0 = sem meta" value={novaRes.meta} onChange={e=>setNovaRes(p=>({...p,meta:e.target.value}))}/>
+          <div style={{display:"flex",gap:8}}>
+            <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setShowNew(false)}>Cancelar</button>
+            <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)")} onClick={criarReserva}>Criar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Lista de reservas */}
+      {reservas.length===0&&!showNew&&(
+        <div style={{textAlign:"center",padding:"50px 20px",color:"#475569"}}>
+          <div style={{fontSize:48,marginBottom:12}}>🏦</div>
+          <div style={{fontSize:15,fontWeight:700,color:"#94a3b8",marginBottom:8}}>Nenhuma reserva ainda</div>
+          <div style={{fontSize:13,lineHeight:1.7}}>
+            Crie caixinhas para separar dinheiro com propósito — emergência, viagem, Bethoven 🐾, o que quiser.
+            <br/>O saldo não conta como gasto nem como renda.
+          </div>
+        </div>
+      )}
+      {reservas.map(r=>{
+        const pct=r.meta>0?Math.min(100,(r.saldo/r.meta)*100):null;
+        const ultimaMov=(r.movs||[])[0];
+        return (
+          <div key={r.id} style={{...CARD,cursor:"pointer",borderLeft:`3px solid rgba(99,102,241,0.5)`}} onClick={()=>setSelId(r.id)}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:44,height:44,borderRadius:12,background:"rgba(99,102,241,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{r.emoji}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                  <span style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>{r.nome}</span>
+                  <span style={{fontSize:15,fontWeight:800,color:"#818cf8"}}>{hide?"••••":fmt(r.saldo)}</span>
+                </div>
+                {pct!==null&&<Bar pct={pct} color={pct>=100?"#4ade80":"#818cf8"}/>}
+                <div style={{fontSize:11,color:"#475569",marginTop:pct===null?4:0}}>
+                  {r.meta>0?`Meta: ${hide?"••••":fmt(r.meta)} · ${pct.toFixed(0)}%`:"Sem meta"}
+                  {ultimaMov&&<span> · último: {ultimaMov.date?.slice(0,5)}</span>}
+                </div>
+              </div>
+              <span style={{fontSize:16,color:"#475569",flexShrink:0}}>›</span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1274,6 +1853,9 @@ export default function App() {
   const [cats,    setCats]    = useState(()=>{ try{const v=localStorage.getItem("mf_cats");return v?JSON.parse(v):CATS_DEF}catch{return CATS_DEF} });
   const [markets, setMarkets] = useState(()=>{ try{const v=localStorage.getItem("mf_mkts");return v?JSON.parse(v):MKTS_DEF}catch{return MKTS_DEF} });
   const [fixas,   setFixas]   = useState(()=>{ try{const v=localStorage.getItem("mf_fixas");return v?JSON.parse(v):FIXAS_DEF}catch{return FIXAS_DEF} });
+  const [contas,  setContas]  = useState(()=>{ try{const v=localStorage.getItem("mf_contas");return v?JSON.parse(v):CONTAS_DEF}catch{return CONTAS_DEF} });
+  const [reservas,setReservas]= useState(()=>{ try{const v=localStorage.getItem("mf_reservas");return v?JSON.parse(v):[]}catch{return []} });
+  const [meta,    setMeta]    = useState(()=>{ try{const v=localStorage.getItem("mf_meta");return v?JSON.parse(v):0;}catch{return 0;} });
 
   function showToast(msg){setToast(msg);setTimeout(()=>setToast(""),2000);}
 
@@ -1281,13 +1863,28 @@ export default function App() {
   useEffect(()=>{ try{localStorage.setItem("mf_cats",JSON.stringify(cats));showToast("✓ Salvo");}catch{} },[cats]);
   useEffect(()=>{ try{localStorage.setItem("mf_mkts",JSON.stringify(markets))}catch{} },[markets]);
   useEffect(()=>{ try{localStorage.setItem("mf_fixas",JSON.stringify(fixas));showToast("✓ Salvo");}catch{} },[fixas]);
+  useEffect(()=>{ try{localStorage.setItem("mf_contas",JSON.stringify(contas))}catch{} },[contas]);
+  useEffect(()=>{ try{localStorage.setItem("mf_reservas",JSON.stringify(reservas));showToast("✓ Salvo");}catch{} },[reservas]);
+  useEffect(()=>{ try{localStorage.setItem("mf_meta",JSON.stringify(meta));}catch{} },[meta]);
 
-  const mesesDisp=[...new Set(exps.map(e=>{const p=e.date?.split("/");return p?.length>=2?p[1]:null;}).filter(Boolean))].sort();
+  // Melhoria 1: filtro com ANO+MÊS para não misturar Jan/2026 com Jan/2027
+  const mesesDisp=[...new Set(exps.map(e=>{
+    const p=e.date?.split("/");
+    // date pode ser "DD/MM" (sem ano) ou "DD/MM/YYYY"
+    if(p?.length>=3) return `${p[2]}-${p[1]}`; // YYYY-MM
+    if(p?.length>=2) return `${new Date().getFullYear()}-${p[1]}`; // assume ano atual
+    return null;
+  }).filter(Boolean))].sort();
   const [mesFiltro,setMesFiltro]=useState("todos");
 
   // Bug 9: Projeção só faz sentido no mês atual
-  const mesAtual = String(new Date().getMonth()+1).padStart(2,"0");
-  const expsFiltrados=mesFiltro==="todos"?exps:exps.filter(e=>{const p=e.date?.split("/");return p?.length>=2&&p[1]===mesFiltro;});
+  const mesAtual = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}`;
+  const expsFiltrados=mesFiltro==="todos"?exps:exps.filter(e=>{
+    const p=e.date?.split("/");
+    if(!p||p.length<2) return false;
+    const anoMes=p.length>=3?`${p[2]}-${p[1]}`:`${new Date().getFullYear()}-${p[1]}`;
+    return anoMes===mesFiltro;
+  });
 
   // Saldo: apenas renda real (salário/extra) menos gastos (sem investimentos)
   const totalInc=expsFiltrados.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)).reduce((s,e)=>s+e.value,0);
@@ -1300,6 +1897,7 @@ export default function App() {
     {id:"orcamento",emoji:"💰",label:"Orçamento"},
     {id:"gastos",   emoji:"💸",label:"Gastos"},
     {id:"mercado",  emoji:"🛒",label:"Mercado"},
+    {id:"reservas", emoji:"🏦",label:"Reservas"},
     {id:"ia",       emoji:"🤖",label:"IA"},
     {id:"config",   emoji:"⚙️",label:"Config"},
   ];
@@ -1331,7 +1929,7 @@ export default function App() {
           <div>
             <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Meu Financeiro</div>
             <div style={{fontSize:20,fontWeight:800,color:"#f1f5f9"}}>
-              {mesFiltro==="todos"?"Todos os meses":MESES[+mesFiltro]+" "+new Date().getFullYear()}
+              {mesFiltro==="todos"?"Todos os meses":(()=>{const[ano,mes]=mesFiltro.split("-");return MESES[+mes]+" "+ano;})()}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1347,23 +1945,27 @@ export default function App() {
           <div style={{display:"flex",gap:6,overflowX:"auto",padding:"0 16px 10px",scrollbarWidth:"none"}}>
             <button style={{background:mesFiltro==="todos"?"rgba(99,102,241,0.3)":"rgba(255,255,255,0.05)",border:mesFiltro==="todos"?"1px solid rgba(99,102,241,0.6)":"1px solid rgba(255,255,255,0.1)",color:mesFiltro==="todos"?"#818cf8":"#64748b",borderRadius:99,padding:"4px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",fontWeight:mesFiltro==="todos"?700:400}}
               onClick={()=>setMesFiltro("todos")}>Todos</button>
-            {mesesDisp.map(m=>(
-              <button key={m} style={{background:mesFiltro===m?"rgba(99,102,241,0.3)":"rgba(255,255,255,0.05)",border:mesFiltro===m?"1px solid rgba(99,102,241,0.6)":"1px solid rgba(255,255,255,0.1)",color:mesFiltro===m?"#818cf8":"#64748b",borderRadius:99,padding:"4px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",fontWeight:mesFiltro===m?700:400}}
-                onClick={()=>setMesFiltro(m)}>{MESES_CURTO[+m]}</button>
-            ))}
+            {mesesDisp.map(m=>{
+              const[ano,mes]=m.split("-");
+              const multiAno=mesesDisp.some(x=>x.split("-")[0]!==ano);
+              const label=MESES_CURTO[+mes]+(multiAno?" '"+ano.slice(2):"");
+              return <button key={m} style={{background:mesFiltro===m?"rgba(99,102,241,0.3)":"rgba(255,255,255,0.05)",border:mesFiltro===m?"1px solid rgba(99,102,241,0.6)":"1px solid rgba(255,255,255,0.1)",color:mesFiltro===m?"#818cf8":"#64748b",borderRadius:99,padding:"4px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",fontWeight:mesFiltro===m?700:400}}
+                onClick={()=>setMesFiltro(m)}>{label}</button>;
+            })}
           </div>
         )}
       </div>
 
       {/* Conteúdo */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
-        {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps} fixas={fixas} mesAtual={mesAtual}/>}
+        {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} contas={contas} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps} fixas={fixas} mesAtual={mesAtual} reservas={reservas} meta={meta}/>}
         {tab==="graficos" &&<Graficos  exps={expsFiltrados} cats={cats} hide={hideVals} allExps={exps}/>}
         {tab==="orcamento"&&<Orcamento exps={expsFiltrados} cats={cats} setCats={setCats} hide={hideVals} mesFiltro={mesFiltro}/>}
-        {tab==="gastos"   &&<Gastos    exps={exps} setExps={setExps} cats={cats} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals} mesFiltro={mesFiltro} catFiltro={catModal} onClearCat={()=>setCatModal(null)}/>}
+        {tab==="gastos"   &&<Gastos    exps={exps} setExps={setExps} cats={cats} contas={contas} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals} mesFiltro={mesFiltro} catFiltro={catModal} onClearCat={()=>setCatModal(null)}/>}
+        {tab==="reservas" &&<Reservas  reservas={reservas} setReservas={setReservas} hide={hideVals}/>}
         {tab==="mercado"  &&<Mercado   markets={markets}/>}
-        {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats}/>}
-        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas}/>}
+        {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats} mesFiltro={mesFiltro}/>}
+        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} meta={meta} setMeta={setMeta}/>}
       </div>
 
       {/* FABs */}
