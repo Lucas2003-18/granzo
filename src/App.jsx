@@ -17,7 +17,7 @@ function dateKey(d){
   return y+( p[1]?.padStart(2,"0")||"00")+(p[0]?.padStart(2,"0")||"00");
 }
 // Converte "YYYY-MM-DD" → "DD/MM/YYYY" de forma segura (sem depender de locale do Android)
-function fmtDate(iso){if(!iso)return "";const[y,m,d]=(iso+"").split("-");return `${(d||"??").padStart(2,"0")}/${(m||"??").padStart(2,"0")}/${y||"????"`};}
+function fmtDate(iso){if(!iso)return "";const[y,m,d]=(iso+"").split("-");return `${(d||"??").padStart(2,"0")}/${(m||"??").padStart(2,"0")}/${y||"????"}`;}
 const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const MESES_CURTO = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
