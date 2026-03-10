@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 
-const GEMINI_KEY = "AIzaSyA-gx5FUXaJfJ4IWU7MciY-gLlUk6D0TII";
+// Chave Gemini: lida do localStorage (configurável por usuário)
+function getGeminiKey(){try{return localStorage.getItem("mf_gemini_key")||"";}catch{return "";}}
+function setGeminiKey(k){try{localStorage.setItem("mf_gemini_key",k);}catch{}}
 
 // ── UTILS ──────────────────────────────────────────────────
 const delay = ms => new Promise(r => setTimeout(r, ms));
@@ -21,7 +23,7 @@ async function askGemini(sys, msg, maxTokens=1000, retries=3) {
   for (let i=0; i<retries; i++) {
     if (i>0) await delay(2000*i);
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${getGeminiKey()}`,
       { method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({ contents:[{parts:[{text:sys+"\n\n"+msg}]}], generationConfig:{temperature:0.3,maxOutputTokens:maxTokens} }) }
     );
@@ -101,17 +103,13 @@ const MKTS_DEF = [
   {id:"carrefour",label:"Carrefour",emoji:"🔵"},
   {id:"paodeacucar",label:"Pão de Açúcar",emoji:"🍞"},
   {id:"atacadao",label:"Atacadão",emoji:"🏭"},
-  {id:"enxuto",label:"Enxuto",emoji:"🟢"},
-  {id:"higa",label:"Higa Atacado",emoji:"🟡"},
 ];
 const GROCERY = ["Frango (kg)","Carne moída (kg)","Leite integral (L)","Arroz 5kg","Feijão 1kg","Óleo de soja","Macarrão 500g","Pão de forma","Ovos (dz)","Manteiga 200g","Sabão em pó","Detergente 500ml"];
 const PRESETS = ["#60a5fa","#4ade80","#f59e0b","#f472b6","#a78bfa","#fb923c","#34d399","#94a3b8","#f87171","#38bdf8"];
 
 // ── CONTAS ─────────────────────────────────────────────────
 const CONTAS_DEF = [
-  { id:"bradesco", label:"Bradesco", emoji:"🔴", color:"#f87171" },
-  { id:"nubank",   label:"Nubank",   emoji:"💜", color:"#a78bfa" },
-  { id:"geral",    label:"Geral",    emoji:"🏦", color:"#94a3b8" },
+  { id:"geral", label:"Geral", emoji:"🏦", color:"#94a3b8" },
 ];
 
 // ── ESTILOS ────────────────────────────────────────────────
@@ -201,6 +199,10 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
+      {/* Aviso: nenhuma conta real cadastrada */}
+      {(contas||[]).filter(c=>c.id!=="geral").length===0&&(
+        <AlertBox tipo="warn" texto="🏦 Nenhuma conta cadastrada ainda. Vá em ⚙️ Config → Contas para adicionar seu banco."/>
+      )}
       {/* Alerta fixas pendentes */}
       {mesFiltro!=="todos"&&fixas&&(()=>{
         const pendentes=fixas.filter(f=>{
@@ -715,37 +717,67 @@ function MdText({ text }) {
 }
 
 // ── SWIPE ROW ─────────────────────────────────────────────
-function SwipeRow({ children, onDelete, disabled }) {
-  const [offset, setOffset] = useState(0);
-  const [swiping, setSwiping] = useState(false);
-  const startX = useRef(null);
+function SwipeRow({ children, onDelete, disabled, swipeId, activeSwipe, setActiveSwipe }) {
+  const swiping = useRef(false);
+  const startX  = useRef(null);
   const threshold = 72;
+  const isOpen = activeSwipe === swipeId;
 
   if(disabled) return <>{children}</>;
 
-  function onTouchStart(e){ startX.current=e.touches[0].clientX; setSwiping(true); }
+  function onTouchStart(e){
+    startX.current = e.touches[0].clientX;
+    swiping.current = false;
+    // Fechar outros swipes abertos ao tocar neste
+    if(activeSwipe && activeSwipe !== swipeId) setActiveSwipe(null);
+  }
   function onTouchMove(e){
     if(startX.current===null) return;
-    const dx=e.touches[0].clientX-startX.current;
-    if(dx<0) setOffset(Math.max(dx,-threshold));
+    const dx = e.touches[0].clientX - startX.current;
+    swiping.current = Math.abs(dx) > 5;
+    // Só desliza para a esquerda
+    if(dx < -8) {
+      e.currentTarget.style.transform = `translateX(${Math.max(dx,-threshold)}px)`;
+      e.currentTarget.style.transition = "none";
+    } else if(dx > 8 && isOpen) {
+      e.currentTarget.style.transform = "translateX(0px)";
+      e.currentTarget.style.transition = "none";
+    }
   }
-  function onTouchEnd(){
-    setSwiping(false);
-    if(offset<-threshold*0.6) setOffset(-threshold);
-    else setOffset(0);
-    startX.current=null;
+  function onTouchEnd(e){
+    if(startX.current===null) return;
+    const dx = e.changedTouches[0].clientX - startX.current;
+    const el = e.currentTarget;
+    if(dx < -threshold * 0.55){
+      el.style.transform = `translateX(-${threshold}px)`;
+      el.style.transition = "transform 0.2s ease";
+      setActiveSwipe(swipeId);
+    } else {
+      el.style.transform = "translateX(0px)";
+      el.style.transition = "transform 0.2s ease";
+      setActiveSwipe(null);
+    }
+    startX.current = null;
   }
+
+  // Sincronizar estilo quando activeSwipe muda externamente
+  const innerRef = useRef(null);
+  useEffect(()=>{
+    if(!innerRef.current) return;
+    if(!isOpen){
+      innerRef.current.style.transform = "translateX(0px)";
+      innerRef.current.style.transition = "transform 0.2s ease";
+    }
+  },[isOpen]);
 
   return (
     <div style={{position:"relative",overflow:"hidden",borderRadius:12,marginBottom:8}}>
-      {/* Botão delete revelado atrás */}
       <div style={{position:"absolute",right:0,top:0,bottom:0,width:threshold,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(239,68,68,0.85)",borderRadius:"0 12px 12px 0",cursor:"pointer"}}
-        onClick={()=>{setOffset(0);onDelete();}}>
+        onClick={()=>{setActiveSwipe(null);onDelete();}}>
         <span style={{fontSize:20}}>🗑️</span>
       </div>
-      {/* Conteúdo deslizável */}
-      <div
-        style={{transform:`translateX(${offset}px)`,transition:swiping?"none":"transform 0.25s ease",position:"relative",zIndex:1,marginBottom:0}}
+      <div ref={innerRef}
+        style={{transform:"translateX(0px)",position:"relative",zIndex:1}}
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         {children}
       </div>
@@ -757,7 +789,8 @@ function SwipeRow({ children, onDelete, disabled }) {
 function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFiltro, catFiltro, onClearCat }) {
   const [show,    setShow]    = useState(false);
   const [mode,    setMode]    = useState("expense");
-  const [form,    setForm]    = useState({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario",conta:"nubank"});
+  const contaDefault=(contas||[]).find(c=>c.id!=="geral")?.id||"geral";
+  const [form,    setForm]    = useState({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario",conta:contaDefault});
   const [editId,  setEditId]  = useState(null);
   const [editForm,setEditForm]= useState({});
   const [busca,   setBusca]   = useState("");
@@ -766,11 +799,12 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
   const [contaFiltro, setContaFiltro] = useState(null);
   const [parcelarId,  setParcelarId]  = useState(null);
   const [pagina,      setPagina]      = useState(1);
+  const [activeSwipe, setActiveSwipe] = useState(null);
   const POR_PAGINA = 50;
   const [parcelarN,   setParcelarN]   = useState(2);
 
-  // Resetar paginação ao mudar filtros
-  useEffect(()=>setPagina(1),[busca,mesFiltro,catFiltro,contaFiltro,ordenar]);
+  // Resetar paginação e swipe ao mudar filtros
+  useEffect(()=>{setPagina(1);setActiveSwipe(null);},[busca,mesFiltro,catFiltro,contaFiltro,ordenar]);
 
   function aplicarParcelamento(){
     const orig=exps.find(e=>e.id===parcelarId);
@@ -823,7 +857,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
       return {id:Date.now()+i,desc:parcelas>1?`${form.desc} (${i+1}/${parcelas})`:form.desc,kind:mode==="expense"?"exp":"inc",cat:mode==="expense"?form.cat:undefined,incType:mode==="income"?form.incType:undefined,type:mode==="income"?"Manual":undefined,emoji:isCard?"💳":(mode==="expense"?(cat?.emoji||"📦"):(INC_TIPOS.find(t=>t.id===form.incType)?.emoji||"💰")),value:parValor,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),payment:isCard?"cartao":"dinheiro",conta:form.conta||"geral"};
     });
     setExps(p=>[...novos,...p]);
-    setForm({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario",conta:"nubank"});
+    setForm({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario",conta:contaDefault});
     setShow(false);
   }
 
@@ -1037,7 +1071,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
           ?isTransfInt?"rgba(148,163,184,0.15)":isTransf?"rgba(148,163,184,0.2)":"rgba(74,222,128,0.2)"
           :undefined;
         const valColor=e.kind==="inc"?(isTransfInt||isTransf?"#94a3b8":"#4ade80"):"#f87171";
-        return <SwipeRow key={e.id} onDelete={()=>setConfirm(e.id)} disabled={!!editId}>
+        return <SwipeRow key={e.id} swipeId={e.id} activeSwipe={activeSwipe} setActiveSwipe={setActiveSwipe} onDelete={()=>setConfirm(e.id)} disabled={!!editId}>
           <div style={{...ROW,marginBottom:0,...(e.kind==="inc"?{borderColor:rowBorder,background:rowBg}:{})}}>
             <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransfInt||isTransf?"rgba(148,163,184,0.1)":"rgba(74,222,128,0.12)"):"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{e.emoji||cat?.emoji||"📦"}</div>
             <div style={{flex:1,minWidth:0}}>
@@ -1322,7 +1356,7 @@ function IAChat({ exps, cats, mesFiltro }) {
     const msg=input.trim();if(!msg||loading)return;
     setInput("");setLoading(true);
     setMsgs(p=>[...p,{role:"user",text:msg}]);
-    if(GEMINI_KEY==="SUA_CHAVE_AQUI"){setMsgs(p=>[...p,{role:"ai",text:"⚠️ Configure a chave do Gemini no App.jsx linha 3."}]);setLoading(false);return;}
+    if(!getGeminiKey()){setMsgs(p=>[...p,{role:"ai",text:"⚠️ Configure sua chave do Gemini em ⚙️ Config → Chave IA."}]);setLoading(false);return;}
     const catRes=cats.map(c=>{const s=gastos.filter(e=>e.cat===c.id).reduce((a,e)=>a+e.value,0);return `${c.label}: ${fmt(s)}/${fmt(c.budget)}`;}).join("; ");
     const top3=[...gastos].sort((a,b)=>b.value-a.value).slice(0,3).map(e=>e.desc+" "+fmt(e.value)).join(", ");
     const periodoLabel=mesFiltro&&mesFiltro!=="todos"?(()=>{const[a,m]=mesFiltro.split("-");return `${MESES[+m]}/${a}`;})():"todos os meses";
@@ -1352,7 +1386,7 @@ Responda em português. Seja específico com os números. Escreva a resposta COM
   // Resumo automático ao abrir a aba com dados
   useEffect(()=>{
     if(loading) setLoading(false);
-    if(msgs.length>0||exps.length===0||GEMINI_KEY==="SUA_CHAVE_AQUI") return;
+    if(msgs.length>0||exps.length===0||!getGeminiKey()) return;
     const catRes=cats.map(c=>{const s=gastos.filter(e=>e.cat===c.id).reduce((a,e)=>a+e.value,0);return `${c.label}: ${fmt(s)}`;}).filter(s=>!s.includes("R$ 0")).join("; ");
     const periodoLabelAuto=mesFiltro&&mesFiltro!=="todos"?(()=>{const[a,m]=mesFiltro.split("-");return `${MESES[+m]}/${a}`;})():"período geral";
     const sys=`Você é um consultor financeiro pessoal brasileiro, empático e direto. Faça um diagnóstico financeiro completo (entre 80 e 150 palavras) dos dados de ${periodoLabelAuto}. Comece com um emoji e uma frase de diagnóstico. Cite 2-3 pontos específicos com números. Conclua com 1 sugestão prática. Escreva até o fim — nunca corte no meio de uma frase.
@@ -1365,6 +1399,9 @@ Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-t
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 116px)"}}>
+      {!getGeminiKey()&&<div style={{padding:"10px 16px"}}>
+        <AlertBox tipo="warn" texto="⚠️ Chave Gemini não configurada. Vá em ⚙️ Config → Chave IA para ativar o assistente."/>
+      </div>}
       <div style={{display:"flex",gap:12,alignItems:"center",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
         <div style={{fontSize:24,background:"rgba(99,102,241,0.2)",borderRadius:12,width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center"}}>🤖</div>
         <div>
@@ -1403,8 +1440,6 @@ Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-t
 
 function detectIncType(desc) {
   const d = (desc||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  // Salário: transferência recebida de si mesmo (Lucas transferindo do Bradesco/CEF para Nubank)
-  if (/transferencia recebida.*lucas rafael/.test(d)) return "salario";
   if (/salario|salário|pro.?labore|prolabore|pagamento.?folha|holerite|vencimento/.test(d)) return "salario";
   // Retorno de investimento
   if (/devolucao.*aplicac|devolução.*aplicac|rendimento|juros|dividendo|cdb|lci|lca|fundo|tesouro/.test(d)) return "investimento_ret";
@@ -1443,7 +1478,7 @@ function parseTxs(rows,tipo){
   return [];
 }
 
-function Importador({ exps, setExps, cats, setTab, showToast }){
+function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, showToast }){
   const [step,setStep]=useState("upload");
   const [preview,setPreview]=useState([]);
   const [loading,setLoading]=useState(false);
@@ -1476,18 +1511,50 @@ function Importador({ exps, setExps, cats, setTab, showToast }){
 
   function confirmar(){
     const ano=new Date().getFullYear();
+    // ── Auto-cadastrar banco se não existir ──
+    const contasAtuais=[...(contas||[])];
+    const BANCO_MAP={
+      "Nubank Conta":  {id:"nubank",   label:"Nubank",   emoji:"💜",color:"#8b5cf6"},
+      "Nubank Cartão": {id:"nubank",   label:"Nubank",   emoji:"💜",color:"#8b5cf6"},
+      "Bradesco":      {id:"bradesco", label:"Bradesco", emoji:"🔴",color:"#ef4444"},
+    };
+    const bancosNoImport=[...new Set(preview.map(p=>p.source))];
+    const novasCont=[];
+    bancosNoImport.forEach(src=>{
+      const def=BANCO_MAP[src];
+      if(def&&!contasAtuais.find(c=>c.id===def.id)){
+        contasAtuais.push(def);
+        novasCont.push(def.label);
+      }
+    });
+    if(novasCont.length>0) setContas(contasAtuais);
+
+    // ── Auto-cadastrar categorias desconhecidas ──
+    const catsAtuais=[...cats];
+    const novasCats=[];
+    const CAT_COLORS=["#60a5fa","#f59e0b","#34d399","#f472b6","#a78bfa","#fb923c"];
+    preview.filter(p=>p.kind==="exp"&&p.cat&&p.cat!=="outros").forEach(p=>{
+      if(!catsAtuais.find(c=>c.id===p.cat)){
+        const novaCat={id:p.cat,label:p.cat.charAt(0).toUpperCase()+p.cat.slice(1),emoji:"📦",budget:300,color:CAT_COLORS[catsAtuais.length%CAT_COLORS.length]};
+        catsAtuais.push(novaCat);
+        novasCats.push(novaCat.label);
+      }
+    });
+    if(novasCats.length>0) setCats(catsAtuais);
+
     const novos=preview.map(p=>{
       const pts=p.date.split(/[-\/]/);
       const dateStr=pts.length===3&&pts[0].length===4?`${pts[2]}/${pts[1]}/${pts[0]}`:pts.length===3?`${pts[0]}/${pts[1]}/${pts[2]}`:`${pts[0]}/${pts[1]}/${ano}`;
-      const cat=cats.find(c=>c.id===p.cat);
-      const contaId=p.source==="Nubank Conta"||p.source==="Nubank Cartão"?"nubank":p.source==="Bradesco"?"bradesco":"geral";
+      const cat=catsAtuais.find(c=>c.id===p.cat);
+      const def=BANCO_MAP[p.source];
+      const contaId=def?def.id:"geral";
       return {id:`imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,desc:p.desc,kind:p.kind,cat:p.cat,incType:p.incType,type:p.kind==="inc"?p.source:undefined,emoji:p.kind==="inc"?(INC_TIPOS.find(t=>t.id===p.incType)?.emoji||"🏦"):(cat?.emoji||"📦"),value:p.value,date:dateStr,source:p.source,conta:contaId};
     });
     const nGastos=novos.filter(n=>n.kind==="exp").length;
     const nEntradas=novos.filter(n=>n.kind==="inc").length;
     const totalImp=novos.filter(n=>n.kind==="exp").reduce((s,n)=>s+n.value,0);
     setExps(prev=>[...novos,...prev]);
-    setResumoImport({gastos:nGastos,entradas:nEntradas,total:totalImp,n:novos.length});
+    setResumoImport({gastos:nGastos,entradas:nEntradas,total:totalImp,n:novos.length,novasCont,novasCats});
     setStep("done");
   }
 
@@ -1573,7 +1640,7 @@ function Importador({ exps, setExps, cats, setTab, showToast }){
           <div style={{fontSize:52,marginBottom:12}}>✅</div>
           <div style={{fontSize:16,fontWeight:700,color:"#4ade80",marginBottom:16}}>Importação concluída!</div>
           {resumoImport&&<div style={{...CARD,textAlign:"left",marginBottom:16}}>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:resumoImport.novasCont?.length||resumoImport.novasCats?.length?8:0}}>
               <div style={{background:"rgba(248,113,113,0.08)",borderRadius:10,padding:"10px 12px"}}>
                 <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Gastos</div>
                 <div style={{fontSize:22,fontWeight:800,color:"#f87171"}}>{resumoImport.gastos}</div>
@@ -1585,6 +1652,8 @@ function Importador({ exps, setExps, cats, setTab, showToast }){
                 <div style={{fontSize:11,color:"#64748b"}}>{resumoImport.n} lançamentos</div>
               </div>
             </div>
+            {resumoImport.novasCont?.length>0&&<AlertBox tipo="info" texto={`🏦 Conta cadastrada automaticamente: ${resumoImport.novasCont.join(", ")}`}/>}
+            {resumoImport.novasCats?.length>0&&<AlertBox tipo="info" texto={`🏷️ Categoria(s) nova(s) cadastrada(s): ${resumoImport.novasCats.join(", ")}`}/>}
           </div>}
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)")} onClick={()=>setTab&&setTab("dashboard")}>📊 Ver Dashboard</button>
@@ -1594,6 +1663,27 @@ function Importador({ exps, setExps, cats, setTab, showToast }){
       )}
     </div>
   );
+}
+
+// ── CHAVE IA CONFIG ───────────────────────────────────────
+function ChaveIAConfig() {
+  const [chave, setChave] = useState(getGeminiKey);
+  const [salvo, setSalvo] = useState(false);
+  return <div>
+    <AlertBox tipo="info" texto="A chave fica salva só no seu celular. Nunca é enviada para nenhum servidor nosso."/>
+    <div style={CARD}>
+      <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🤖 Chave da API Gemini</div>
+      <div style={{fontSize:12,color:"#64748b",marginBottom:12,lineHeight:1.6}}>
+        Obtenha gratuitamente em <span style={{color:"#818cf8"}}>aistudio.google.com</span> → Get API Key. O plano gratuito é suficiente para uso pessoal.
+      </div>
+      <input style={{...inp(),marginBottom:10,fontFamily:"monospace",fontSize:12}} placeholder="Cole sua chave aqui (AIza...)" value={chave} onChange={e=>setChave(e.target.value)}/>
+      <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)")} onClick={()=>{setGeminiKey(chave.trim());setSalvo(true);setTimeout(()=>setSalvo(false),2000);}}>
+        {salvo?"✓ Chave salva!":"Salvar chave"}
+      </button>
+      {getGeminiKey()&&<button style={{...btn("rgba(248,113,113,0.1)","#f87171",{border:"1px solid rgba(248,113,113,0.2)",marginTop:8})}} onClick={()=>{setGeminiKey("");setChave("");}}>🗑️ Remover chave</button>}
+    </div>
+    {!getGeminiKey()&&<AlertBox tipo="warn" texto="⚠️ Sem chave configurada — a aba IA ficará desabilitada."/>}
+  </div>;
 }
 
 // ── META CONFIG ────────────────────────────────────────────
@@ -1631,7 +1721,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
   const [showNC,setShowNC]=useState(false);
   const [newCat,setNewCat]=useState({label:"",emoji:"📁",budget:200,color:"#60a5fa"});
   const [novaFixa,setNovaFixa]=useState({desc:"",valor:"",cat:"moradia",emoji:"📌"});
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"dados",l:"🗄️ Dados"}];
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -1698,7 +1788,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           </div>
         )}
       </>}
-      {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats} setTab={setTab} showToast={showToast}/>}
+      {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats} setCats={setCats} contas={contas} setContas={setContas} setTab={setTab} showToast={showToast}/>}
       {sec==="mercados"&&<>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>Mercados</div>
@@ -1780,6 +1870,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           </div>
         </div>
       </>}
+       {sec==="chaveIA"&&<ChaveIAConfig/>}
       {sec==="dados"&&<div style={CARD}>
         <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🗄️ Dados</div>
         <div style={{fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.6}}>
@@ -2125,7 +2216,7 @@ export default function App() {
     {id:"reservas", emoji:"🏦",label:"Reservas"},
     {id:"mercado",  emoji:"🛒",label:"Mercado"},
     {id:"ia",       emoji:"🤖",label:"IA"},
-    {id:"config",   emoji:"⚙️",label:"Config"},
+    // Config não aparece na nav inferior — acessível pelo ⚙️ no header
   ];
 
   return (
