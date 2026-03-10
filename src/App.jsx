@@ -1439,10 +1439,7 @@ function detectIncType(desc) {
   if (/credito em conta|crédito em conta/.test(d)) return "investimento_ret";
   // Reembolso → transferência
   if (/reembolso/.test(d)) return "transferencia";
-  // PIX/TED recebido = renda extra; enviado = transferência (tratado no categorizar para gastos)
-  if (/pix.?enviado|ted.?enviado|transferencia.?enviada/.test(d)) return "transferencia";
-  if (/pix.?recebido|ted.?recebido|credito.?pix|pix.?credito/.test(d)) return "extra";
-  if (/transf/.test(d)) return "transferencia";
+  if (/pix|ted|doc|transf/.test(d)) return "transferencia";
   if (/freelance|freela|servico|serviço|consultor|comissao|comissão|bico|extra/.test(d)) return "extra";
   return null;
 }
@@ -1495,9 +1492,9 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
       const dupCount=parsed.length-semDup.length;
       const catted=semDup.map(p=>({
         ...p,
-        cat: p.kind==="inc" ? undefined : (p.cat || categorizar(p.desc,p.kind) || "outros"),
+        cat: p.cat || categorizar(p.desc,p.kind) || "outros",
         incType: p.kind==="inc" ? (p.incType || detectIncType(p.desc) || "outro") : undefined,
-      })).filter(p=>!(p.cat==="_ignorar" && p.kind==="exp"));
+      })).filter(p=>p.cat!=="_ignorar");
       setPreview(catted);
       setMsg(dupCount>0?`ℹ️ ${dupCount} duplicata(s) ignorada(s)`:"");
       setStep("preview");
