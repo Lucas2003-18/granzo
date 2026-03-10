@@ -1439,34 +1439,46 @@ function detectIncType(desc) {
   if (/credito em conta|crédito em conta/.test(d)) return "investimento_ret";
   // Reembolso → transferência
   if (/reembolso/.test(d)) return "transferencia";
-  if (/pix|ted|doc|transf/.test(d)) return "transferencia";
+  // Transferência/PIX recebido = renda (salário ou extra)
+  if (/transferencia.?recebida|pix.?recebido|ted.?recebido|credito.?pix/.test(d)) return "salario";
+  // Transferência enviada = ignorar nos gastos
+  if (/transferencia.?enviada|pix.?enviado|ted.?enviado/.test(d)) return "transferencia";
+  // Genérico — só marca transferência se não for recebida
+  if (/^transf/.test(d)) return "transferencia";
   if (/freelance|freela|servico|serviço|consultor|comissao|comissão|bico|extra/.test(d)) return "extra";
   return null;
 }
 
 // ── IMPORTADOR ─────────────────────────────────────────────
-function detectBank(text){const t=text.toLowerCase();if(t.includes("date")&&t.includes("title")&&t.includes("amount"))return "nubank_card";if(t.includes("data")&&(t.includes("descrição")||t.includes("descricao"))&&t.includes("valor"))return "nubank_conta";if(t.includes("bradesco")||t.includes("histórico")||t.includes("historico"))return "bradesco";return "unknown";}
+function detectBank(text){const t=text.toLowerCase();if(t.includes("date")&&t.includes("title")&&t.includes("amount"))return "nubank_card";if(t.includes("identificador")||( t.includes("data")&&t.includes("valor")&&(t.includes("descri")||t.includes("desc"))))return "nubank_conta";if(t.includes("bradesco")||t.includes("histórico")||t.includes("historico"))return "bradesco";return "unknown";}
 function parseCSVRows(text){const lines=text.trim().split(/\r?\n/);const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,"").toLowerCase());return lines.slice(1).filter(l=>l.trim()).map(line=>{const cols=[];let cur="",inQ=false;for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){cols.push(cur.trim());cur="";}else cur+=ch;}cols.push(cur.trim());return Object.fromEntries(header.map((h,i)=>[h,(cols[i]||"").replace(/"/g,"").trim()]));});}
 function parseTxs(rows,tipo){
   if(tipo==="nubank_card")return rows.map(r=>({date:r.date||"",desc:r.title||r.description||"",value:Math.abs(parseFloat((r.amount||"0").replace(",","."))),kind:"exp",source:"Nubank Cartão"})).filter(r=>r.date&&r.value>0);
   if(tipo==="nubank_conta")return rows.map(r=>{
-    const v=parseFloat((r["valor"]||r["value"]||"0").replace(",","."));
-    const desc=r["descrição"]||r["descricao"]||"";
-    const dl=desc.toLowerCase();
-    // Aplicações: saem como negativo mas são investimento
-    const isAplicacao=/aplicac|aplicação|rdb/.test(dl);
-    // Devolução de aplicação: entra como positivo, é retorno de investimento
-    const isDevolucao=/devolucao|devolução/.test(dl);
+    // Busca robusta dos campos — Nubank pode variar headers com/sem acento
+    const keys=Object.keys(r);
+    const valorKey=keys.find(k=>/^valor$|^value$|^amount$/i.test(k))||keys.find(k=>k.includes("valor")||k.includes("value"));
+    const descKey=keys.find(k=>/descri/i.test(k))||keys.find(k=>k.includes("desc")||k.includes("título")||k.includes("titulo")||k.includes("title"));
+    const dateKey=keys.find(k=>/^data$|^date$/i.test(k))||keys.find(k=>k.includes("data")||k.includes("date"));
+    const rawVal=(r[valorKey]||"0").replace(/\s/g,"");
+    // Nubank CSV usa ponto decimal americano "2857.31"; formato BR seria "2.857,31"
+    const v=rawVal.includes(",") ? parseFloat(rawVal.replace(/\./g,"").replace(",",".")) : parseFloat(rawVal);
+    const desc=r[descKey]||"";
+    const dl=desc.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
+    const isAplicacao=/aplicac|rdb|investimento/.test(dl);
+    const isDevolucao=/devolucao|resgate/.test(dl);
+    const isFatura=/pagamento.*fatura|fatura.*cartao|cartao.*fatura/.test(dl);
+    const isEntrada=isDevolucao||(v>0&&!isFatura);
     return {
-      date:r["data"]||r["date"]||"",
+      date:r[dateKey]||"",
       desc,
       value:Math.abs(v),
-      kind: isDevolucao?"inc":(v>=0?"inc":"exp"),
-      incType: isDevolucao?"investimento_ret":undefined,
+      kind: isFatura?"_skip":(isEntrada?"inc":"exp"),
+      incType: isEntrada?(isDevolucao?"investimento_ret":undefined):undefined,
       cat: isAplicacao?"investimento":undefined,
       source:"Nubank Conta"
     };
-  }).filter(r=>r.date&&r.value>0);
+  }).filter(r=>r.date&&r.value>0&&r.kind!=="_skip");
   if(tipo==="bradesco")return rows.map(r=>{const keys=Object.keys(r);const dK=keys.find(k=>k.includes("data")),descK=keys.find(k=>k.includes("hist")||k.includes("desc")),vK=keys.find(k=>k.includes("valor")||k.includes("créd")||k.includes("déb"));const v=parseFloat((r[vK]||"0").replace(/\./g,"").replace(",","."));return{date:r[dK]||"",desc:r[descK]||"",value:Math.abs(v),kind:v>=0?"inc":"exp",source:"Bradesco"};}).filter(r=>r.date&&r.value>0&&r.desc);
   return [];
 }
@@ -1492,9 +1504,9 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
       const dupCount=parsed.length-semDup.length;
       const catted=semDup.map(p=>({
         ...p,
-        cat: p.cat || categorizar(p.desc,p.kind) || "outros",
+        cat: p.kind==="inc" ? undefined : (p.cat || categorizar(p.desc,p.kind) || "outros"),
         incType: p.kind==="inc" ? (p.incType || detectIncType(p.desc) || "outro") : undefined,
-      })).filter(p=>p.cat!=="_ignorar");
+      })).filter(p=>!(p.cat==="_ignorar" && p.kind==="exp"));
       setPreview(catted);
       setMsg(dupCount>0?`ℹ️ ${dupCount} duplicata(s) ignorada(s)`:"");
       setStep("preview");
