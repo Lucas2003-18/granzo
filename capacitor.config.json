@@ -1,6 +1,6 @@
 {
-  "appId": "com.meufinanceiro.app",
-  "appName": "Meu Financeiro",
+  "appId": "app.granzo.finance",
+  "appName": "Granzo",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"
