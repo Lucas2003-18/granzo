@@ -57,21 +57,57 @@ jobs:
           cp android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
           printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#080e1d</color>\n</resources>\n' > android/app/src/main/res/values/ic_launcher_background.xml
 
+      - name: Decodificar keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/granzo-release.jks
+
       - name: Configurar Gradle
         run: |
+          # Propriedades de performance
           echo "org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=384m" >> android/gradle.properties
           echo "org.gradle.daemon=false" >> android/gradle.properties
           echo "org.gradle.parallel=false" >> android/gradle.properties
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
+          # Credenciais de assinatura via gradle.properties (jeito oficial)
+          echo "GRANZO_STORE_FILE=granzo-release.jks" >> android/gradle.properties
+          echo "GRANZO_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> android/gradle.properties
+          echo "GRANZO_KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> android/gradle.properties
+          echo "GRANZO_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> android/gradle.properties
 
-      - name: Configurar assinatura release
-        run: bash configure_signing.sh
-
-      - name: Decodificar keystore
+      - name: Injetar signingConfig no build.gradle
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/granzo-release.jks
-          echo "Keystore pronto"
+          python3 - << 'PYEOF'
+          with open("android/app/build.gradle", "r") as f:
+              src = f.read()
+
+          # Só injeta se ainda não tiver
+          if "GRANZO_STORE_FILE" not in src:
+              inject = '''
+              signingConfigs {
+                  release {
+                      def props = new Properties()
+                      def propsFile = rootProject.file("gradle.properties")
+                      if (propsFile.exists()) { props.load(propsFile.newDataInputStream()) }
+                      storeFile file(props.getProperty("GRANZO_STORE_FILE", "granzo-release.jks"))
+                      storePassword props.getProperty("GRANZO_STORE_PASSWORD", "")
+                      keyAlias props.getProperty("GRANZO_KEY_ALIAS", "granzo")
+                      keyPassword props.getProperty("GRANZO_KEY_PASSWORD", "")
+                  }
+              }
+          '''
+              src = src.replace("    buildTypes {", inject + "    buildTypes {", 1)
+              src = src.replace(
+                  "        release {\n",
+                  "        release {\n            signingConfig signingConfigs.release\n",
+                  1
+              )
+              with open("android/app/build.gradle", "w") as f:
+                  f.write(src)
+              print("signingConfig injetado")
+          else:
+              print("signingConfig ja existe")
+          PYEOF
 
       - name: Build APK release assinado
         run: |
@@ -80,10 +116,6 @@ jobs:
           ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1536m"
-          KEYSTORE_PATH: granzo-release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Build AAB release assinado (Play Store)
         run: |
@@ -91,10 +123,6 @@ jobs:
           ./gradlew bundleRelease --no-daemon --no-parallel --max-workers=2
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1536m"
-          KEYSTORE_PATH: granzo-release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
