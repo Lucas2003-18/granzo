@@ -1189,7 +1189,7 @@ function Mercado({ markets, setMarkets, hide }) {
     if(!selProd||!selMkt||!inputVal) return;
     const v=parseFloat(inputVal.replace(",","."));
     if(isNaN(v)||v<=0) return;
-    const hoje=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    const hoje=fmtDate(new Date().toISOString().slice(0,10)).slice(0,5); // DD/MM
     const novo={...precos,[selProd]:{...(precos[selProd]||{}),[selMkt]:{valor:v,data:hoje}}};
     setPrecos(novo);savePrecos(novo);
     setInputVal("");setSelMkt(null);
@@ -2220,10 +2220,8 @@ const ONBOARDING_STEPS = [
   {
     id:"welcome",
     emoji:"👋",
-    titulo:"Bem-vindo ao
-Meu Financeiro",
-    sub:"Seu controle financeiro pessoal,
-simples e no seu celular.",
+    titulo:"Bem-vindo ao\nMeu Financeiro",
+    sub:"Seu controle financeiro pessoal,\nsimples e no seu celular.",
     dica:null,
     cor:"#818cf8",
   },
@@ -2231,8 +2229,7 @@ simples e no seu celular.",
     id:"conta",
     emoji:"🏦",
     titulo:"Cadastre seu banco",
-    sub:"Primeiro, adicione a conta do seu banco.
-Assim seus lançamentos ficam organizados por fonte.",
+    sub:"Primeiro, adicione a conta do seu banco.\nAssim seus lançamentos ficam organizados por fonte.",
     dica:"⚙️ Config → Contas → + Nova conta",
     cor:"#4ade80",
     destaque:"config",
@@ -2241,8 +2238,7 @@ Assim seus lançamentos ficam organizados por fonte.",
     id:"orcamento",
     emoji:"💰",
     titulo:"Defina seu orçamento",
-    sub:"Configure quanto você quer gastar por categoria — alimentação, moradia, lazer...
-O app avisa quando estiver chegando no limite.",
+    sub:"Configure quanto você quer gastar por categoria — alimentação, moradia, lazer...\nO app avisa quando estiver chegando no limite.",
     dica:"Aba Orçamento → toque em cada categoria",
     cor:"#f59e0b",
     destaque:"orcamento",
@@ -2251,8 +2247,7 @@ O app avisa quando estiver chegando no limite.",
     id:"fixas",
     emoji:"📌",
     titulo:"Cadastre despesas fixas",
-    sub:"Aluguel, internet, plano de saúde...
-Despesas que aparecem todo mês. Com um toque você lança no mês atual.",
+    sub:"Aluguel, internet, plano de saúde...\nDespesas que aparecem todo mês. Com um toque você lança no mês atual.",
     dica:"⚙️ Config → Fixas → + Nova",
     cor:"#f472b6",
     destaque:"config",
@@ -2261,8 +2256,7 @@ Despesas que aparecem todo mês. Com um toque você lança no mês atual.",
     id:"import",
     emoji:"📥",
     titulo:"Importe seu extrato",
-    sub:"Conecte seu histórico real importando o CSV do Nubank ou Bradesco.
-O app categoriza tudo automaticamente.",
+    sub:"Conecte seu histórico real importando o CSV do Nubank ou Bradesco.\nO app categoriza tudo automaticamente.",
     dica:"⚙️ Config → Importar → selecione o arquivo CSV",
     cor:"#34d399",
     destaque:"config",
@@ -2271,8 +2265,7 @@ O app categoriza tudo automaticamente.",
     id:"ia",
     emoji:"🤖",
     titulo:"IA financeira pessoal",
-    sub:"Ative o assistente com sua chave Gemini gratuita.
-Ele analisa seus gastos e responde perguntas sobre suas finanças.",
+    sub:"Ative o assistente com sua chave Gemini gratuita.\nEle analisa seus gastos e responde perguntas sobre suas finanças.",
     dica:"⚙️ Config → Chave IA → cole sua chave",
     cor:"#a78bfa",
     destaque:"ia",
@@ -2281,8 +2274,7 @@ Ele analisa seus gastos e responde perguntas sobre suas finanças.",
     id:"pronto",
     emoji:"🚀",
     titulo:"Tudo pronto!",
-    sub:"Você já pode começar a usar.
-Lembre-se: quanto mais você registra, mais o app te ajuda.",
+    sub:"Você já pode começar a usar.\nLembre-se: quanto mais você registra, mais o app te ajuda.",
     dica:null,
     cor:"#818cf8",
   },
