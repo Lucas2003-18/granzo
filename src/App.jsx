@@ -41,17 +41,17 @@ function categorizar(desc, kind) {
   const d = desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   // Ignorar pagamento de fatura do cartão (não é gasto novo)
   if (/pagamento de fatura/.test(d)) return "_ignorar";
-  // Pet (Bethoven)
-  if (/pet.?camp|veterinar|petshop|petz|cobasi|racao|bethoven/.test(d)) return "pet";
-  // Alimentação — inclui estabelecimentos reais do extrato
+  // Pet
+  if (/pet.?camp|veterinar|petshop|petz|cobasi|racao|pet.?shop|banho.?tosa|castracao/.test(d)) return "pet";
+  // Alimentação
   if (/ifood|rappi|uber.?eat|james|99.?food|melfood|restaur|lanche|pizza|burguer|mcdon|subway|sushi|padaria|superm|carrefour|atacadao|enxuto|higa|extra|pao.?de.?acucar|hortifrut|acougue|peixar|bebida|sorvete|supermercado|jim\.com|kamikase|espaco.?nobre|d.?burger|cacau/.test(d)) return "alimentacao";
-  // Transporte — inclui postos reais
+  // Transporte
   if (/uber|99pop|cabify|taxi|gasolina|combustiv|posto|shell|ipiranga|chiminazzo|diamante.?auto|pauliceia|estacion|onibus|metro|trem|passagem|pedagio|autopeca|oficina|mecanica|detran|ipva|seguro.?auto|ancar.?park/.test(d)) return "transporte";
   // Saúde
   if (/farmac|drogari|remedio|medico|medica|hospital|clinica|consulta|exame|laborat|dentist|odontos|plano.?saude|unimed|amil|notredame|hapvida|academia|gym|crossfit/.test(d)) return "saude";
-  // Lazer — inclui EBANX/PAGBRASIL (assinaturas internacionais), EA9 (esportes)
+  // Lazer — inclui assinaturas internacionais
   if (/netflix|spotify|amazon|disney|hbo|youtube|prime|deezer|apple.?music|cinema|teatro|show|ingresso|jogo|steam|playstation|xbox|nintendo|balada|clube|viagem|hotel|airbnb|booking|ebanx|pagbrasil|ea9/.test(d)) return "lazer";
-  // Moradia — inclui HM 72 (aluguel real do Lucas)
+  // Moradia
   if (/aluguel|condom|energia|enel|cpfl|sabesp|internet|vivo|claro|tim|sky |telefon|gas |seguro.?resid|iptu|manutencao|hm.?72|empreendimento.?imob|london.?point/.test(d)) return "moradia";
   // Educação
   if (/escola|faculdade|univers|curso|mensalid|material|livro|papelaria|udemy|alura|coursera|duolingo/.test(d)) return "educacao";
@@ -88,7 +88,7 @@ const CATS_DEF = [
   { id:"lazer",        label:"Lazer",        emoji:"🎬", budget:200,  color:"#fb923c" },
   { id:"educacao",     label:"Educação",     emoji:"📚", budget:300,  color:"#a78bfa" },
   { id:"vestuario",    label:"Vestuário",    emoji:"👕", budget:200,  color:"#38bdf8" },
-  { id:"pet",          label:"Bethoven 🐾",  emoji:"🐶", budget:300,  color:"#f97316" },
+  { id:"pet",          label:"Pet",           emoji:"🐶", budget:300,  color:"#f97316" },
   { id:"investimento", label:"Investimento", emoji:"📈", budget:0,    color:"#34d399" },
   { id:"outros",       label:"Outros",       emoji:"📦", budget:200,  color:"#94a3b8" },
 ];
@@ -718,67 +718,60 @@ function MdText({ text }) {
 
 // ── SWIPE ROW ─────────────────────────────────────────────
 function SwipeRow({ children, onDelete, disabled, swipeId, activeSwipe, setActiveSwipe }) {
-  const swiping = useRef(false);
   const startX  = useRef(null);
-  const threshold = 72;
+  const threshold = 80;
   const isOpen = activeSwipe === swipeId;
+  const innerRef = useRef(null);
+
+  // Sincronizar quando activeSwipe muda (ex: outro item aberto fecha este)
+  useEffect(()=>{
+    if(!innerRef.current) return;
+    innerRef.current.style.transform = isOpen ? `translateX(-${threshold}px)` : "translateX(0px)";
+    innerRef.current.style.transition = "transform 0.22s ease";
+  },[isOpen]);
 
   if(disabled) return <>{children}</>;
 
   function onTouchStart(e){
     startX.current = e.touches[0].clientX;
-    swiping.current = false;
-    // Fechar outros swipes abertos ao tocar neste
     if(activeSwipe && activeSwipe !== swipeId) setActiveSwipe(null);
   }
   function onTouchMove(e){
-    if(startX.current===null) return;
+    if(startX.current===null||!innerRef.current) return;
     const dx = e.touches[0].clientX - startX.current;
-    swiping.current = Math.abs(dx) > 5;
-    // Só desliza para a esquerda
-    if(dx < -8) {
-      e.currentTarget.style.transform = `translateX(${Math.max(dx,-threshold)}px)`;
-      e.currentTarget.style.transition = "none";
-    } else if(dx > 8 && isOpen) {
-      e.currentTarget.style.transform = "translateX(0px)";
-      e.currentTarget.style.transition = "none";
+    if(dx < 0) {
+      innerRef.current.style.transform = `translateX(${Math.max(dx,-threshold)}px)`;
+      innerRef.current.style.transition = "none";
+    } else if(isOpen && dx > 0) {
+      innerRef.current.style.transform = `translateX(${Math.min(0, -threshold+dx)}px)`;
+      innerRef.current.style.transition = "none";
     }
   }
   function onTouchEnd(e){
     if(startX.current===null) return;
     const dx = e.changedTouches[0].clientX - startX.current;
-    const el = e.currentTarget;
-    if(dx < -threshold * 0.55){
-      el.style.transform = `translateX(-${threshold}px)`;
-      el.style.transition = "transform 0.2s ease";
-      setActiveSwipe(swipeId);
+    if(dx < -(threshold * 0.5)){
+      setActiveSwipe(swipeId); // useEffect vai animar
     } else {
-      el.style.transform = "translateX(0px)";
-      el.style.transition = "transform 0.2s ease";
-      setActiveSwipe(null);
+      setActiveSwipe(prev => prev===swipeId ? null : prev); // fechar se estava aberto
+      if(innerRef.current){
+        innerRef.current.style.transform = "translateX(0px)";
+        innerRef.current.style.transition = "transform 0.22s ease";
+      }
     }
     startX.current = null;
   }
 
-  // Sincronizar estilo quando activeSwipe muda externamente
-  const innerRef = useRef(null);
-  useEffect(()=>{
-    if(!innerRef.current) return;
-    if(!isOpen){
-      innerRef.current.style.transform = "translateX(0px)";
-      innerRef.current.style.transition = "transform 0.2s ease";
-    }
-  },[isOpen]);
-
   return (
-    <div style={{position:"relative",overflow:"hidden",borderRadius:12,marginBottom:8}}>
-      <div style={{position:"absolute",right:0,top:0,bottom:0,width:threshold,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(239,68,68,0.85)",borderRadius:"0 12px 12px 0",cursor:"pointer"}}
+    <div style={{position:"relative",borderRadius:12,marginBottom:8,overflow:"hidden",background:"#1e1e2e"}}>
+      {/* Botão delete fixo à direita, sempre visível atrás */}
+      <div style={{position:"absolute",right:0,top:0,bottom:0,width:threshold,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"#ef4444",cursor:"pointer",zIndex:0}}
         onClick={()=>{setActiveSwipe(null);onDelete();}}>
         <span style={{fontSize:20}}>🗑️</span>
+        <span style={{fontSize:10,color:"white",fontWeight:700}}>Deletar</span>
       </div>
-      <div ref={innerRef}
-        style={{transform:"translateX(0px)",position:"relative",zIndex:1}}
-        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      {/* Card deslizável — background sólido cobre o vermelho quando fechado */}
+      <div ref={innerRef} style={{transform:"translateX(0px)",position:"relative",zIndex:1,background:"#1e1e2e",borderRadius:12}}>
         {children}
       </div>
     </div>
@@ -1572,13 +1565,12 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
         </div>
         {loading&&<div style={{textAlign:"center",padding:16}}><div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:8}}><span className="dot"/><span className="dot"/><span className="dot"/></div></div>}
         {msg&&!loading&&<AlertBox tipo={msg.startsWith("❌")?"err":"info"} texto={msg}/>}
-        <SecTitle t="Como exportar"/>
-        {[{bank:"💜 Nubank Cartão",steps:["App → Cartão → ··· → Exportar fatura","Salve o CSV do e-mail"]},{bank:"💜 Nubank Conta",steps:["App → Extrato → ··· → Exportar extrato","Escolha o período e salve o CSV"]},{bank:"🔴 Bradesco",steps:["Internet banking → Extrato","Período → Exportar CSV"]}].map(b=>(
-          <div key={b.bank} style={CARD}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>{b.bank}</div>
-            {b.steps.map((s,i)=><div key={i} style={{fontSize:12,color:"#64748b",padding:"2px 0"}}>{i+1}. {s}</div>)}
+        <SecTitle t="Como exportar" sub="Precisamos de um arquivo .CSV do seu banco"/>
+        <div style={CARD}>
+          <div style={{fontSize:13,color:"#94a3b8",lineHeight:1.7}}>
+            Acesse o extrato ou fatura no app ou internet banking do seu banco e procure a opção <strong style={{color:"#e2e8f0"}}>Exportar</strong> ou <strong style={{color:"#e2e8f0"}}>Baixar CSV</strong>. O arquivo será enviado por e-mail ou ficará disponível para download.
           </div>
-        ))}
+        </div>
       </>}
 
       {step==="preview"&&<>
@@ -2104,7 +2096,7 @@ function Reservas({ reservas, setReservas, hide }) {
           <div style={{fontSize:48,marginBottom:12}}>🏦</div>
           <div style={{fontSize:15,fontWeight:700,color:"#94a3b8",marginBottom:8}}>Nenhuma reserva ainda</div>
           <div style={{fontSize:13,lineHeight:1.7}}>
-            Crie caixinhas para separar dinheiro com propósito — emergência, viagem, Bethoven 🐾, o que quiser.
+            Crie caixinhas para separar dinheiro com propósito — emergência, viagem, férias, o que quiser.
             <br/>O saldo não conta como gasto nem como renda.
           </div>
         </div>
@@ -2220,7 +2212,7 @@ export default function App() {
   ];
 
   return (
-    <div style={{fontFamily:"'Outfit',sans-serif",background:"#080e1d",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",maxWidth:480,margin:"0 auto",paddingTop:"env(safe-area-inset-top,0px)"}}>
+    <div style={{fontFamily:"'Outfit',sans-serif",background:"#080e1d",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",maxWidth:"min(600px,100vw)",margin:"0 auto",paddingTop:"env(safe-area-inset-top,0px)"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -2294,7 +2286,7 @@ export default function App() {
       )}
 
       {/* Nav */}
-      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,14,29,0.97)",borderTop:"1px solid rgba(255,255,255,0.07)",display:"flex",overflowX:"auto",padding:"6px 2px 10px",backdropFilter:"blur(20px)",zIndex:50}}>
+      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"min(600px,100vw)",background:"rgba(8,14,29,0.97)",borderTop:"1px solid rgba(255,255,255,0.07)",display:"flex",overflowX:"auto",padding:"6px 2px 10px",backdropFilter:"blur(20px)",zIndex:50}}>
         {TABS.map(t=>(
           <button key={t.id} style={{flex:"0 0 auto",minWidth:60,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 2px",opacity:tab===t.id?1:0.38,transition:"opacity 0.15s"}} onClick={()=>setTab(t.id)}>
             <span style={{fontSize:18}}>{t.emoji}</span>
