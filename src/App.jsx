@@ -177,7 +177,7 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
   if(mesFiltro!=="todos"&&mesFiltro===mesAtual&&gastos.length>0){
     const hoje=new Date().getDate();
     const diasMes=new Date(new Date().getFullYear(),+mesFiltro,0).getDate();
-    if(hoje>0&&hoje<diasMes) projecao=(totalExp/hoje)*diasMes;
+    if(hoje>=3&&hoje<diasMes&&totalExp>0) projecao=(totalExp/hoje)*diasMes;
   }
 
   const top3=[...gastos].sort((a,b)=>b.value-a.value).slice(0,3);
@@ -186,11 +186,11 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
   const recorrentes=(()=>{
     const freq={};
     allExps.filter(e=>e.kind==="exp").forEach(e=>{
-      const key=(e.desc||"").slice(0,20).toLowerCase();
+      const key=(e.desc||"").slice(0,20).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");
       if(!freq[key]) freq[key]={count:0,value:e.value,desc:e.desc,emoji:e.emoji||"📦"};
       freq[key].count++;
     });
-    return Object.values(freq).filter(f=>f.count>=2).sort((a,b)=>b.value-a.value).slice(0,4);
+    return Object.values(freq).filter(f=>f.count>=2).sort((a,b)=>b.count-a.count||b.value-a.value).slice(0,5);
   })();
 
   return (
@@ -441,6 +441,41 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
           <span style={{fontSize:13,fontWeight:700,color:e.kind==="inc"?(isTransf?"#94a3b8":"#4ade80"):"#f87171",flexShrink:0}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
         </div>;
       })}
+      {/* Botão compartilhar resumo */}
+      {mesFiltro!=="todos"&&exps.length>0&&(()=>{
+        const [ano,mes]=mesFiltro.split("-");
+        const nomeMes=MESES[+mes];
+        function gerarResumo(){
+          const linCats=cats.filter(c=>c.id!=="investimento").map(c=>{
+            const s=exps.filter(e=>e.kind==="exp"&&e.cat===c.id).reduce((a,e)=>a+e.value,0);
+            if(s===0) return null;
+            return `  ${c.emoji} ${c.label}: ${fmt(s)}`;
+          }).filter(Boolean).join("
+");
+          const totalGastos=exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento").reduce((s,e)=>s+e.value,0);
+          const totalInvRes=exps.filter(e=>e.cat==="investimento").reduce((s,e)=>s+e.value,0);
+          const rendaRes=exps.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)).reduce((s,e)=>s+e.value,0);
+          const saldoRes=rendaRes-totalGastos;
+          const poupPct=rendaRes>0?((saldoRes/rendaRes)*100).toFixed(0):0;
+          const txt=`📊 Resumo financeiro — ${nomeMes}/${ano}
+
+💼 Renda: ${fmt(rendaRes)}
+💸 Gastos: ${fmt(totalGastos)}
+${totalInvRes>0?`📈 Investido: ${fmt(totalInvRes)}
+`:""}💰 Saldo: ${fmt(saldoRes)} (${poupPct}% poupado)
+
+📋 Por categoria:
+${linCats}
+
+—
+Gerado pelo meu app financeiro`;
+          if(navigator.share){navigator.share({text:txt}).catch(()=>{});}
+          else{navigator.clipboard?.writeText(txt).then(()=>alert("Resumo copiado!")).catch(()=>alert(txt));}
+        }
+        return <button style={{width:"100%",background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.25)",color:"#818cf8",borderRadius:12,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:4,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
+          onClick={gerarResumo}>📤 Compartilhar resumo de {nomeMes}</button>;
+      })()}
+
       {/* Estado vazio */}
       {exps.length===0&&(
         <div style={{textAlign:"center",padding:"60px 20px",color:"#475569"}}>
@@ -585,9 +620,8 @@ function Graficos({ exps, cats, hide, allExps }) {
       <div style={CARD}>
         <div style={{overflowX:"auto"}}>
           <svg width={Math.max(cats.filter(c=>c.id!=="investimento").length*56,300)} height={160} style={{display:"block"}}>
-            {cats.filter(c=>c.id!=="investimento").map((cat,i)=>{
+            {(()=>{const catsNI=cats.filter(c=>c.id!=="investimento");const mx=Math.max(...catsNI.map(c=>Math.max(c.budget,gastos.filter(e=>e.cat===c.id).reduce((s,e)=>s+e.value,0))),1);return catsNI.map((cat,i)=>{
               const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
-              const mx=Math.max(...cats.map(c=>Math.max(c.budget,gastos.filter(e=>e.cat===c.id).reduce((s,e)=>s+e.value,0))),1);
               const bH=(cat.budget/mx)*100,sH=(spent/mx)*100,x=i*56+6;
               return <g key={cat.id}>
                 <text x={x+22} y={115-Math.max(bH,sH)-4} textAnchor="middle" fill={spent>cat.budget?"#f87171":"#94a3b8"} fontSize="9" fontFamily="Outfit,sans-serif">{cat.budget>0?Math.round((spent/cat.budget)*100)+"%":""}</text>
@@ -595,7 +629,7 @@ function Graficos({ exps, cats, hide, allExps }) {
                 <rect x={x+22} y={115-sH} width={20} height={sH} rx={3} fill={spent>cat.budget?"#f87171":"#f59e0b"}/>
                 <text x={x+20} y={130} textAnchor="middle" fill="#64748b" fontSize="14" fontFamily="Outfit,sans-serif">{cat.emoji}</text>
               </g>;
-            })}
+            })})()}
           </svg>
         </div>
         <div style={{display:"flex",gap:14,marginTop:8}}>
@@ -663,6 +697,57 @@ function Orcamento({ exps, cats, setCats, hide, mesFiltro }) {
   );
 }
 
+// ── MARKDOWN SIMPLES ──────────────────────────────────────
+function MdText({ text }) {
+  // Converte **negrito**, *itálico* e quebras de linha
+  const html = (text||"")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g,"<em>$1</em>")
+    .replace(/
+/g,"<br/>");
+  return <span dangerouslySetInnerHTML={{__html:html}}/>;
+}
+
+// ── SWIPE ROW ─────────────────────────────────────────────
+function SwipeRow({ children, onDelete, disabled }) {
+  const [offset, setOffset] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const startX = useRef(null);
+  const threshold = 72;
+
+  if(disabled) return <>{children}</>;
+
+  function onTouchStart(e){ startX.current=e.touches[0].clientX; setSwiping(true); }
+  function onTouchMove(e){
+    if(startX.current===null) return;
+    const dx=e.touches[0].clientX-startX.current;
+    if(dx<0) setOffset(Math.max(dx,-threshold));
+  }
+  function onTouchEnd(){
+    setSwiping(false);
+    if(offset<-threshold*0.6) setOffset(-threshold);
+    else setOffset(0);
+    startX.current=null;
+  }
+
+  return (
+    <div style={{position:"relative",overflow:"hidden",borderRadius:12,marginBottom:8}}>
+      {/* Botão delete revelado atrás */}
+      <div style={{position:"absolute",right:0,top:0,bottom:0,width:threshold,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(239,68,68,0.85)",borderRadius:"0 12px 12px 0",cursor:"pointer"}}
+        onClick={()=>{setOffset(0);onDelete();}}>
+        <span style={{fontSize:20}}>🗑️</span>
+      </div>
+      {/* Conteúdo deslizável */}
+      <div
+        style={{transform:`translateX(${offset}px)`,transition:swiping?"none":"transform 0.25s ease",position:"relative",zIndex:1,marginBottom:0}}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // ── GASTOS ─────────────────────────────────────────────────
 function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFiltro, catFiltro, onClearCat }) {
   const [show,    setShow]    = useState(false);
@@ -674,6 +759,28 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
   const [ordenar, setOrdenar] = useState("data");
   const [confirm, setConfirm] = useState(null);
   const [contaFiltro, setContaFiltro] = useState(null);
+  const [parcelarId,  setParcelarId]  = useState(null);
+  const [parcelarN,   setParcelarN]   = useState(2);
+
+  function aplicarParcelamento(){
+    const orig=exps.find(e=>e.id===parcelarId);
+    if(!orig||parcelarN<2) return;
+    const n=parcelarN;
+    const total=orig.value;
+    const baseDate=orig.date?new Date(orig.date.split("/").reverse().join("-")+"T12:00:00"):new Date();
+    // Detectar dia de vencimento do original
+    const diaVenc=baseDate.getDate();
+    const novas=Array.from({length:n},(_,i)=>{
+      let d=new Date(baseDate);
+      d.setMonth(d.getMonth()+i);
+      d.setDate(diaVenc);
+      const parValor=i<n-1?Math.floor((total/n)*100)/100:+(total-Math.floor((total/n)*100)/100*(n-1)).toFixed(2);
+      const descBase=orig.desc.replace(/ \(\d+\/\d+\)$/,""); // remove parcelamento anterior se houver
+      return {...orig,id:Date.now()+i,desc:`${descBase} (${i+1}/${n})`,value:parValor,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),emoji:"💳",payment:"cartao"};
+    });
+    setExps(p=>[...p.filter(e=>e.id!==parcelarId),...novas]);
+    setParcelarId(null);
+  }
 
   useEffect(()=>{ if(openWith){setMode(openWith);setShow(true);if(onOpened)onOpened();} },[openWith]);
 
@@ -706,7 +813,12 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
 
   const expsFilt=exps.filter(e=>{
     const p=e.date?.split("/");
-    const mesOk=!mesFiltro||mesFiltro==="todos"||(p?.length>=2&&p[1]===mesFiltro);
+    // Quando filtrando por categoria (clique no Dashboard), mostra todos os meses dessa categoria
+    let mesOk=catFiltro||!mesFiltro||mesFiltro==="todos";
+    if(!mesOk&&p?.length>=2){
+      const anoMes=p.length>=3?`${p[2]}-${p[1]}`:`${new Date().getFullYear()}-${p[1]}`;
+      mesOk=anoMes===mesFiltro;
+    }
     const catOk=!catFiltro||e.cat===catFiltro.id;
     const buscaOk=!busca||(e.desc||"").toLowerCase().includes(busca.toLowerCase());
     const contaOk=!contaFiltro||e.conta===contaFiltro;
@@ -731,7 +843,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
           <span style={{fontSize:22}}>{catFiltro.emoji}</span>
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{catFiltro.label}</div>
-            <div style={{fontSize:11,color:"#64748b"}}>{expsFilt.length} lançamento(s) · {fmt(totalFilt)}</div>
+            <div style={{fontSize:11,color:"#64748b"}}>{expsFilt.filter(e=>e.kind==="exp").length} lançamento(s) · {fmt(totalFilt)}{mesFiltro!=="todos"?" · todos os meses":""}</div>
           </div>
           <button style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",borderRadius:8,padding:"4px 10px",fontSize:12,cursor:"pointer"}} onClick={()=>onClearCat&&onClearCat()}>✕</button>
         </div>
@@ -750,7 +862,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
           <option value="cat">🏷️ Cat.</option>
         </select>
       </div>
-      {(contas||CONTAS_DEF).filter(c=>c.id!=="geral"&&expsFilt.some(e=>e.conta===c.id||(!e.conta&&false))).length>0&&(
+      {(contas||CONTAS_DEF).filter(c=>c.id!=="geral").length>0&&(
         <div style={{display:"flex",gap:6,marginBottom:10}}>
           <button style={{background:!contaFiltro?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:!contaFiltro?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:!contaFiltro?"#818cf8":"#64748b",borderRadius:99,padding:"5px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:!contaFiltro?700:400}}
             onClick={()=>setContaFiltro(null)}>Todas</button>
@@ -863,6 +975,30 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
         </div>
       )}
 
+      {/* Modal parcelamento retroativo */}
+      {parcelarId&&(()=>{
+        const orig=exps.find(e=>e.id===parcelarId);
+        if(!orig) return null;
+        return <div style={{background:"rgba(17,24,39,0.98)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={{fontSize:14,fontWeight:800,color:"#818cf8",marginBottom:4}}>💳 Parcelar retroativamente</div>
+          <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{orig.desc} · {fmt(orig.value)}</div>
+          <div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>Número de parcelas</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
+            {[2,3,4,5,6,8,10,12].map(n=>(
+              <button key={n} style={{borderRadius:8,padding:"6px 12px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:parcelarN===n?"rgba(99,102,241,0.3)":"rgba(255,255,255,0.05)",border:parcelarN===n?"1px solid rgba(99,102,241,0.6)":"1px solid rgba(255,255,255,0.1)",color:parcelarN===n?"#818cf8":"#64748b"}}
+                onClick={()=>setParcelarN(n)}>{n}x</button>
+            ))}
+          </div>
+          {parcelarN>1&&<div style={{fontSize:12,color:"#64748b",marginBottom:12,padding:"8px 10px",background:"rgba(99,102,241,0.06)",borderRadius:8}}>
+            {parcelarN}x de {fmt(orig.value/parcelarN)} · a partir de {orig.date}
+          </div>}
+          <div style={{display:"flex",gap:8}}>
+            <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setParcelarId(null)}>Cancelar</button>
+            <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)")} onClick={aplicarParcelamento}>✓ Parcelar em {parcelarN}x</button>
+          </div>
+        </div>;
+      })()}
+
       {/* Lista */}
       {sorted.map(e=>{
         const cat=cats.find(c=>c.id===e.cat);
@@ -877,8 +1013,8 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
           ?isTransfInt?"rgba(148,163,184,0.15)":isTransf?"rgba(148,163,184,0.2)":"rgba(74,222,128,0.2)"
           :undefined;
         const valColor=e.kind==="inc"?(isTransfInt||isTransf?"#94a3b8":"#4ade80"):"#f87171";
-        return <div key={e.id}>
-          <div style={{...ROW,...(e.kind==="inc"?{borderColor:rowBorder,background:rowBg}:{})}}>
+        return <SwipeRow key={e.id} onDelete={()=>setConfirm(e.id)} disabled={!!editId}>
+          <div style={{...ROW,marginBottom:0,...(e.kind==="inc"?{borderColor:rowBorder,background:rowBg}:{})}}>
             <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransfInt||isTransf?"rgba(148,163,184,0.1)":"rgba(74,222,128,0.12)"):"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{e.emoji||cat?.emoji||"📦"}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
@@ -891,12 +1027,13 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
               <span style={{fontSize:14,fontWeight:700,color:valColor}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
               <div style={{display:"flex",gap:4}}>
                 <button style={{fontSize:11,color:"#818cf8",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>startEdit(e)}>✏️</button>
+                {e.kind==="exp"&&(!e.payment||e.payment!=="cartao"||e.desc.indexOf("(1/")!==-1===false)&&<button style={{fontSize:11,color:"#a78bfa",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} title="Parcelar" onClick={()=>{setParcelarId(e.id);setParcelarN(2);}}>✂️</button>}
                 <button style={{fontSize:11,color:"#475569",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>setConfirm(e.id)}>🗑️</button>
               </div>
             </div>
           </div>
           {editId===e.id&&(
-            <div style={{background:"rgba(17,24,39,0.98)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:14,padding:16,marginTop:-4,marginBottom:8}}>
+            <div style={{background:"rgba(17,24,39,0.98)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:14,padding:16,marginBottom:8,marginTop:4}}>
               <div style={{fontSize:13,fontWeight:700,color:"#818cf8",marginBottom:14}}>✏️ Editando</div>
               <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Tipo</div>
               <div style={{display:"flex",gap:8,marginBottom:12}}>
@@ -943,7 +1080,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
               </div>
             </div>
           )}
-        </div>;
+        </SwipeRow>;
       })}
     </div>
   );
@@ -955,7 +1092,7 @@ const MERCADO_KEY="mf_precos";
 function loadPrecos(){try{const v=localStorage.getItem(MERCADO_KEY);return v?JSON.parse(v):{}}catch{return {}}}
 function savePrecos(p){try{localStorage.setItem(MERCADO_KEY,JSON.stringify(p))}catch{}}
 
-function Mercado({ markets }) {
+function Mercado({ markets, setMarkets, hide }) {
   // precos: { "Frango (kg)": { "Carrefour": {valor:12.9, data:"15/03"}, ... }, ... }
   const [precos,    setPrecos]   = useState(loadPrecos);
   const [produtos,  setProdutos] = useState(()=>{
@@ -1160,11 +1297,11 @@ Dados do usuário:
 ${totalTransf>0?`- Transferências/retornos recebidos (não contam como renda): ${fmt(totalTransf)}`:""}
 - Categorias: ${catRes}
 - Maiores gastos: ${top3}
-Responda em português. Seja específico com os números. Máx 150 palavras.`;
-    try{const txt=await askGemini(sys,msg,1200);setMsgs(p=>[...p,{role:"ai",text:txt||"Não consegui responder."}]);}
+Responda em português. Seja específico com os números. Escreva a resposta COMPLETA — nunca corte no meio. Use entre 2 e 4 parágrafos.`;
+    try{const txt=await askGemini(sys,msg,3000);setMsgs(p=>[...p,{role:"ai",text:txt||"Não consegui responder."}]);}
     catch(e){setMsgs(p=>[...p,{role:"ai",text:`Erro: ${e.message}`}]);}
     setLoading(false);
-    setTimeout(()=>ref.current?.scrollTo(0,99999),100);
+    setTimeout(()=>ref.current?.scrollTo({top:99999,behavior:"smooth"}),100);
   }
 
   const suggs=["Onde estou gastando mais?","Como economizar este mês?","Minha taxa de poupança está boa?","Quais gastos posso cortar?","Diagnóstico das minhas finanças","Estou investindo o suficiente?"];
@@ -1176,13 +1313,14 @@ Responda em português. Seja específico com os números. Máx 150 palavras.`;
 
   // Resumo automático ao abrir a aba com dados
   useEffect(()=>{
+    if(loading) setLoading(false);
     if(msgs.length>0||exps.length===0||GEMINI_KEY==="SUA_CHAVE_AQUI") return;
     const catRes=cats.map(c=>{const s=gastos.filter(e=>e.cat===c.id).reduce((a,e)=>a+e.value,0);return `${c.label}: ${fmt(s)}`;}).filter(s=>!s.includes("R$ 0")).join("; ");
     const periodoLabelAuto=mesFiltro&&mesFiltro!=="todos"?(()=>{const[a,m]=mesFiltro.split("-");return `${MESES[+m]}/${a}`;})():"período geral";
-    const sys=`Você é um consultor financeiro pessoal brasileiro, empático e direto. Faça um resumo executivo CURTO (máx 80 palavras) dos dados de ${periodoLabelAuto}. Comece com um emoji e uma frase de diagnóstico. Depois cite 1-2 pontos de atenção específicos com números. Seja direto e útil.
+    const sys=`Você é um consultor financeiro pessoal brasileiro, empático e direto. Faça um diagnóstico financeiro completo (entre 80 e 150 palavras) dos dados de ${periodoLabelAuto}. Comece com um emoji e uma frase de diagnóstico. Cite 2-3 pontos específicos com números. Conclua com 1 sugestão prática. Escreva até o fim — nunca corte no meio de uma frase.
 Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-totalExp)} | Poupança ${txPoup} | Categorias: ${catRes}`;
     setLoading(true);
-    askGemini(sys,"Resumo do período",500).then(txt=>{
+    askGemini(sys,"Resumo do período",1200).then(txt=>{
       if(txt) setMsgs([{role:"ai",text:"📊 "+txt}]);
     }).catch(()=>{}).finally(()=>setLoading(false));
   },[]);
@@ -1212,7 +1350,7 @@ Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-t
         {msgs.map((m,i)=>(
           <div key={i} style={{padding:"12px 14px",borderRadius:14,maxWidth:"85%",fontSize:14,lineHeight:1.6,
             ...(m.role==="user"?{alignSelf:"flex-end",background:"linear-gradient(135deg,#1d4ed8,#2563eb)",color:"white",borderBottomRightRadius:4}:{alignSelf:"flex-start",background:"rgba(255,255,255,0.07)",color:"#e2e8f0",border:"1px solid rgba(255,255,255,0.08)",borderBottomLeftRadius:4})}}>
-            {m.text}
+            <MdText text={m.text}/>
           </div>
         ))}
         {loading&&<div style={{alignSelf:"flex-start",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"12px 14px",display:"flex",gap:5}}><span className="dot"/><span className="dot"/><span className="dot"/></div>}
@@ -1267,12 +1405,13 @@ function parseTxs(rows,tipo){
   return [];
 }
 
-function Importador({ exps, setExps, cats }){
+function Importador({ exps, setExps, cats, setTab, showToast }){
   const [step,setStep]=useState("upload");
   const [preview,setPreview]=useState([]);
   const [loading,setLoading]=useState(false);
   const [msg,setMsg]=useState("");
   const [editing,setEditing]=useState(null);
+  const [resumoImport,setResumoImport]=useState(null);
 
   async function handleFile(e){
     const file=e.target.files?.[0];if(!file)return;
@@ -1298,13 +1437,19 @@ function Importador({ exps, setExps, cats }){
   }
 
   function confirmar(){
+    const ano=new Date().getFullYear();
     const novos=preview.map(p=>{
       const pts=p.date.split(/[-\/]/);
-      const dateStr=pts.length===3&&pts[0].length===4?`${pts[2]}/${pts[1]}`:pts.slice(0,2).join("/");
+      const dateStr=pts.length===3&&pts[0].length===4?`${pts[2]}/${pts[1]}/${pts[0]}`:pts.length===3?`${pts[0]}/${pts[1]}/${pts[2]}`:`${pts[0]}/${pts[1]}/${ano}`;
       const cat=cats.find(c=>c.id===p.cat);
-      const contaId=p.source==="Nubank Conta"||p.source==="Nubank Cartão"?"nubank":p.source==="Bradesco"?"bradesco":"geral";return {id:`imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,desc:p.desc,kind:p.kind,cat:p.cat,incType:p.incType,type:p.kind==="inc"?p.source:undefined,emoji:p.kind==="inc"?(INC_TIPOS.find(t=>t.id===p.incType)?.emoji||"🏦"):(cat?.emoji||"📦"),value:p.value,date:dateStr,source:p.source,conta:contaId};
+      const contaId=p.source==="Nubank Conta"||p.source==="Nubank Cartão"?"nubank":p.source==="Bradesco"?"bradesco":"geral";
+      return {id:`imp_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,desc:p.desc,kind:p.kind,cat:p.cat,incType:p.incType,type:p.kind==="inc"?p.source:undefined,emoji:p.kind==="inc"?(INC_TIPOS.find(t=>t.id===p.incType)?.emoji||"🏦"):(cat?.emoji||"📦"),value:p.value,date:dateStr,source:p.source,conta:contaId};
     });
+    const nGastos=novos.filter(n=>n.kind==="exp").length;
+    const nEntradas=novos.filter(n=>n.kind==="inc").length;
+    const totalImp=novos.filter(n=>n.kind==="exp").reduce((s,n)=>s+n.value,0);
     setExps(prev=>[...novos,...prev]);
+    setResumoImport({gastos:nGastos,entradas:nEntradas,total:totalImp,n:novos.length});
     setStep("done");
   }
 
@@ -1386,11 +1531,27 @@ function Importador({ exps, setExps, cats }){
       </>}
 
       {step==="done"&&(
-        <div style={{textAlign:"center",padding:"40px 20px"}}>
-          <div style={{fontSize:48,marginBottom:12}}>✅</div>
-          <div style={{fontSize:16,fontWeight:700,color:"#4ade80",marginBottom:8}}>Importado com sucesso!</div>
-          <div style={{fontSize:13,color:"#64748b",marginBottom:24}}>Seus lançamentos já aparecem nas outras abas.</div>
-          <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)",undefined,{maxWidth:260,margin:"0 auto"})} onClick={()=>{setStep("upload");setPreview([]);setMsg("");}}>📂 Importar outro arquivo</button>
+        <div style={{textAlign:"center",padding:"32px 20px"}}>
+          <div style={{fontSize:52,marginBottom:12}}>✅</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#4ade80",marginBottom:16}}>Importação concluída!</div>
+          {resumoImport&&<div style={{...CARD,textAlign:"left",marginBottom:16}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div style={{background:"rgba(248,113,113,0.08)",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Gastos</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#f87171"}}>{resumoImport.gastos}</div>
+                <div style={{fontSize:11,color:"#64748b"}}>{fmt(resumoImport.total)}</div>
+              </div>
+              <div style={{background:"rgba(74,222,128,0.08)",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{fontSize:10,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Entradas</div>
+                <div style={{fontSize:22,fontWeight:800,color:"#4ade80"}}>{resumoImport.entradas}</div>
+                <div style={{fontSize:11,color:"#64748b"}}>{resumoImport.n} lançamentos</div>
+              </div>
+            </div>
+          </div>}
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)")} onClick={()=>setTab&&setTab("dashboard")}>📊 Ver Dashboard</button>
+            <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>{setStep("upload");setPreview([]);setMsg("");setResumoImport(null);}}>📂 Importar outro arquivo</button>
+          </div>
         </div>
       )}
     </div>
@@ -1425,7 +1586,7 @@ function MetaConfig({ meta, setMeta }) {
 }
 
 // ── CONFIG ─────────────────────────────────────────────────
-function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, meta, setMeta }){
+function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, meta, setMeta, setTab, showToast }){
   const [sec,setsec]=useState("importar");
   const [showNM,setShowNM]=useState(false);
   const [newMkt,setNewMkt]=useState({label:"",emoji:"🏪"});
@@ -1499,7 +1660,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           </div>
         )}
       </>}
-      {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats}/>}
+      {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats} setTab={setTab} showToast={showToast}/>}
       {sec==="mercados"&&<>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>Mercados</div>
@@ -1629,9 +1790,10 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           }}/>
         </label>
         <button style={btn("rgba(248,113,113,0.1)","#f87171",{border:"1px solid rgba(248,113,113,0.3)"})} onClick={()=>{
-          if(window.confirm("Apagar TODOS os dados?")){
+          if(window.confirm("Apagar TODOS os dados? Esta ação não pode ser desfeita.")){
             setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);setContas(CONTAS_DEF);setReservas([]);setMeta(0);
             try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta"].forEach(k=>localStorage.removeItem(k));}catch{}
+            alert("✓ Todos os dados foram apagados.");
           }
         }}>🗑️ Apagar todos os dados</button>
       </div>}
@@ -1857,9 +2019,14 @@ export default function App() {
   const [reservas,setReservas]= useState(()=>{ try{const v=localStorage.getItem("mf_reservas");return v?JSON.parse(v):[]}catch{return []} });
   const [meta,    setMeta]    = useState(()=>{ try{const v=localStorage.getItem("mf_meta");return v?JSON.parse(v):0;}catch{return 0;} });
 
-  function showToast(msg){setToast(msg);setTimeout(()=>setToast(""),2000);}
+  const toastTimer = useRef(null);
+  function showToast(msg){
+    if(toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(msg);
+    toastTimer.current=setTimeout(()=>setToast(""),2000);
+  }
 
-  useEffect(()=>{ try{localStorage.setItem("mf_exps",JSON.stringify(exps));showToast("✓ Salvo");}catch{} },[exps]);
+  useEffect(()=>{ try{localStorage.setItem("mf_exps",JSON.stringify(exps));}catch{} },[exps]);
   useEffect(()=>{ try{localStorage.setItem("mf_cats",JSON.stringify(cats));showToast("✓ Salvo");}catch{} },[cats]);
   useEffect(()=>{ try{localStorage.setItem("mf_mkts",JSON.stringify(markets))}catch{} },[markets]);
   useEffect(()=>{ try{localStorage.setItem("mf_fixas",JSON.stringify(fixas));showToast("✓ Salvo");}catch{} },[fixas]);
@@ -1875,7 +2042,18 @@ export default function App() {
     if(p?.length>=2) return `${new Date().getFullYear()}-${p[1]}`; // assume ano atual
     return null;
   }).filter(Boolean))].sort();
-  const [mesFiltro,setMesFiltro]=useState("todos");
+  const [mesFiltro,setMesFiltro]=useState(()=>{
+    // Inicia no mês atual; o useEffect abaixo ajusta se não houver dados nele
+    const m=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}`;
+    return m;
+  });
+
+  // Ajusta mesFiltro para "todos" se mês atual não tiver lançamentos (primeiro acesso)
+  useEffect(()=>{
+    if(mesFiltro!=="todos"&&mesesDisp.length>0&&!mesesDisp.includes(mesFiltro)){
+      setMesFiltro(mesesDisp[mesesDisp.length-1]||"todos");
+    }
+  },[mesesDisp.length]);
 
   // Bug 9: Projeção só faz sentido no mês atual
   const mesAtual = `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}`;
@@ -1892,12 +2070,12 @@ export default function App() {
   const saldo=totalInc-totalExp;
 
   const TABS=[
-    {id:"dashboard",emoji:"📊",label:"Resumo"},
+    {id:"dashboard",emoji:"📊",label:"Início"},
     {id:"graficos", emoji:"📈",label:"Gráficos"},
     {id:"orcamento",emoji:"💰",label:"Orçamento"},
     {id:"gastos",   emoji:"💸",label:"Gastos"},
-    {id:"mercado",  emoji:"🛒",label:"Mercado"},
     {id:"reservas", emoji:"🏦",label:"Reservas"},
+    {id:"mercado",  emoji:"🛒",label:"Mercado"},
     {id:"ia",       emoji:"🤖",label:"IA"},
     {id:"config",   emoji:"⚙️",label:"Config"},
   ];
@@ -1963,9 +2141,9 @@ export default function App() {
         {tab==="orcamento"&&<Orcamento exps={expsFiltrados} cats={cats} setCats={setCats} hide={hideVals} mesFiltro={mesFiltro}/>}
         {tab==="gastos"   &&<Gastos    exps={exps} setExps={setExps} cats={cats} contas={contas} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals} mesFiltro={mesFiltro} catFiltro={catModal} onClearCat={()=>setCatModal(null)}/>}
         {tab==="reservas" &&<Reservas  reservas={reservas} setReservas={setReservas} hide={hideVals}/>}
-        {tab==="mercado"  &&<Mercado   markets={markets}/>}
+        {tab==="mercado"  &&<Mercado   markets={markets} setMarkets={setMarkets} hide={hideVals}/>}
         {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats} mesFiltro={mesFiltro}/>}
-        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} meta={meta} setMeta={setMeta}/>}
+        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast}/>}
       </div>
 
       {/* FABs */}
@@ -1981,7 +2159,7 @@ export default function App() {
         {TABS.map(t=>(
           <button key={t.id} style={{flex:"0 0 auto",minWidth:60,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 2px",opacity:tab===t.id?1:0.38,transition:"opacity 0.15s"}} onClick={()=>setTab(t.id)}>
             <span style={{fontSize:18}}>{t.emoji}</span>
-            <span style={{fontSize:8,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>{t.label}</span>
+            <span style={{fontSize:9,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.03em"}}>{t.label}</span>
           </button>
         ))}
       </nav>
