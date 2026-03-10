@@ -339,8 +339,10 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         try{
         if(!meta||meta<=0) return null;
         const poupado=totalInc-totalExp;
-        const pct=Math.min(100,(poupado/meta)*100);
+        const poupadoReal=Math.max(0,poupado);
+        const pct=Math.max(0,Math.min(100,(poupadoReal/meta)*100));
         const ok=poupado>=meta;
+        const faltam=Math.max(0,meta-poupadoReal);
         return <div style={{...CARD,marginBottom:14,borderLeft:`3px solid ${ok?"#4ade80":pct>60?"#f59e0b":"#f87171"}`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
             <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>🎯 Meta de economia</div>
@@ -350,8 +352,8 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
           </div>
           <Bar pct={pct} color={ok?"#4ade80":pct>60?"#f59e0b":"#f87171"}/>
           <div style={{fontSize:11,color:"#64748b",marginTop:4}}>
-            {hide?"••••":fmt(Math.max(0,poupado))} poupado de {hide?"••••":fmt(meta)} planejados
-            {!ok&&poupado<meta&&<span style={{color:"#f87171"}}> · faltam {hide?"••••":fmt(meta-poupado)}</span>}
+            {hide?"••••":fmt(poupadoReal)} poupado de {hide?"••••":fmt(meta)} planejados
+            {!ok&&<span style={{color:"#f87171"}}> · faltam {hide?"••••":fmt(faltam)}</span>}
           </div>
         </div>;}catch{return null;}
       })()}
@@ -2220,7 +2222,7 @@ const ONBOARDING_STEPS = [
   {
     id:"welcome",
     emoji:"👋",
-    titulo:"Bem-vindo ao\nMeu Financeiro",
+    titulo:"Bem-vindo ao\nGranzo",
     sub:"Seu controle financeiro pessoal,\nsimples e no seu celular.",
     dica:null,
     cor:"#818cf8",
@@ -2518,7 +2520,7 @@ export default function App() {
       <div style={{background:"linear-gradient(135deg,#0d1b3e,#162547)",borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0}}>
         <div style={{padding:"14px 20px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Meu Financeiro</div>
+            <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Granzo</div>
             <div style={{fontSize:20,fontWeight:800,color:"#f1f5f9"}}>
               {mesFiltro==="todos"?"Todos os meses":(()=>{const[ano,mes]=mesFiltro.split("-");return MESES[+mes]+" "+ano;})()}
             </div>
