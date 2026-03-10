@@ -182,7 +182,7 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
   let projecao=null;
   if(mesFiltro!=="todos"&&mesFiltro===mesAtual&&gastos.length>0){
     const hoje=new Date().getDate();
-    const diasMes=new Date(new Date().getFullYear(),+mesFiltro,0).getDate();
+    const [,mesN]=mesFiltro.split("-");const diasMes=new Date(+mesFiltro.split("-")[0],+mesN,0).getDate();
     if(hoje>=3&&hoje<diasMes&&totalExp>0) projecao=(totalExp/hoje)*diasMes;
   }
 
@@ -710,8 +710,7 @@ function MdText({ text }) {
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
     .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
     .replace(/\*(.+?)\*/g,"<em>$1</em>")
-    .replace(/
-/g,"<br/>");
+    .replace(/\n/g,"<br/>");
   return <span dangerouslySetInnerHTML={{__html:html}}/>;
 }
 
@@ -1332,7 +1331,7 @@ Período analisado: ${periodoLabel}
 Dados do usuário:
 - Salário/Renda real: ${fmt(totalInc)} (excluindo transferências e retornos)
 - Gastos: ${fmt(totalExp)} | Saldo: ${fmt(totalInc-totalExp)}
-- Investimentos aportados: ${fmt(totalInv)} | Taxa de poupança: ${txPoup}
+- Investimentos aportados: ${fmt(totalInv)} | Taxa de poupança: ${typeof txPoup==="number"?txPoup.toFixed(1)+"%":txPoup}
 ${totalTransf>0?`- Transferências/retornos recebidos (não contam como renda): ${fmt(totalTransf)}`:""}
 - Categorias: ${catRes}
 - Maiores gastos: ${top3}
@@ -1357,7 +1356,7 @@ Responda em português. Seja específico com os números. Escreva a resposta COM
     const catRes=cats.map(c=>{const s=gastos.filter(e=>e.cat===c.id).reduce((a,e)=>a+e.value,0);return `${c.label}: ${fmt(s)}`;}).filter(s=>!s.includes("R$ 0")).join("; ");
     const periodoLabelAuto=mesFiltro&&mesFiltro!=="todos"?(()=>{const[a,m]=mesFiltro.split("-");return `${MESES[+m]}/${a}`;})():"período geral";
     const sys=`Você é um consultor financeiro pessoal brasileiro, empático e direto. Faça um diagnóstico financeiro completo (entre 80 e 150 palavras) dos dados de ${periodoLabelAuto}. Comece com um emoji e uma frase de diagnóstico. Cite 2-3 pontos específicos com números. Conclua com 1 sugestão prática. Escreva até o fim — nunca corte no meio de uma frase.
-Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-totalExp)} | Poupança ${txPoup} | Categorias: ${catRes}`;
+Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-totalExp)} | Poupança ${typeof txPoup==="number"?txPoup.toFixed(1)+"%":txPoup} | Categorias: ${catRes}`;
     setLoading(true);
     askGemini(sys,"Resumo do período",1200).then(txt=>{
       if(txt) setMsgs([{role:"ai",text:"📊 "+txt}]);
@@ -1788,7 +1787,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados · {fixas.length} fixas · {(contas||[]).filter(c=>c.id!=="geral").length} contas
         </div>
         <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{marginBottom:10})} onClick={()=>{
-          const json=JSON.stringify({exps,cats,markets,fixas,contas,reservas,meta},null,2);
+          const prodsExtra=loadProdsExtra();const precosMkt=loadPrecos();const json=JSON.stringify({exps,cats,markets,fixas,contas,reservas,meta,prodsExtra,precosMkt},null,2);
           // Abre modal com textarea para copiar manualmente - funciona em qualquer WebView
           const overlay=document.createElement("div");
           overlay.style.cssText="position:fixed;inset:0;background:rgba(8,14,29,0.98);z-index:9999;display:flex;flex-direction:column;padding:16px;box-sizing:border-box;";
@@ -1824,14 +1823,18 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
               if(data.contas) setContas(data.contas);
               if(data.reservas) setReservas(data.reservas);
               if(data.meta!==undefined) setMeta(data.meta);
+              if(data.prodsExtra) saveProdsExtra(data.prodsExtra);
+              if(data.precosMkt) savePrecos(data.precosMkt);
             }catch(err){alert("Erro ao importar: "+err.message);}
             e.target.value="";
           }}/>
         </label>
         <button style={btn("rgba(248,113,113,0.1)","#f87171",{border:"1px solid rgba(248,113,113,0.3)"})} onClick={()=>{
           if(window.confirm("Apagar TODOS os dados? Esta ação não pode ser desfeita.")){
+            // Resetar refs para suprimir toast fantasma após wipe
+            catsInit.current=true;fixasInit.current=true;reservasInit.current=true;
             setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);setContas(CONTAS_DEF);setReservas([]);setMeta(0);
-            try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta"].forEach(k=>localStorage.removeItem(k));}catch{}
+            try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos"].forEach(k=>localStorage.removeItem(k));}catch{}
             alert("✓ Todos os dados foram apagados.");
           }
         }}>🗑️ Apagar todos os dados</button>
@@ -2066,11 +2069,14 @@ export default function App() {
   }
 
   useEffect(()=>{ try{localStorage.setItem("mf_exps",JSON.stringify(exps));}catch{} },[exps]);
-  useEffect(()=>{ try{localStorage.setItem("mf_cats",JSON.stringify(cats));showToast("✓ Salvo");}catch{} },[cats]);
+  const catsInit=useRef(true);
+  useEffect(()=>{ if(catsInit.current){catsInit.current=false;return;} try{localStorage.setItem("mf_cats",JSON.stringify(cats));showToast("✓ Salvo");}catch{} },[cats]);
   useEffect(()=>{ try{localStorage.setItem("mf_mkts",JSON.stringify(markets))}catch{} },[markets]);
-  useEffect(()=>{ try{localStorage.setItem("mf_fixas",JSON.stringify(fixas));showToast("✓ Salvo");}catch{} },[fixas]);
+  const fixasInit=useRef(true);
+  useEffect(()=>{ if(fixasInit.current){fixasInit.current=false;return;} try{localStorage.setItem("mf_fixas",JSON.stringify(fixas));showToast("✓ Salvo");}catch{} },[fixas]);
   useEffect(()=>{ try{localStorage.setItem("mf_contas",JSON.stringify(contas))}catch{} },[contas]);
-  useEffect(()=>{ try{localStorage.setItem("mf_reservas",JSON.stringify(reservas));showToast("✓ Salvo");}catch{} },[reservas]);
+  const reservasInit=useRef(true);
+  useEffect(()=>{ if(reservasInit.current){reservasInit.current=false;return;} try{localStorage.setItem("mf_reservas",JSON.stringify(reservas));showToast("✓ Salvo");}catch{} },[reservas]);
   useEffect(()=>{ try{localStorage.setItem("mf_meta",JSON.stringify(meta));}catch{} },[meta]);
 
   // Melhoria 1: filtro com ANO+MÊS para não misturar Jan/2026 com Jan/2027
