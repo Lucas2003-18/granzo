@@ -1,7 +1,7 @@
 💰 Meu Financeiro
 
 Controle financeiro pessoal para Android — simples, offline e seu.
-
+https://img.shields.io/badge/vers%C3%A3o-1.0.0-818cf8?style=flat-square
 📱 O que é
 App financeiro pessoal gerado como APK Android via GitHub Actions. Todos os dados ficam no próprio celular (localStorage), sem servidor, sem conta, sem assinatura.
 
