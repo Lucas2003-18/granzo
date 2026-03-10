@@ -16,6 +16,8 @@ function dateKey(d){
   const y=String(new Date().getFullYear());
   return y+( p[1]?.padStart(2,"0")||"00")+(p[0]?.padStart(2,"0")||"00");
 }
+// Converte "YYYY-MM-DD" → "DD/MM/YYYY" de forma segura (sem depender de locale do Android)
+function fmtDate(iso){if(!iso)return "";const[y,m,d]=(iso+"").split("-");return `${(d||"??").padStart(2,"0")}/${(m||"??").padStart(2,"0")}/${y||"????"`};}
 const MESES = ["","Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const MESES_CURTO = ["","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
@@ -140,8 +142,26 @@ function AlertBox({tipo,texto}) {
   return <div style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:12,padding:"10px 14px",color:s.color,fontSize:13,marginBottom:12,lineHeight:1.5}}>{texto}</div>;
 }
 
+// ── MODAL DE CONFIRMAÇÃO (substitui window.confirm) ────────
+function ConfirmModal({msg,sub,onOk,onCancel,okLabel="Confirmar",okColor="#ef4444",cancelLabel="Cancelar"}){
+  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:24}}
+    onClick={onCancel}>
+    <div style={{background:"#0f172a",borderRadius:18,padding:"24px 20px",maxWidth:340,width:"100%",border:"1px solid rgba(255,255,255,0.1)",boxShadow:"0 20px 60px rgba(0,0,0,0.5)"}}
+      onClick={e=>e.stopPropagation()}>
+      <div style={{fontSize:16,fontWeight:700,color:"#e2e8f0",marginBottom:sub?8:20,textAlign:"center"}}>{msg}</div>
+      {sub&&<div style={{fontSize:13,color:"#64748b",marginBottom:20,textAlign:"center",lineHeight:1.6}}>{sub}</div>}
+      <div style={{display:"flex",gap:10}}>
+        <button style={{flex:1,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}
+          onClick={onCancel}>{cancelLabel}</button>
+        <button style={{flex:1,background:okColor,border:"none",color:"#fff",borderRadius:12,padding:"13px 0",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
+          onClick={onOk}>{okLabel}</button>
+      </div>
+    </div>
+  </div>;
+}
+
 // ── DASHBOARD ──────────────────────────────────────────────
-function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, fixas, mesAtual, reservas, meta }) {
+function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, fixas, setFixas, mesAtual, reservas, meta, showToast, onAddFixa }) {
   const gastos  = exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
   const invests = exps.filter(e=>e.cat==="investimento");
   const totalExp= gastos.reduce((s,e)=>s+e.value,0);
@@ -422,16 +442,20 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
       {/* Recorrentes */}
       {recorrentes.length>0&&<>
         <SecTitle t="Gastos recorrentes" sub="Aparecem em mais de 1 mês"/>
-        {recorrentes.map((r,i)=>(
-          <div key={i} style={ROW}>
+        {recorrentes.map((r,i)=>{
+          const jaEhFixa=fixas&&fixas.some(f=>f.desc.toLowerCase()===r.desc.toLowerCase());
+          return <div key={i} style={ROW}>
             <span style={{fontSize:20}}>{r.emoji}</span>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.desc}</div>
-              <div style={{fontSize:11,color:"#475569"}}>{r.count}x registrado(s)</div>
+              <div style={{fontSize:11,color:"#475569"}}>{r.count}x · {hide?"••••":fmt(r.value)}</div>
             </div>
-            <span style={{fontSize:13,fontWeight:700,color:"#94a3b8",flexShrink:0}}>{hide?"••••":fmt(r.value)}</span>
-          </div>
-        ))}
+            {!jaEhFixa&&onAddFixa&&<button
+              style={{fontSize:10,color:"#818cf8",background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.25)",borderRadius:6,padding:"3px 8px",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit"}}
+              onClick={()=>onAddFixa(r)}>+ Fixas</button>}
+            {jaEhFixa&&<span style={{fontSize:10,color:"#4ade80",flexShrink:0}}>✓ fixa</span>}
+          </div>;
+        })}
       </>}
 
       {/* Últimos lançamentos */}
@@ -477,7 +501,7 @@ ${linCats}
 —
 Gerado pelo meu app financeiro`;
           if(navigator.share){navigator.share({text:txt}).catch(()=>{});}
-          else{navigator.clipboard?.writeText(txt).then(()=>alert("Resumo copiado!")).catch(()=>alert(txt));}
+          else{navigator.clipboard?.writeText(txt).then(()=>showToast("📋 Resumo copiado!")).catch(()=>showToast("❌ Não foi possível copiar"));}
         }
         return <button style={{width:"100%",background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.25)",color:"#818cf8",borderRadius:12,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:4,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
           onClick={gerarResumo}>📤 Compartilhar resumo de {nomeMes}</button>;
@@ -538,7 +562,7 @@ function Graficos({ exps, cats, hide, allExps, mesFiltro }) {
     <div style={{padding:16,paddingBottom:100}}>
       {/* Evolução mensal */}
       {evolucao.length>=2&&<>
-        <SecTitle t="Evolução mensal"/>
+        <SecTitle t="Evolução mensal" sub={evolucao.length>6?"Últimos "+evolucao.length+" meses":undefined}/>
         <div style={CARD}>
           <div style={{overflowX:"auto"}}>
             <svg width={Math.max(evolucao.length*64,280)} height={chartH+36} style={{display:"block",overflow:"visible"}}>
@@ -601,7 +625,6 @@ function Graficos({ exps, cats, hide, allExps, mesFiltro }) {
 
       {/* Pizza */}
       <SecTitle t="Gastos por categoria" sub={mesFiltro==="todos"?"Acumulado de todos os meses":undefined}/>
-      {mesFiltro==="todos"&&<AlertBox tipo="info" texto="📅 Selecione um mês no filtro para comparar com o orçamento mensal."/>}
       <div style={CARD}>
         {pieTotal>0?<>
           <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
@@ -813,7 +836,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
       d.setDate(diaVenc);
       const parValor=i<n-1?Math.floor((total/n)*100)/100:+(total-Math.floor((total/n)*100)/100*(n-1)).toFixed(2);
       const descBase=orig.desc.replace(/ \(\d+\/\d+\)$/,""); // remove parcelamento anterior se houver
-      return {...orig,id:Date.now()+i,desc:`${descBase} (${i+1}/${n})`,value:parValor,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),emoji:"💳",payment:"cartao"};
+      return {...orig,id:Date.now()+i,desc:`${descBase} (${i+1}/${n})`,value:parValor,date:fmtDate(d.toISOString().slice(0,10)),emoji:"💳",payment:"cartao"};
     });
     setExps(p=>[...p.filter(e=>e.id!==parcelarId),...novas]);
     setParcelarId(null);
@@ -847,7 +870,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
       let d=new Date(baseDate);
       if(isCard){const off=d.getDate()<venc?0:1;d.setMonth(d.getMonth()+off+i);d.setDate(venc);}
       const parValor=i<parcelas-1?Math.floor((total/parcelas)*100)/100:+(total-Math.floor((total/parcelas)*100)/100*(parcelas-1)).toFixed(2);
-      return {id:Date.now()+i,desc:parcelas>1?`${form.desc} (${i+1}/${parcelas})`:form.desc,kind:mode==="expense"?"exp":"inc",cat:mode==="expense"?form.cat:undefined,incType:mode==="income"?form.incType:undefined,type:mode==="income"?"Manual":undefined,emoji:isCard?"💳":(mode==="expense"?(cat?.emoji||"📦"):(INC_TIPOS.find(t=>t.id===form.incType)?.emoji||"💰")),value:parValor,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),payment:isCard?"cartao":"dinheiro",conta:form.conta||"geral"};
+      return {id:Date.now()+i,desc:parcelas>1?`${form.desc} (${i+1}/${parcelas})`:form.desc,kind:mode==="expense"?"exp":"inc",cat:mode==="expense"?form.cat:undefined,incType:mode==="income"?form.incType:undefined,type:mode==="income"?"Manual":undefined,emoji:isCard?"💳":(mode==="expense"?(cat?.emoji||"📦"):(INC_TIPOS.find(t=>t.id===form.incType)?.emoji||"💰")),value:parValor,date:fmtDate(d.toISOString().slice(0,10)),payment:isCard?"cartao":"dinheiro",conta:form.conta||"geral"};
     });
     setExps(p=>[...novos,...p]);
     setForm({desc:"",value:"",cat:"alimentacao",date:"",payment:"dinheiro",parcelas:1,vencimento:"10",incType:"salario",conta:contaDefault});
@@ -1116,7 +1139,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
                   <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Data</div>
                   <input style={{...inp(),colorScheme:"dark"}} type="date"
                     value={(()=>{const pts=(editForm.date||"").split("/");if(pts.length>=3)return `${pts[2]}-${pts[1].padStart(2,"0")}-${pts[0].padStart(2,"0")}`;if(pts.length>=2)return `${new Date().getFullYear()}-${pts[1].padStart(2,"0")}-${pts[0].padStart(2,"0")}`;return "";})()}
-                    onChange={e=>{if(!e.target.value)return;const d=new Date(e.target.value+"T12:00:00");setEditForm(p=>({...p,date:d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"})}));}}/>
+                    onChange={e=>{if(!e.target.value)return;const d=new Date(e.target.value+"T12:00:00");setEditForm(p=>({...p,date:fmtDate(d.toISOString().slice(0,10))}));}}/>
                 </div>
               </div>
               <div style={{marginBottom:10}}>
@@ -1507,8 +1530,12 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
         cat: p.kind==="inc" ? undefined : (p.cat || categorizar(p.desc,p.kind) || "outros"),
         incType: p.kind==="inc" ? (p.incType || detectIncType(p.desc) || "outro") : undefined,
       })).filter(p=>!(p.cat==="_ignorar" && p.kind==="exp"));
+      if(catted.length===0){
+        setMsg(dupCount>0?`ℹ️ Todos os ${dupCount} lançamentos já estão cadastrados. Nada novo para importar.`:"ℹ️ Nenhum lançamento encontrado no arquivo.");
+        setLoading(false);return;
+      }
       setPreview(catted);
-      setMsg(dupCount>0?`ℹ️ ${dupCount} duplicata(s) ignorada(s)`:"");
+      setMsg(dupCount>0?`ℹ️ ${dupCount} duplicata(s) já existente(s) foram ignoradas`:"");
       setStep("preview");
     }catch(err){setMsg(`❌ ${err.message}`);}
     setLoading(false);
@@ -1725,6 +1752,14 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
   const [showNC,setShowNC]=useState(false);
   const [newCat,setNewCat]=useState({label:"",emoji:"📁",budget:200,color:"#60a5fa"});
   const [novaFixa,setNovaFixa]=useState({desc:"",valor:"",cat:"moradia",emoji:"📌"});
+  const [confirmModal, setConfirmModal] = useState(null);
+  // Render ConfirmModal se ativo
+  if(confirmModal) return <ConfirmModal
+    msg={confirmModal.msg} sub={confirmModal.sub}
+    okLabel={confirmModal.okLabel||"Confirmar"} okColor={confirmModal.okColor||"#ef4444"}
+    onOk={()=>{confirmModal.onOk();setConfirmModal(null);}}
+    onCancel={()=>setConfirmModal(null)}/>;
+
   const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"dados",l:"🗄️ Dados"}];
 
   return (
@@ -1783,6 +1818,23 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
               <input style={inp({flex:1,padding:"7px 12px",fontSize:14,fontWeight:700})} type="number" value={f.valor}
                 onChange={e=>setFixas(p=>p.map((x,j)=>j===i?{...x,valor:+e.target.value}:x))}/>
             </div>
+            {/* Lançar este mês */}
+            {f.ativo&&f.valor>0&&(()=>{
+              const hoje=new Date();
+              const mesAtualKey=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}`;
+              const jaLancou=exps.some(e=>e.kind==="exp"&&e.desc===f.desc&&e.value===f.valor&&(e.date||"").slice(3,10)===`${String(hoje.getMonth()+1).padStart(2,"0")}/${hoje.getFullYear()}`);
+              return <button
+                style={{...btn(jaLancou?"rgba(74,222,128,0.08)":"rgba(99,102,241,0.12)",jaLancou?"#4ade80":"#818cf8",{border:`1px solid ${jaLancou?"rgba(74,222,128,0.25)":"rgba(99,102,241,0.25)"}`,marginTop:8,padding:"8px 0",fontSize:12,fontWeight:600})}}
+                onClick={()=>{
+                  if(jaLancou){showToast("✓ Já lançado este mês");return;}
+                  const hojeStr=fmtDate(hoje.toISOString().slice(0,10));
+                  const cat=cats.find(c=>c.id===f.cat);
+                  setExps(p=>[...p,{id:Date.now(),desc:f.desc,kind:"exp",cat:f.cat,emoji:f.emoji||cat?.emoji||"📌",value:f.valor,date:hojeStr,payment:"dinheiro",conta:(contas||[]).find(c=>c.id!=="geral")?.id||"geral",fixo:true}]);
+                  showToast(`✓ ${f.desc} lançado`);
+                }}>
+                {jaLancou?"✓ Já lançado este mês":"📌 Lançar este mês"}
+              </button>;
+            })()}
           </div>
         ))}
         {fixas.length>0&&(
@@ -1876,6 +1928,10 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
       </>}
        {sec==="chaveIA"&&<ChaveIAConfig/>}
       {sec==="dados"&&<div style={CARD}>
+        <button style={{...btn("rgba(99,102,241,0.1)","#818cf8",{border:"1px solid rgba(99,102,241,0.2)",marginBottom:10})}} onClick={()=>{
+          try{localStorage.removeItem("mf_onboarding_done");}catch{}
+          window.location.reload();
+        }}>🎓 Ver tutorial novamente</button>
         <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🗄️ Dados</div>
         <div style={{fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.6}}>
           💾 Salvamento automático ativo<br/>
@@ -1910,28 +1966,41 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
               const text=await file.text();
               const data=JSON.parse(text);
               if(!data.exps||!Array.isArray(data.exps)) throw new Error("Arquivo inválido");
-              if(!window.confirm(`Restaurar backup?\n${data.exps.length} lançamentos · ${(data.cats||[]).length} categorias\n\nIsso VAI SUBSTITUIR os dados atuais.`)) return;
-              setExps(data.exps||[]);
-              setCats(data.cats||CATS_DEF);
-              setMarkets(data.markets||MKTS_DEF);
-              setFixas(data.fixas||FIXAS_DEF);
-              if(data.contas) setContas(data.contas);
-              if(data.reservas) setReservas(data.reservas);
-              if(data.meta!==undefined) setMeta(data.meta);
-              if(data.prodsExtra) saveProdsExtra(data.prodsExtra);
-              if(data.precosMkt) savePrecos(data.precosMkt);
-            }catch(err){alert("Erro ao importar: "+err.message);}
+              // Guardar data para usar no modal
+              const _data=data;
+              setConfirmModal({
+                msg:"Restaurar backup?",
+                sub:`${_data.exps.length} lançamentos · ${(_data.cats||[]).length} categorias\n\nIsso VAI SUBSTITUIR todos os dados atuais.`,
+                okLabel:"Restaurar",okColor:"#4f46e5",
+                onOk:()=>{
+                  setExps(_data.exps||[]);
+                  setCats(_data.cats||CATS_DEF);
+                  setMarkets(_data.markets||MKTS_DEF);
+                  setFixas(_data.fixas||FIXAS_DEF);
+                  if(_data.contas) setContas(_data.contas);
+                  if(_data.reservas) setReservas(_data.reservas);
+                  if(_data.meta!==undefined) setMeta(_data.meta);
+                  if(_data.prodsExtra) saveProdsExtra(_data.prodsExtra);
+                  if(_data.precosMkt) savePrecos(_data.precosMkt);
+                  showToast("✓ Backup restaurado!");
+                }
+              });
+            }catch(err){showToast("❌ Erro: "+err.message);}
             e.target.value="";
           }}/>
         </label>
         <button style={btn("rgba(248,113,113,0.1)","#f87171",{border:"1px solid rgba(248,113,113,0.3)"})} onClick={()=>{
-          if(window.confirm("Apagar TODOS os dados? Esta ação não pode ser desfeita.")){
-            // Resetar refs para suprimir toast fantasma após wipe
-            catsInit.current=true;fixasInit.current=true;reservasInit.current=true;
-            setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);setContas(CONTAS_DEF);setReservas([]);setMeta(0);
-            try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos"].forEach(k=>localStorage.removeItem(k));}catch{}
-            alert("✓ Todos os dados foram apagados.");
-          }
+          setConfirmModal({
+            msg:"⚠️ Apagar todos os dados?",
+            sub:"Esta ação não pode ser desfeita. Todos os lançamentos, configurações e histórico serão removidos.",
+            okLabel:"Apagar tudo",okColor:"#ef4444",
+            onOk:()=>{
+              catsInit.current=true;fixasInit.current=true;reservasInit.current=true;
+              setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);setContas(CONTAS_DEF);setReservas([]);setMeta(0);
+              try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos"].forEach(k=>localStorage.removeItem(k));}catch{}
+              showToast("✓ Dados apagados");
+            }
+          });
         }}>🗑️ Apagar todos os dados</button>
       </div>}
     </div>
@@ -1963,7 +2032,7 @@ function Reservas({ reservas, setReservas, hide }) {
     if(!formMov.valor||!selId) return;
     const v = parseFloat(formMov.valor);
     if(isNaN(v)||v<=0) return;
-    const d = formMov.date ? new Date(formMov.date+"T12:00:00").toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}) : new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"});
+    const d = fmtDate((formMov.date||new Date().toISOString().slice(0,10)));
     const mov = {id:`mov_${Date.now()}`,tipo:formMov.tipo,valor:v,desc:formMov.desc||formMov.tipo,date:d};
     setReservas(p=>p.map(r=>{
       if(r.id!==selId) return r;
@@ -1974,10 +2043,9 @@ function Reservas({ reservas, setReservas, hide }) {
     setShowMov(false);
   }
 
+  const [confirmReserva, setConfirmReserva] = useState(null);
   function excluirReserva(id) {
-    if(!window.confirm("Excluir esta reserva e todo seu histórico?")) return;
-    setReservas(p=>p.filter(r=>r.id!==id));
-    if(selId===id) setSelId(null);
+    setConfirmReserva(id);
   }
 
   function excluirMov(resId, movId) {
@@ -2070,6 +2138,12 @@ function Reservas({ reservas, setReservas, hide }) {
   // ── Tela lista de reservas ──
   return (
     <div style={{padding:16,paddingBottom:100}}>
+      {confirmReserva&&<ConfirmModal
+        msg="Excluir reserva?"
+        sub="Todo o histórico de movimentações será removido permanentemente."
+        okLabel="Excluir" okColor="#ef4444"
+        onOk={()=>{setReservas(p=>p.filter(r=>r.id!==confirmReserva));if(selId===confirmReserva)setSelId(null);setConfirmReserva(null);}}
+        onCancel={()=>setConfirmReserva(null)}/>}
       {/* Totalizador */}
       {reservas.length>0&&(
         <div style={{background:"linear-gradient(135deg,rgba(99,102,241,0.12),rgba(79,70,229,0.06))",border:"1px solid rgba(99,102,241,0.25)",borderRadius:16,padding:16,marginBottom:16,textAlign:"center"}}>
@@ -2140,8 +2214,210 @@ function Reservas({ reservas, setReservas, hide }) {
   );
 }
 
+
+// ── ONBOARDING ─────────────────────────────────────────────
+const ONBOARDING_STEPS = [
+  {
+    id:"welcome",
+    emoji:"👋",
+    titulo:"Bem-vindo ao
+Meu Financeiro",
+    sub:"Seu controle financeiro pessoal,
+simples e no seu celular.",
+    dica:null,
+    cor:"#818cf8",
+  },
+  {
+    id:"conta",
+    emoji:"🏦",
+    titulo:"Cadastre seu banco",
+    sub:"Primeiro, adicione a conta do seu banco.
+Assim seus lançamentos ficam organizados por fonte.",
+    dica:"⚙️ Config → Contas → + Nova conta",
+    cor:"#4ade80",
+    destaque:"config",
+  },
+  {
+    id:"orcamento",
+    emoji:"💰",
+    titulo:"Defina seu orçamento",
+    sub:"Configure quanto você quer gastar por categoria — alimentação, moradia, lazer...
+O app avisa quando estiver chegando no limite.",
+    dica:"Aba Orçamento → toque em cada categoria",
+    cor:"#f59e0b",
+    destaque:"orcamento",
+  },
+  {
+    id:"fixas",
+    emoji:"📌",
+    titulo:"Cadastre despesas fixas",
+    sub:"Aluguel, internet, plano de saúde...
+Despesas que aparecem todo mês. Com um toque você lança no mês atual.",
+    dica:"⚙️ Config → Fixas → + Nova",
+    cor:"#f472b6",
+    destaque:"config",
+  },
+  {
+    id:"import",
+    emoji:"📥",
+    titulo:"Importe seu extrato",
+    sub:"Conecte seu histórico real importando o CSV do Nubank ou Bradesco.
+O app categoriza tudo automaticamente.",
+    dica:"⚙️ Config → Importar → selecione o arquivo CSV",
+    cor:"#34d399",
+    destaque:"config",
+  },
+  {
+    id:"ia",
+    emoji:"🤖",
+    titulo:"IA financeira pessoal",
+    sub:"Ative o assistente com sua chave Gemini gratuita.
+Ele analisa seus gastos e responde perguntas sobre suas finanças.",
+    dica:"⚙️ Config → Chave IA → cole sua chave",
+    cor:"#a78bfa",
+    destaque:"ia",
+  },
+  {
+    id:"pronto",
+    emoji:"🚀",
+    titulo:"Tudo pronto!",
+    sub:"Você já pode começar a usar.
+Lembre-se: quanto mais você registra, mais o app te ajuda.",
+    dica:null,
+    cor:"#818cf8",
+  },
+];
+
+function Onboarding({ onDone, setTab }) {
+  const [step, setStep] = useState(0);
+  const [saindo, setSaindo] = useState(false);
+  const s = ONBOARDING_STEPS[step];
+  const isLast = step === ONBOARDING_STEPS.length - 1;
+  const isFirst = step === 0;
+
+  function avancar() {
+    if(isLast){ concluir(); return; }
+    setStep(p=>p+1);
+  }
+  function concluir(){
+    setSaindo(true);
+    setTimeout(()=>{ onDone(); }, 350);
+  }
+  function irPara(){
+    if(s.destaque){ concluir(); setTimeout(()=>setTab(s.destaque==="config"?"config":s.destaque),400); }
+  }
+
+  return (
+    <div style={{
+      position:"fixed",inset:0,zIndex:1000,
+      background:"#080e1d",
+      display:"flex",flexDirection:"column",
+      alignItems:"center",justifyContent:"space-between",
+      padding:"env(safe-area-inset-top,24px) 28px 40px",
+      opacity:saindo?0:1,
+      transition:"opacity 0.35s ease",
+      fontFamily:"'Outfit',sans-serif",
+    }}>
+      {/* Barra de progresso */}
+      <div style={{width:"100%",maxWidth:360,paddingTop:20}}>
+        <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:32}}>
+          {ONBOARDING_STEPS.map((_,i)=>(
+            <div key={i} style={{
+              height:4,flex:1,borderRadius:99,
+              background: i<=step ? s.cor : "rgba(255,255,255,0.08)",
+              transition:"background 0.4s ease",
+            }}/>
+          ))}
+        </div>
+
+        {/* Conteúdo central */}
+        <div style={{textAlign:"center",paddingBottom:24}}>
+          <div style={{
+            fontSize:72,marginBottom:28,
+            filter:`drop-shadow(0 0 24px ${s.cor}55)`,
+            lineHeight:1,
+          }}>{s.emoji}</div>
+
+          <div style={{
+            fontSize:26,fontWeight:800,color:"#f1f5f9",
+            lineHeight:1.3,marginBottom:14,whiteSpace:"pre-line",
+          }}>{s.titulo}</div>
+
+          <div style={{
+            fontSize:15,color:"#94a3b8",
+            lineHeight:1.7,marginBottom:s.dica?24:0,
+            whiteSpace:"pre-line",
+          }}>{s.sub}</div>
+
+          {s.dica&&(
+            <div style={{
+              display:"inline-flex",alignItems:"center",gap:8,
+              background:`${s.cor}15`,
+              border:`1px solid ${s.cor}40`,
+              borderRadius:12,padding:"10px 16px",
+              fontSize:13,color:s.cor,fontWeight:600,
+              marginTop:4,
+            }}>
+              <span style={{fontSize:16}}>💡</span>
+              {s.dica}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Botões */}
+      <div style={{width:"100%",maxWidth:360}}>
+        {/* Botão de ação contextual */}
+        {s.destaque&&(
+          <button style={{
+            width:"100%",marginBottom:12,
+            background:`linear-gradient(135deg,${s.cor}CC,${s.cor}99)`,
+            border:"none",color:"#fff",
+            borderRadius:14,padding:"14px 0",
+            fontSize:15,fontWeight:700,cursor:"pointer",
+            fontFamily:"'Outfit',sans-serif",
+            boxShadow:`0 4px 20px ${s.cor}44`,
+          }} onClick={irPara}>
+            Configurar agora →
+          </button>
+        )}
+
+        <button style={{
+          width:"100%",
+          background: isLast
+            ? `linear-gradient(135deg,#818cf8,#6366f1)`
+            : "rgba(255,255,255,0.06)",
+          border: isLast ? "none" : "1px solid rgba(255,255,255,0.1)",
+          color: isLast ? "#fff" : "#94a3b8",
+          borderRadius:14,padding:"14px 0",
+          fontSize:15,fontWeight:700,cursor:"pointer",
+          fontFamily:"'Outfit',sans-serif",
+          boxShadow: isLast ? "0 4px 20px rgba(99,102,241,0.4)" : "none",
+        }} onClick={avancar}>
+          {isLast?"Começar a usar 🚀":"Próximo"}
+        </button>
+
+        {!isLast&&!isFirst&&(
+          <button style={{
+            width:"100%",marginTop:10,
+            background:"none",border:"none",
+            color:"#475569",fontSize:13,cursor:"pointer",
+            fontFamily:"'Outfit',sans-serif",padding:"8px 0",
+          }} onClick={concluir}>Pular tutorial</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── APP ROOT ───────────────────────────────────────────────
 export default function App() {
+  // Onboarding — mostrar só na primeira vez
+  const [showOnboarding, setShowOnboarding] = useState(()=>{
+    try{ return !localStorage.getItem("mf_onboarding_done"); }catch{ return true; }
+  });
+  function finishOnboarding(){ try{localStorage.setItem("mf_onboarding_done","1");}catch{} setShowOnboarding(false); }
+
   const [tab,      setTab]     = useState("dashboard");
   const [openWith, setOpenWith]= useState(null);
   const [hideVals, setHideVals]= useState(false);
@@ -2224,6 +2500,8 @@ export default function App() {
   ];
 
   return (
+    <>
+    {showOnboarding&&<Onboarding onDone={finishOnboarding} setTab={t=>{finishOnboarding();setTab(t);}}/>}
     <div style={{fontFamily:"'Outfit',sans-serif",background:"#080e1d",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",maxWidth:"min(600px,100vw)",margin:"0 auto",paddingTop:"env(safe-area-inset-top,0px)"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
@@ -2279,7 +2557,8 @@ export default function App() {
 
       {/* Conteúdo */}
       <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
-        {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} contas={contas} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps} fixas={fixas} mesAtual={mesAtual} reservas={reservas} meta={meta}/>}
+        {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} contas={contas} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps} fixas={fixas} setFixas={setFixas} mesAtual={mesAtual} reservas={reservas} meta={meta} showToast={showToast}
+          onAddFixa={r=>{setFixas(p=>[...p,{id:"fx"+Date.now(),desc:r.desc,valor:r.value,cat:r.cat||"outros",emoji:r.emoji||"📌",ativo:true}]);showToast("✓ Adicionado às fixas!");}}/>}
         {tab==="graficos" &&<Graficos  exps={expsFiltrados} cats={cats} hide={hideVals} allExps={exps} mesFiltro={mesFiltro}/>}
         {tab==="orcamento"&&<Orcamento exps={expsFiltrados} cats={cats} setCats={setCats} hide={hideVals} mesFiltro={mesFiltro}/>}
         {tab==="gastos"   &&<Gastos    exps={exps} setExps={setExps} cats={cats} contas={contas} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals} mesFiltro={mesFiltro} catFiltro={catModal} onClearCat={()=>setCatModal(null)}/>}
@@ -2307,5 +2586,6 @@ export default function App() {
         ))}
       </nav>
     </div>
+    </>
   );
 }
