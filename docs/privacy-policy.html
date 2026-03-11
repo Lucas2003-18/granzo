@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Política de Privacidade — Granzo</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0c18;
+      --surface:  #111326;
+      --border:   rgba(99,149,255,0.12);
+      --purple:   #6095FF;
+      --green:    #4ADE80;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --radius:   16px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* Background radial glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(96,149,255,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 60px 24px 100px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 56px;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #1A1C2E, #0F101A);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo svg { width: 32px; height: 32px; }
+
+    .header-text h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .header-text p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Hero */
+    .hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      margin-bottom: 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--purple), var(--green));
+    }
+
+    .hero h2 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(74,222,128,0.08);
+      border: 1px solid rgba(74,222,128,0.2);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 100px;
+      margin-top: 16px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .section-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(96,149,255,0.1);
+      border: 1px solid rgba(96,149,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .section h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .section p, .section li {
+      color: #94a3b8;
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .section ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .section ul li {
+      padding: 6px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .section ul li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      color: var(--purple);
+      font-size: 12px;
+      top: 9px;
+    }
+
+    /* Highlight box */
+    .highlight {
+      background: rgba(74,222,128,0.05);
+      border: 1px solid rgba(74,222,128,0.15);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-top: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .highlight-icon { font-size: 20px; flex-shrink: 0; }
+
+    .highlight p {
+      color: #86efac !important;
+      font-size: 14px !important;
+      font-weight: 500;
+    }
+
+    /* Contact */
+    .contact {
+      text-align: center;
+      padding: 40px 24px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .contact p { color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+
+    .contact a {
+      color: var(--purple);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 15px;
+    }
+
+    .contact a:hover { text-decoration: underline; }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      margin-top: 48px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    footer span { color: var(--purple); }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="96" cy="96" r="64" stroke="url(#rg)" stroke-width="24" fill="none"/>
+        <path d="M56 120 L88 88 L112 112 L152 72 M152 72 L136 72 M152 72 L152 88"
+              stroke="#4ADE80" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <defs>
+          <linearGradient id="rg" x1="40" y1="40" x2="152" y2="152" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#6095FF"/>
+            <stop offset="100%" stop-color="#3D21EC"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>Granzo</h1>
+      <p>Seu dinheiro, do seu jeito</p>
+    </div>
+  </div>
+
+  <div class="hero">
+    <h2>Política de Privacidade</h2>
+    <p>Transparência total sobre como o Granzo trata seus dados financeiros.</p>
+    <div class="badge">✓ Atualizado em março de 2026</div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">📱</div>
+      <h3>Sobre o Granzo</h3>
+    </div>
+    <p>O Granzo é um aplicativo de finanças pessoais para Android desenvolvido para uso individual. Ele permite registrar lançamentos financeiros, importar extratos bancários, acompanhar orçamentos e conversar com uma IA para análise das finanças.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">🗄️</div>
+      <h3>Dados que coletamos</h3>
+    </div>
+    <p>O Granzo <strong>não coleta, não transmite e não armazena</strong> dados pessoais em servidores externos. Todas as informações ficam exclusivamente no seu dispositivo:</p>
+    <ul>
+      <li>Lançamentos financeiros que você cadastra manualmente</li>
+      <li>Extratos importados via arquivo CSV</li>
+      <li>Configurações de categorias, orçamentos e metas</li>
+      <li>Chave de API do Gemini (armazenada localmente)</li>
+    </ul>
+    <div class="highlight">
+      <span class="highlight-icon">🔒</span>
+      <p>Seus dados financeiros nunca saem do seu celular. Não há cadastro, login ou sincronização com servidores.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">🤖</div>
+      <h3>Integração com IA (Gemini)</h3>
+    </div>
+    <p>O recurso de IA utiliza a API do Google Gemini. Ao usar o chat de IA, um resumo anonimizado das suas finanças (totais por categoria, sem descrições individuais) é enviado à API do Google para gerar análises. Isso ocorre apenas quando você inicia uma conversa na aba IA.</p>
+    <p style="margin-top:12px">Consulte a <a href="https://policies.google.com/privacy" style="color:#6095FF">Política de Privacidade do Google</a> para entender como os dados enviados à API Gemini são tratados.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">📤</div>
+      <h3>Compartilhamento de dados</h3>
+    </div>
+    <p>O Granzo <strong>não compartilha, não vende e não monetiza</strong> seus dados com terceiros. Não há publicidade, rastreamento ou analytics integrados ao aplicativo.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">🗑️</div>
+      <h3>Exclusão de dados</h3>
+    </div>
+    <p>Para excluir todos os seus dados, acesse <strong>Config → Dados → Apagar todos os dados</strong> dentro do aplicativo. Todos os lançamentos, configurações e histórico serão removidos permanentemente do dispositivo.</p>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon">👶</div>
+      <h3>Uso por menores</h3>
+    </div>
+    <p>O Granzo não é direcionado a menores de 13 anos. O aplicativo não coleta intencionalmente dados de crianças.</p>
+  </div>
+
+  <div class="contact">
+    <p>Dúvidas sobre esta política?</p>
+    <a href="mailto:privacidade@granzo.app">privacidade@granzo.app</a>
+  </div>
+
+  <footer>
+    <p>© 2026 <span>Granzo</span> · Todos os direitos reservados</p>
+  </footer>
+
+</div>
+</body>
+</html>
