@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { fmt } from '../utils/format';
-import { PRESETS } from '../utils/constants';
+import { fmt, fmtDate } from '../utils/format';
+import { PRESETS, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF } from '../utils/constants';
 import { getGeminiKey, setGeminiKey } from '../utils/gemini';
 import { inp, btn, CARD, ROW } from '../utils/styles';
 import { SecTitle, AlertBox, ConfirmModal } from './ui';
 import Importador from './Importador';
 import GoogleDriveBackup from './GoogleDriveBackup';
+import { loadPrecos, savePrecos, loadProdsExtra, saveProdsExtra } from '../utils/mercadoStorage';
 
 function ChaveIAConfig() {
   const [chave, setChave] = useState(getGeminiKey);
