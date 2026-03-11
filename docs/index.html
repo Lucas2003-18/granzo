@@ -4,7 +4,6 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Granzo — Seu dinheiro, do seu jeito</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 192 192' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='192' height='192' rx='40' fill='%230F101A'/%3E%3Ccircle cx='96' cy='96' r='64' stroke='url(%23g)' stroke-width='24' fill='none'/%3E%3Cpath d='M56 120L88 88L112 112L152 72M152 72L136 72M152 72L152 88' stroke='%234ADE80' stroke-width='16' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='40' y1='40' x2='152' y2='152' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%236095FF'/%3E%3Cstop offset='1' stop-color='%233D21EC'/%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E"/>
 <meta name="description" content="Controle financeiro pessoal simples e inteligente. Dashboard, orçamentos, importação do Nubank e IA financeira no seu Android."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -681,6 +680,12 @@ footer .footer-links{display:flex;gap:24px}
       <h3>100% no seu dispositivo</h3>
       <p>Sem cadastro, sem servidor, sem anúncios. Todos os seus dados ficam só no seu celular.</p>
     </div>
+    <div class="feat-card reveal" style="border-color:rgba(96,149,255,.22);background:linear-gradient(135deg,rgba(96,149,255,.06),rgba(61,33,236,.04))">
+      <div class="feat-icon">☁️</div>
+      <h3>Backup no Google Drive</h3>
+      <p>Salve seus dados direto na sua conta Google Drive — pasta privada, sem intermediários. Restaure com um toque.</p>
+      <a href="./drive-guide.html" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:13px;font-weight:600;color:var(--blue);text-decoration:none">Ver guia de configuração →</a>
+    </div>
   </div>
 </section>
 
@@ -768,22 +773,15 @@ footer .footer-links{display:flex;gap:24px}
   <span class="copy">© 2026 Granzo Labs. Todos os direitos reservados.</span>
   <div class="footer-links">
     <a href="./privacy-policy.html">Privacidade</a>
-    <a href="mailto:contato@granzo.app">Contato</a>
+    <a href="./drive-guide.html">Guia Drive</a>
+    <a href="/cdn-cgi/l/email-protection#bbd8d4d5cfdacfd4fbdcc9dad5c1d495dacbcb">Contato</a>
   </div>
 </footer>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // Scroll reveal
 const observer = new IntersectionObserver(entries => {
   entries.forEach(e => {
     if(e.isIntersecting) {
       e.target.classList.add('visible');
-      observer.unobserve(e.target);
-    }
-  });
-},{threshold:0.12});
-
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-</script>
-</body>
-</html>
+      observer.unobse
