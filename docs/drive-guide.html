@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Backup no Google Drive — Granzo</title>
+<meta name="description" content="Guia completo para configurar o backup automático dos seus dados financeiros no Google Drive. Passo a passo para criar o Client ID OAuth e conectar ao Granzo."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 192 192' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='192' height='192' rx='40' fill='%230F101A'/%3E%3Ccircle cx='96' cy='96' r='64' stroke='url(%23g)' stroke-width='24' fill='none'/%3E%3Cpath d='M56 120L88 88L112 112L152 72M152 72L136 72M152 72L152 88' stroke='%234ADE80' stroke-width='16' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='40' y1='40' x2='152' y2='152' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%236095FF'/%3E%3Cstop offset='1' stop-color='%233D21EC'/%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070912;--surface:#0e1020;--card:#131628;
+  --border:rgba(96,149,255,.10);--border2:rgba(96,149,255,.18);
+  --blue:#6095FF;--blue2:#3D21EC;--green:#4ADE80;--green2:#22C55E;
+  --text:#F0F4FF;--muted:#4A5568;--muted2:#94A3B8;--r:18px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;overflow-x:hidden;line-height:1.6}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.4}
+.orb{position:fixed;border-radius:50%;pointer-events:none;filter:blur(80px);z-index:0}
+.orb1{width:500px;height:500px;background:radial-gradient(circle,rgba(96,149,255,.10),transparent 70%);top:-150px;left:50%;transform:translateX(-50%)}
+.orb2{width:350px;height:350px;background:radial-gradient(circle,rgba(74,222,128,.06),transparent 70%);bottom:30%;right:-80px}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:18px 48px;background:rgba(7,9,18,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo svg{width:28px;height:28px}
+.nav-logo span{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.5px}
+.nav-back{font-size:13px;color:var(--muted2);text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .2s}
+.nav-back:hover{color:var(--blue)}
+
+/* HERO */
+.hero{position:relative;z-index:1;padding:140px 24px 60px;text-align:center;max-width:740px;margin:0 auto}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(96,149,255,.08);border:1px solid rgba(96,149,255,.2);border-radius:99px;padding:6px 16px;font-size:12px;color:var(--blue);font-weight:600;margin-bottom:24px;text-transform:uppercase;letter-spacing:.08em}
+.hero h1{font-size:clamp(32px,5vw,52px);font-weight:800;line-height:1.1;letter-spacing:-1.5px;margin-bottom:16px}
+.hero h1 span{background:linear-gradient(135deg,var(--blue),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:17px;color:var(--muted2);line-height:1.7;margin-bottom:32px}
+.meta-row{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap}
+.meta-pill{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted2)}
+.meta-pill svg{width:14px;height:14px;opacity:.6}
+
+/* CONTENT */
+.content{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:0 24px 80px}
+
+/* PROGRESS BAR */
+.progress-bar{position:sticky;top:72px;z-index:50;background:rgba(7,9,18,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:12px 0;margin-bottom:48px}
+.progress-track{max-width:760px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:12px}
+.progress-steps{display:flex;gap:6px;flex:1}
+.progress-step{flex:1;height:3px;border-radius:99px;background:rgba(255,255,255,.08);transition:background .4s}
+.progress-step.done{background:var(--green)}
+.progress-step.active{background:var(--blue)}
+.progress-label{font-size:11px;color:var(--muted);white-space:nowrap}
+
+/* SECTION */
+.section{margin-bottom:56px}
+.section-header{display:flex;align-items:center;gap:14px;margin-bottom:28px}
+.section-num{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--blue2));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
+.section-num.green{background:linear-gradient(135deg,var(--green2),#16a34a)}
+.section-header h2{font-size:22px;font-weight:700;letter-spacing:-.3px}
+
+/* STEPS */
+.step{display:flex;gap:16px;margin-bottom:20px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);transition:border-color .2s}
+.step:hover{border-color:var(--border2)}
+.step-num{width:28px;height:28px;border-radius:8px;background:rgba(96,149,255,.12);border:1px solid rgba(96,149,255,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--blue);flex-shrink:0;margin-top:1px}
+.step-body h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px}
+.step-body p{font-size:13px;color:var(--muted2);line-height:1.6}
+.step-body p strong{color:var(--text)}
+.step-body a{color:var(--blue);text-decoration:none}
+.step-body a:hover{text-decoration:underline}
+
+/* CODE */
+code{font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(96,149,255,.08);border:1px solid rgba(96,149,255,.15);border-radius:6px;padding:2px 7px;color:#93C5FD}
+.code-block{background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px 20px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;overflow-x:auto}
+.code-block .cm{color:#475569}
+.code-block .kw{color:var(--blue)}
+.code-block .str{color:var(--green)}
+.code-block .url{color:#f59e0b}
+
+/* CALLOUTS */
+.callout{display:flex;gap:14px;padding:16px 18px;border-radius:14px;margin:16px 0}
+.callout-tip{background:rgba(96,149,255,.06);border:1px solid rgba(96,149,255,.18)}
+.callout-warn{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2)}
+.callout-ok{background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2)}
+.callout-err{background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2)}
+.callout-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.callout-text{font-size:13px;line-height:1.65}
+.callout-tip .callout-text{color:#93C5FD}
+.callout-warn .callout-text{color:#FCD34D}
+.callout-ok .callout-text{color:#86EFAC}
+.callout-err .callout-text{color:#FCA5A5}
+.callout-text strong{font-weight:700}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin:16px 0;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:rgba(96,149,255,.06);color:var(--muted2);font-weight:600;padding:10px 16px;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:10px 16px;color:var(--text);border-bottom:1px solid rgba(255,255,255,.04)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+td code{font-size:11px}
+
+/* SUMMARY BOX */
+.summary{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:32px;margin:48px 0}
+.summary h3{font-size:18px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.summary-item{background:rgba(96,149,255,.05);border:1px solid rgba(96,149,255,.1);border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px}
+.summary-item-num{font-size:11px;font-weight:700;color:var(--blue);background:rgba(96,149,255,.12);border-radius:6px;padding:2px 7px;flex-shrink:0;margin-top:1px}
+.summary-item-text{font-size:12px;color:var(--muted2);line-height:1.5}
+.summary-item-text strong{display:block;font-size:13px;color:var(--text);font-weight:600;margin-bottom:2px}
+
+/* FAQ */
+.faq{margin-bottom:8px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.faq summary{padding:16px 20px;font-size:14px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;user-select:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'＋';font-size:18px;color:var(--muted);transition:transform .25s}
+details[open].faq summary::after{transform:rotate(45deg)}
+.faq-body{padding:0 20px 16px;font-size:13px;color:var(--muted2);line-height:1.7}
+.faq-body strong{color:var(--text)}
+details[open].faq{border-color:var(--border2)}
+
+/* CTA */
+.cta-section{text-align:center;padding:48px 24px;background:linear-gradient(135deg,rgba(96,149,255,.08),rgba(61,33,236,.06));border:1px solid rgba(96,149,255,.15);border-radius:24px;margin:48px 0}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-family:'Sora',sans-serif;font-size:15px;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;transition:opacity .2s}
+.btn-primary:hover{opacity:.88}
+.btn-ghost{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--muted2);font-family:'Sora',sans-serif;font-size:14px;font-weight:600;padding:12px 24px;border-radius:12px;border:1px solid var(--border);text-decoration:none;transition:all .2s;margin-top:12px}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2)}
+
+/* FOOTER */
+footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+footer .copy{font-size:13px;color:var(--muted)}
+footer a{font-size:13px;color:var(--muted);text-decoration:none;transition:color .2s}
+footer a:hover{color:var(--blue)}
+footer .footer-links{display:flex;gap:24px}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .5s ease,transform .5s ease}
+.reveal.visible{opacity:1;transform:none}
+
+@media(max-width:640px){
+  nav{padding:14px 20px}
+  .hero{padding:110px 20px 48px}
+  footer{padding:24px 20px;flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="./index.html">
+    <svg viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="192" height="192" rx="40" fill="#0F101A"/>
+      <circle cx="96" cy="96" r="64" stroke="url(#ng)" stroke-width="24" fill="none"/>
+      <path d="M56 120L88 88L112 112L152 72M152 72L136 72M152 72L152 88" stroke="#4ADE80" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <defs><linearGradient id="ng" x1="40" y1="40" x2="152" y2="152" gradientUnits="userSpaceOnUse"><stop stop-color="#6095FF"/><stop offset="1" stop-color="#3D21EC"/></linearGradient></defs>
+    </svg>
+    <span>Granzo</span>
+  </a>
+  <a class="nav-back" href="./index.html">← Página inicial</a>
+</nav>
+
+<!-- PROGRESS BAR -->
+<div class="progress-bar">
+  <div class="progress-track">
+    <div class="progress-steps">
+      <div class="progress-step active" id="ps1"></div>
+      <div class="progress-step" id="ps2"></div>
+      <div class="progress-step" id="ps3"></div>
+    </div>
+    <span class="progress-label" id="progress-label">Parte 1 de 3</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">☁️ Guia de configuração</div>
+  <h1>Backup no<br/><span>Google Drive</span></h1>
+  <p>Configure o backup automático dos seus dados financeiros em menos de 15 minutos. Gratuito, seguro e sem intermediários.</p>
+  <div class="meta-row">
+    <span class="meta-pill">⏱️ ~15 minutos</span>
+    <span class="meta-pill">🆓 Gratuito</span>
+    <span class="meta-pill">🔒 Seus dados, sua conta</span>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- VISÃO GERAL -->
+  <div class="callout callout-tip reveal">
+    <span class="callout-icon">💡</span>
+    <span class="callout-text">
+      <strong>Como funciona:</strong> o Granzo salva seus dados diretamente na sua conta Google Drive — numa pasta privada que só o app consegue acessar. Nenhum servidor do Granzo toca nos seus dados.
+    </span>
+  </div>
+
+  <!-- PARTE 1 -->
+  <div class="section reveal" id="parte1">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div>
+        <h2>Google Cloud Console</h2>
+        <p style="font-size:13px;color:var(--muted2);margin-top:2px">Criar o projeto e ativar a API — feito uma única vez</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>Acesse o Google Cloud Console</h4>
+        <p>Abra <a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a> e faça login com a sua conta Google (pode ser a mesma do Gmail).</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>Crie um novo projeto</h4>
+        <p>No topo da página, clique no seletor de projeto → <strong>Novo Projeto</strong>.<br/>
+        Nome: <code>Granzo</code> (pode ser qualquer nome). Clique em <strong>Criar</strong> e depois <strong>Selecionar</strong> para ativá-lo.</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>Ative a Google Drive API</h4>
+        <p>Menu lateral → <strong>APIs e Serviços</strong> → <strong>Biblioteca</strong>.<br/>
+        Busque por <code>Google Drive API</code>, clique no resultado e clique em <strong>Ativar</strong>.</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>Configure a Tela de Consentimento OAuth</h4>
+        <p>Menu lateral → <strong>APIs e Serviços</strong> → <strong>Tela de consentimento OAuth</strong>.<br/>
+        Selecione tipo <strong>Externo</strong> → Criar. Preencha:</p>
+        <ul style="margin:10px 0 0 16px;font-size:13px;color:var(--muted2);line-height:2">
+          <li><strong>Nome do app:</strong> Granzo</li>
+          <li><strong>E-mail de suporte:</strong> seu e-mail</li>
+          <li>Clique em <strong>Salvar e Continuar</strong> em todas as telas seguintes</li>
+          <li>Em <strong>Usuários de teste</strong> → adicione seu e-mail</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout callout-warn reveal">
+      <span class="callout-icon">⚠️</span>
+      <span class="callout-text">O app ficará em modo <strong>"Em teste"</strong> — isso é suficiente para uso pessoal. Você pode adicionar até 100 e-mails de usuários de teste.</span>
+    </div>
+  </div>
+
+  <!-- PARTE 2 -->
+  <div class="section reveal" id="parte2">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div>
+        <h2>Criar o Client ID OAuth</h2>
+        <p style="font-size:13px;color:var(--muted2);margin-top:2px">A credencial que identifica o Granzo para o Google</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h4>Crie as credenciais</h4>
+        <p>Menu lateral → <strong>APIs e Serviços</strong> → <strong>Credenciais</strong>.<br/>
+        Clique em <strong>+ Criar Credenciais</strong> → <strong>ID do cliente OAuth</strong>.<br/>
+        Tipo de aplicativo: <strong>Aplicativo da Web</strong>.</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <h4>Adicione as origens autorizadas</h4>
+        <p>Em <strong>Origens JavaScript autorizadas</strong>, adicione as URLs onde o Granzo vai rodar:</p>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead><tr><th>Situação</th><th>URI para adicionar</th></tr></thead>
+            <tbody>
+              <tr><td>Desenvolvimento local</td><td><code>http://localhost:5173</code></td></tr>
+              <tr><td>GitHub Pages</td><td><code>https://lucas2003-18.github.io</code></td></tr>
+              <tr><td>Domínio próprio</td><td><code>https://granzo.app</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:10px">Clique em <strong>Criar</strong>.</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <h4>Copie o Client ID</h4>
+        <p>Uma janela vai mostrar o <strong>ID do cliente</strong> — copie esse valor. Ele termina com <code>.apps.googleusercontent.com</code>.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-ok reveal">
+      <span class="callout-icon">✅</span>
+      <span class="callout-text">O Client ID <strong>não é secreto</strong> — pode ficar visível no código. Guarde-o nas suas anotações para caso precise reinstalar o app.</span>
+    </div>
+  </div>
+
+  <!-- PARTE 3 -->
+  <div class="section reveal" id="parte3">
+    <div class="section-header">
+      <div class="section-num green">3</div>
+      <div>
+        <h2>Configurar no Granzo</h2>
+        <p style="font-size:13px;color:var(--muted2);margin-top:2px">Conectar e fazer o primeiro backup</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">8</div>
+      <div class="step-body">
+        <h4>Cole o Client ID no app</h4>
+        <p>Abra o Granzo → <strong>⚙️ Config</strong> → <strong>☁️ Drive</strong> → toque em <strong>Configurar Client ID</strong>.<br/>
+        Cole o ID que você copiou e salve.</p>
+      </div>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">9</div>
+      <div class="step-body">
+        <h4>Conecte sua conta Google</h4>
+        <p>Toque em <strong>Conectar Google Drive</strong>. Uma janela de login do Google vai abrir.<br/>
+        Ao ver <strong>"App não verificado"</strong> → clique em <strong>Avançado</strong> → <strong>Acessar Granzo (não seguro)</strong> → <strong>Permitir</strong>.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-warn reveal">
+      <span class="callout-icon">⚠️</span>
+      <span class="callout-text">O aviso <strong>"App não verificado"</strong> aparece porque o projeto está em modo de teste no Google — você mesmo criou as credenciais, então é seguro prosseguir.</span>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">10</div>
+      <div class="step-body">
+        <h4>Faça o primeiro backup 🎉</h4>
+        <p>Toque em <strong>Salvar backup agora</strong>. Aguarde a mensagem <strong>"✓ Backup salvo no Google Drive!"</strong>.<br/>
+        Pronto — seus dados estão seguros na nuvem.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESUMO -->
+  <div class="summary reveal">
+    <h3>📋 Resumo dos passos</h3>
+    <div class="summary-grid">
+      <div class="summary-item"><span class="summary-item-num">1–4</span><div class="summary-item-text"><strong>Google Cloud Console</strong>Criar projeto, ativar Drive API, configurar OAuth</div></div>
+      <div class="summary-item"><span class="summary-item-num">5–7</span><div class="summary-item-text"><strong>Client ID OAuth</strong>Criar credencial e copiar o ID</div></div>
+      <div class="summary-item"><span class="summary-item-num">8</span><div class="summary-item-text"><strong>Colar no Granzo</strong>⚙️ Config → ☁️ Drive</div></div>
+      <div class="summary-item"><span class="summary-item-num">9</span><div class="summary-item-text"><strong>Conectar Google</strong>Login + autorizar acesso</div></div>
+      <div class="summary-item"><span class="summary-item-num">10</span><div class="summary-item-text"><strong>Primeiro backup</strong>Salvar e confirmar</div></div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section reveal">
+    <div class="section-header" style="margin-bottom:20px">
+      <div class="section-num" style="background:rgba(148,163,184,.12);color:var(--muted2)">?</div>
+      <h2>Perguntas frequentes</h2>
+    </div>
+
+    <details class="faq reveal">
+      <summary>Meus dados financeiros ficam seguros?</summary>
+      <div class="faq-body">Sim. O arquivo é salvo na <strong>appDataFolder</strong> — uma pasta privada e invisível no seu Drive. Não aparece na listagem normal de arquivos e só o Granzo consegue acessar. Nenhum servidor do Granzo recebe seus dados.</div>
+    </details>
+
+    <details class="faq reveal">
+      <summary>A janela de login não abre / popup bloqueado</summary>
+      <div class="faq-body">O navegador bloqueou o popup. Procure o ícone de popup bloqueado na barra de endereço e permita para o Granzo. Em Android, verifique se o Chrome/WebView está atualizado.</div>
+    </details>
+
+    <details class="faq reveal">
+      <summary>"Sessão expirada — reconecte sua conta"</summary>
+      <div class="faq-body">O token OAuth tem validade de ~1 hora. Basta tocar em <strong>Conectar Google Drive</strong> novamente. Não é necessário reconfigurar o Client ID.</div>
+    </details>
+
+    <details class="faq reveal">
+      <summary>Erro 400: redirect_uri_mismatch</summary>
+      <div class="faq-body">A URL do seu app não foi adicionada nas origens autorizadas. Volte ao Google Cloud Console → Credenciais → edite o Client ID e adicione a URL exata onde o Granzo está rodando.</div>
+    </details>
+
+    <details class="faq reveal">
+      <summary>Posso usar o mesmo Client ID para outros usuários?</summary>
+      <div class="faq-body">Sim, para uso entre amigos — adicione o e-mail de cada pessoa como <strong>usuário de teste</strong> no projeto (limite de 100 e-mails). Para uso aberto e público, será necessário verificar o app no Google.</div>
+    </details>
+
+    <details class="faq reveal">
+      <summary>Como restaurar um backup?</summary>
+      <div class="faq-body">⚙️ Config → ☁️ Drive → <strong>Restaurar do Drive</strong>. O app mostra a data do backup e o número de lançamentos antes de confirmar. <strong>Atenção:</strong> restaurar substitui todos os dados atuais.</div>
+    </details>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section reveal">
+    <div style="font-size:40px;margin-bottom:16px">🚀</div>
+    <h3 style="font-size:22px;font-weight:700;margin-bottom:8px">Pronto para começar?</h3>
+    <p style="font-size:14px;color:var(--muted2);margin-bottom:24px">Baixe o Granzo e configure o backup em 15 minutos.</p>
+    <a class="btn-primary" href="https://play.google.com/store/apps/details?id=app.granzo.finance" target="_blank">
+      ▶ Baixar na Play Store
+    </a><br/>
+    <a class="btn-ghost" href="./index.html">← Voltar ao início</a>
+  </div>
+
+</div><!-- /content -->
+
+<!-- FOOTER -->
+<footer>
+  <span class="copy">© 2026 Granzo Labs. Todos os direitos reservados.</span>
+  <div class="footer-links">
+    <a href="./index.html">Início</a>
+    <a href="./privacy-policy.html">Privacidade</a>
+    <a href="./drive-guide.html">Guia Drive</a>
+  </div>
+</footer>
+
+<script>
+// Scroll reveal
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){ e.target.classList.add('visible'); }
+  });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Progress bar — atualiza conforme scrolla pelas seções
+const sections = ['parte1','parte2','parte3'];
+const steps = document.querySelectorAll('[id^="ps"]');
+const label = document.getElementById('progress-label');
+const sectionEls = sections.map(id => document.getElementById(id));
+
+function updateProgress(){
+  const scroll = window.scrollY + 200;
+  let active = 0;
+  sectionEls.forEach((el, i) => {
+    if(el && el.offsetTop <= scroll) active = i;
+  });
+  steps.forEach((s, i) => {
+    s.className = 'progress-step' + (i < active ? ' done' : i === active ? ' active' : '');
+  });
+  label.textContent = `Parte ${active + 1} de ${steps.length}`;
+}
+window.addEventListener('scroll', updateProgress, { passive: true });
+updateProgress();
+</script>
+</body>
+</html>
