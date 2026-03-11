@@ -40,7 +40,7 @@ jobs:
 
       - name: Adicionar e sincronizar Capacitor Android
         run: |
-          npm install @capacitor/android
+          npm install @capacitor/android @capacitor/status-bar @capacitor/splash-screen @capacitor/share @capacitor/filesystem
           npx cap add android || true
           npx cap sync android
 
