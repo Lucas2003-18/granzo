@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { fmt, fmtDate, dateKey } from '../utils/format';
-import { INC_TIPOS, CATS_DEF } from '../utils/constants';
+import { INC_TIPOS, CATS_DEF, CONTAS_DEF } from '../utils/constants';
 import { categorizar, detectIncType } from '../utils/categorizar';
 import { inp, btn, CARD, ROW } from '../utils/styles';
 import { SecTitle, ConfirmModal, SwipeRow } from './ui';
