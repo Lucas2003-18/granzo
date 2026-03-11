@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fmt } from '../utils/format';
+import { fmt, fmtDate } from '../utils/format';
 import { inp, btn, CARD, ROW } from '../utils/styles';
 import { Bar, SecTitle, ConfirmModal } from './ui';
 
