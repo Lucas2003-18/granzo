@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { fmt } from "./utils/format";
 import { MESES, MESES_CURTO, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF } from "./utils/constants";
 import { useAutoBackup } from "./hooks/useAutoBackup";
-import { StatusBar, Style } from "@capacitor/status-bar";
-import { SplashScreen } from "@capacitor/splash-screen";
 import Dashboard from "./components/Dashboard";
 import Graficos from "./components/Graficos";
 import Orcamento from "./components/Orcamento";
@@ -20,13 +18,19 @@ export default function App() {
   });
   function finishOnboarding(){ try{localStorage.setItem("mf_onboarding_done","1");}catch{} setShowOnboarding(false); }
 
-  // Capacitor: StatusBar + SplashScreen
+  // Capacitor: StatusBar + SplashScreen (dynamic import — não quebra build se pacote não existir)
   useEffect(()=>{
-    try{
-      StatusBar.setBackgroundColor({ color: "#080e1d" });
-      StatusBar.setStyle({ style: Style.Dark });
-    }catch{}
-    try{ SplashScreen.hide(); }catch{}
+    (async()=>{
+      try{
+        const {StatusBar,Style}=await import(/* @vite-ignore */"@capacitor/status-bar");
+        await StatusBar.setBackgroundColor({color:"#080e1d"});
+        await StatusBar.setStyle({style:Style.Dark});
+      }catch{}
+      try{
+        const {SplashScreen}=await import(/* @vite-ignore */"@capacitor/splash-screen");
+        await SplashScreen.hide();
+      }catch{}
+    })();
   },[]);
 
   const [tab,      setTab]     = useState("dashboard");
