@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { inp, btn, CARD, ROW } from '../utils/styles';
+import { CATS_DEF, FIXAS_DEF, MKTS_DEF } from '../utils/constants';
 import { SecTitle, AlertBox, ConfirmModal } from './ui';
 import { getGDriveToken, setGDriveToken, getGDriveClientId, setGDriveClientId, getGDriveLastSync, setGDriveLastSync, getGDriveAutoBackup, setGDriveAutoBackup, gdriveUpload, gdriveDownload } from '../utils/gdrive';
 import { loadPrecos, savePrecos, loadProdsExtra, saveProdsExtra } from '../utils/mercadoStorage';
