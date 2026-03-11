@@ -197,11 +197,17 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
   }
 
   // Projeção: só faz sentido no mês atual, não em meses passados
-  let projecao=null;
+  let projecao=null, projecaoEconomia=null, diasRestantes=null, mediadiaria=null;
   if(mesFiltro!=="todos"&&mesFiltro===mesAtual&&gastos.length>0){
     const hoje=new Date().getDate();
-    const [,mesN]=mesFiltro.split("-");const diasMes=new Date(+mesFiltro.split("-")[0],+mesN,0).getDate();
-    if(hoje>=3&&hoje<diasMes&&totalExp>0) projecao=(totalExp/hoje)*diasMes;
+    const [anoP,mesN]=mesFiltro.split("-");
+    const diasMes=new Date(+anoP,+mesN,0).getDate();
+    diasRestantes=diasMes-hoje;
+    mediadiaria=totalExp/hoje;
+    if(hoje>=3&&hoje<diasMes&&totalExp>0){
+      projecao=mediadiaria*diasMes;
+      if(totalInc>0) projecaoEconomia=totalInc-projecao;
+    }
   }
 
   const top3=[...gastos].sort((a,b)=>b.value-a.value).slice(0,3);
@@ -250,7 +256,7 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
       </div>
 
       {/* Métricas extras */}
-      {!hide&&(totalInv>0||totalTransf>0||diffPct!==null||projecao!==null)&&(
+      {!hide&&(totalInv>0||totalTransf>0||diffPct!==null)&&(
         <div style={{display:"flex",gap:8,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
           {totalInv>0&&<div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:10,padding:"8px 12px",flexShrink:0}}>
             <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Investido</div>
@@ -264,12 +270,49 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
             <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Vs {mesAnterior}</div>
             <div style={{fontSize:13,fontWeight:700,color:diffPct>0?"#f87171":"#4ade80"}}>{fmtPct(diffPct)}</div>
           </div>}
-          {projecao!==null&&<div style={{background:"rgba(99,102,241,0.08)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:10,padding:"8px 12px",flexShrink:0}}>
-            <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Projeção</div>
-            <div style={{fontSize:13,fontWeight:700,color:"#818cf8"}}>{fmt(projecao)}</div>
-          </div>}
         </div>
       )}
+
+      {/* Projeção do mês — card expandido */}
+      {!hide&&projecao!==null&&(()=>{
+        const [anoP,mesN]=mesFiltro.split("-");
+        const diasMes=new Date(+anoP,+mesN,0).getDate();
+        const hoje=new Date().getDate();
+        const pctMes=Math.round((hoje/diasMes)*100);
+        const pctGasto=totalInc>0?Math.min(100,Math.round((projecao/totalInc)*100)):null;
+        const ok=projecaoEconomia>=0;
+        return <div style={{background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📅 Projeção do mês</div>
+            <div style={{fontSize:11,color:"#64748b"}}>Dia {hoje}/{diasMes} · {pctMes}% do mês</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+            <div style={{background:"rgba(248,113,113,0.08)",borderRadius:10,padding:"10px 12px"}}>
+              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Projeção gastos</div>
+              <div style={{fontSize:16,fontWeight:800,color:"#f87171"}}>{fmt(projecao)}</div>
+              <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{fmt(mediadiaria)}/dia</div>
+            </div>
+            <div style={{background:ok?"rgba(74,222,128,0.08)":"rgba(248,113,113,0.08)",borderRadius:10,padding:"10px 12px"}}>
+              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Saldo projetado</div>
+              <div style={{fontSize:16,fontWeight:800,color:ok?"#4ade80":"#f87171"}}>{fmt(projecaoEconomia)}</div>
+              <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{diasRestantes}d restantes</div>
+            </div>
+          </div>
+          {pctGasto!==null&&<>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontSize:11,color:"#64748b"}}>Gastos vs renda</span>
+              <span style={{fontSize:11,fontWeight:700,color:pctGasto>100?"#f87171":pctGasto>80?"#f59e0b":"#4ade80"}}>{pctGasto}%</span>
+            </div>
+            <Bar pct={Math.min(100,pctGasto)} color={pctGasto>100?"#f87171":pctGasto>80?"#f59e0b":"#4ade80"}/>
+          </>}
+          {projecaoEconomia<0&&<div style={{marginTop:8,fontSize:12,color:"#f87171",padding:"6px 10px",background:"rgba(248,113,113,0.08)",borderRadius:8}}>
+            ⚠️ No ritmo atual você vai gastar {fmt(Math.abs(projecaoEconomia))} a mais que sua renda este mês.
+          </div>}
+          {ok&&projecaoEconomia>0&&<div style={{marginTop:8,fontSize:12,color:"#4ade80",padding:"6px 10px",background:"rgba(74,222,128,0.06)",borderRadius:8}}>
+            ✅ Projeção positiva! Você pode poupar ~{fmt(projecaoEconomia)} este mês.
+          </div>}
+        </div>;
+      })()}
 
       {/* Por conta */}
       {(()=>{
@@ -1699,6 +1742,206 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
 }
 
 // ── CHAVE IA CONFIG ───────────────────────────────────────
+// ── GOOGLE DRIVE BACKUP ────────────────────────────────────
+const GDrive = {
+  CLIENT_ID: "YOUR_GOOGLE_CLIENT_ID", // usuário configura em Config → Dados
+  SCOPE: "https://www.googleapis.com/auth/drive.appdata",
+  FILE_NAME: "granzo_backup.json",
+};
+
+function getGDriveToken(){try{return localStorage.getItem("mf_gdrive_token")||"";}catch{return "";}}
+function setGDriveToken(t){try{localStorage.setItem("mf_gdrive_token",t);}catch{}}
+function getGDriveClientId(){try{return localStorage.getItem("mf_gdrive_client_id")||"";}catch{return "";}}
+function setGDriveClientId(id){try{localStorage.setItem("mf_gdrive_client_id",id);}catch{}}
+function getGDriveLastSync(){try{return localStorage.getItem("mf_gdrive_last_sync")||"";}catch{return "";}}
+function setGDriveLastSync(d){try{localStorage.setItem("mf_gdrive_last_sync",d);}catch{}}
+
+async function gdriveRequest(method,url,body,token){
+  const r=await fetch(url,{method,headers:{"Authorization":`Bearer ${token}`,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
+  if(r.status===401) throw new Error("TOKEN_EXPIRED");
+  if(!r.ok) throw new Error(`Drive API: ${r.status}`);
+  return r;
+}
+
+async function gdriveUpload(token,jsonStr){
+  // Busca o arquivo existente pelo nome no appDataFolder
+  const q=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GDrive.FILE_NAME}'&fields=files(id,name,modifiedTime)`,{headers:{"Authorization":`Bearer ${token}`}});
+  if(!q.ok) throw new Error("Erro ao listar arquivos no Drive");
+  const {files}=await q.json();
+  const blob=new Blob([jsonStr],{type:"application/json"});
+  const meta={name:GDrive.FILE_NAME,parents:files.length===0?["appDataFolder"]:undefined};
+  const form=new FormData();
+  form.append("metadata",new Blob([JSON.stringify(meta)],{type:"application/json"}));
+  form.append("file",blob);
+  const endpoint=files.length>0
+    ?`https://www.googleapis.com/upload/drive/v3/files/${files[0].id}?uploadType=multipart`
+    :"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+  const method=files.length>0?"PATCH":"POST";
+  const r=await fetch(endpoint,{method,headers:{"Authorization":`Bearer ${token}`},body:form});
+  if(r.status===401) throw new Error("TOKEN_EXPIRED");
+  if(!r.ok) throw new Error(`Upload falhou: ${r.status}`);
+  return await r.json();
+}
+
+async function gdriveDownload(token){
+  const q=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${GDrive.FILE_NAME}'&fields=files(id,name,modifiedTime)`,{headers:{"Authorization":`Bearer ${token}`}});
+  if(!q.ok) throw new Error("Erro ao listar arquivos");
+  const {files}=await q.json();
+  if(files.length===0) throw new Error("Nenhum backup encontrado no Drive");
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files/${files[0].id}?alt=media`,{headers:{"Authorization":`Bearer ${token}`}});
+  if(r.status===401) throw new Error("TOKEN_EXPIRED");
+  if(!r.ok) throw new Error("Erro ao baixar backup");
+  return {text:await r.text(),modifiedTime:files[0].modifiedTime};
+}
+
+function GoogleDriveBackup({exps,cats,markets,fixas,contas,reservas,meta,setExps,setCats,setMarkets,setFixas,setContas,setReservas,setMeta,showToast,setConfirmModal}){
+  const [clientId, setClientId]=useState(getGDriveClientId);
+  const [token,    setToken]   =useState(getGDriveToken);
+  const [status,   setStatus]  =useState("idle"); // idle|loading|ok|err
+  const [msg,      setMsgDrive]=useState("");
+  const [lastSync, setLastSync]=useState(getGDriveLastSync);
+  const [editId,   setEditId]  =useState(false);
+
+  const isConnected=!!token;
+  const hasClientId=!!clientId;
+
+  function handleToken(t){setToken(t);setGDriveToken(t);}
+
+  // OAuth2 implicit flow — abre popup do Google
+  function conectar(){
+    const id=getGDriveClientId();
+    if(!id){setEditId(true);return;}
+    const params=new URLSearchParams({
+      client_id:id,
+      redirect_uri:window.location.origin+window.location.pathname,
+      response_type:"token",
+      scope:GDrive.SCOPE,
+      include_granted_scopes:"true",
+      state:"gdrive_auth",
+    });
+    const w=window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`,"_blank","width=500,height=600");
+    // Escuta o token via postMessage ou polling da URL
+    const poll=setInterval(()=>{
+      try{
+        if(w&&w.closed){clearInterval(poll);return;}
+        const url=w?.location?.href||"";
+        if(url.includes("access_token")){
+          const hash=url.split("#")[1]||"";
+          const p=new URLSearchParams(hash);
+          const t=p.get("access_token");
+          if(t){handleToken(t);clearInterval(poll);w.close();showToast("✓ Google conectado!");}
+        }
+      }catch{/*cross-origin — normal enquanto na página do Google*/}
+    },500);
+  }
+
+  async function salvarDrive(){
+    if(!token){showToast("❌ Conecte sua conta Google primeiro");return;}
+    setStatus("loading");setMsgDrive("Salvando no Drive...");
+    try{
+      const prodsExtra=loadProdsExtra();const precosMkt=loadPrecos();
+      const json=JSON.stringify({exps,cats,markets,fixas,contas,reservas,meta,prodsExtra,precosMkt,_version:2,_savedAt:new Date().toISOString()},null,2);
+      await gdriveUpload(token,json);
+      const agora=new Date().toLocaleString("pt-BR");
+      setLastSync(agora);setGDriveLastSync(agora);
+      setStatus("ok");setMsgDrive("✓ Backup salvo no Google Drive!");
+      showToast("✓ Backup salvo no Drive!");
+    }catch(e){
+      if(e.message==="TOKEN_EXPIRED"){handleToken("");setMsgDrive("⚠️ Sessão expirada — reconecte sua conta.");}
+      else setMsgDrive("❌ "+e.message);
+      setStatus("err");
+    }
+  }
+
+  async function restaurarDrive(){
+    if(!token){showToast("❌ Conecte sua conta Google primeiro");return;}
+    setStatus("loading");setMsgDrive("Buscando backup...");
+    try{
+      const {text,modifiedTime}=await gdriveDownload(token);
+      const data=JSON.parse(text);
+      if(!data.exps||!Array.isArray(data.exps)) throw new Error("Arquivo inválido");
+      const dtStr=modifiedTime?new Date(modifiedTime).toLocaleString("pt-BR"):"";
+      setStatus("idle");setMsgDrive("");
+      setConfirmModal({
+        msg:"Restaurar do Google Drive?",
+        sub:`Backup de ${dtStr}\n${data.exps.length} lançamentos · ${(data.cats||[]).length} categorias\n\nIsso VAI SUBSTITUIR todos os dados atuais.`,
+        okLabel:"Restaurar",okColor:"#4f46e5",
+        onOk:()=>{
+          setExps(data.exps||[]);
+          setCats(data.cats||CATS_DEF);
+          setMarkets(data.markets||MKTS_DEF);
+          setFixas(data.fixas||FIXAS_DEF);
+          if(data.contas) setContas(data.contas);
+          if(data.reservas) setReservas(data.reservas);
+          if(data.meta!==undefined) setMeta(data.meta);
+          if(data.prodsExtra) saveProdsExtra(data.prodsExtra);
+          if(data.precosMkt) savePrecos(data.precosMkt);
+          showToast("✓ Backup do Drive restaurado!");
+        }
+      });
+    }catch(e){
+      if(e.message==="TOKEN_EXPIRED"){handleToken("");setMsgDrive("⚠️ Sessão expirada — reconecte sua conta.");}
+      else{setMsgDrive("❌ "+e.message);}
+      setStatus("err");
+    }
+  }
+
+  return <div>
+    {/* Status conexão */}
+    <div style={{...CARD,borderLeft:`3px solid ${isConnected?"#4ade80":"#f59e0b"}`,marginBottom:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:isConnected?4:12}}>
+        <span style={{fontSize:24}}>☁️</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>Google Drive</div>
+          <div style={{fontSize:11,color:isConnected?"#4ade80":"#64748b"}}>{isConnected?"✓ Conectado":"Não conectado"}</div>
+        </div>
+        {isConnected&&<button style={{fontSize:11,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:8,padding:"4px 10px",cursor:"pointer"}} onClick={()=>{handleToken("");showToast("Desconectado");}}>Desconectar</button>}
+      </div>
+      {lastSync&&<div style={{fontSize:11,color:"#475569"}}>Último sync: {lastSync}</div>}
+    </div>
+
+    {/* Setup Client ID */}
+    {(!hasClientId||editId)&&<div style={{...CARD,background:"rgba(245,158,11,0.07)",border:"1px solid rgba(245,158,11,0.2)",marginBottom:12}}>
+      <div style={{fontSize:13,fontWeight:700,color:"#f59e0b",marginBottom:6}}>🔑 Configure seu Client ID</div>
+      <div style={{fontSize:12,color:"#64748b",marginBottom:10,lineHeight:1.6}}>
+        1. Acesse <span style={{color:"#818cf8"}}>console.cloud.google.com</span><br/>
+        2. Crie um projeto → APIs → Drive API → Credenciais<br/>
+        3. Crie um "OAuth 2.0 Client ID" (Tipo: Aplicativo da Web)<br/>
+        4. Adicione sua URL em "Origens autorizadas"<br/>
+        5. Cole o Client ID abaixo
+      </div>
+      <input style={{...inp(),marginBottom:8,fontFamily:"monospace",fontSize:12}} placeholder="xxx.apps.googleusercontent.com" value={clientId} onChange={e=>setClientId(e.target.value)}/>
+      <button style={btn("linear-gradient(135deg,#f59e0b,#d97706)")} onClick={()=>{setGDriveClientId(clientId.trim());setEditId(false);showToast("✓ Client ID salvo!");}}>Salvar Client ID</button>
+    </div>}
+
+    {/* Ações */}
+    {hasClientId&&!editId&&<>
+      {!isConnected&&<button style={btn("linear-gradient(135deg,#4285f4,#1967d2)",undefined,{marginBottom:10})} onClick={conectar}>
+        🔐 Conectar Google Drive
+      </button>}
+      {isConnected&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <button style={{...btn("linear-gradient(135deg,#22c55e,#16a34a)"),opacity:status==="loading"?0.6:1}} onClick={salvarDrive} disabled={status==="loading"}>
+          {status==="loading"?"⏳ Salvando...":"☁️ Salvar backup agora"}
+        </button>
+        <button style={{...btn("rgba(99,102,241,0.15)","#818cf8",{border:"1px solid rgba(99,102,241,0.3)"}),opacity:status==="loading"?0.6:1}} onClick={restaurarDrive} disabled={status==="loading"}>
+          {status==="loading"?"⏳ Buscando...":"⬇️ Restaurar do Drive"}
+        </button>
+      </div>}
+      {hasClientId&&<button style={{...btn("rgba(255,255,255,0.04)","#475569",{border:"1px solid rgba(255,255,255,0.06)",marginTop:4,fontSize:11})}} onClick={()=>setEditId(true)}>✏️ Trocar Client ID</button>}
+    </>}
+
+    {msg&&<div style={{marginTop:10}}>
+      <AlertBox tipo={status==="ok"?"ok":status==="err"?"err":"info"} texto={msg}/>
+    </div>}
+
+    <div style={{...CARD,background:"rgba(99,102,241,0.04)",border:"1px solid rgba(99,102,241,0.1)",marginTop:12}}>
+      <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>
+        💡 O backup fica na pasta privada do app no seu Drive (<span style={{color:"#818cf8"}}>appDataFolder</span>) — não aparece na listagem normal de arquivos, só o Granzo pode acessar.
+      </div>
+    </div>
+  </div>;
+}
+
 function ChaveIAConfig() {
   const [chave, setChave] = useState(getGeminiKey);
   const [salvo, setSalvo] = useState(false);
@@ -1747,7 +1990,143 @@ function MetaConfig({ meta, setMeta }) {
 }
 
 // ── CONFIG ─────────────────────────────────────────────────
-function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, meta, setMeta, setTab, showToast }){
+// ── NOTIFICAÇÕES LOCAIS ────────────────────────────────────
+function getNotifConfig(){try{const v=localStorage.getItem("mf_notif");return v?JSON.parse(v):{enabled:false,orcamento:true,fixasPendentes:true,resumoMensal:false,horaResumo:"20:00"};}catch{return {enabled:false,orcamento:true,fixasPendentes:true,resumoMensal:false,horaResumo:"20:00"};}}
+function saveNotifConfig(c){try{localStorage.setItem("mf_notif",JSON.stringify(c));}catch{}}
+
+// Verifica suporte a notificações do browser/WebView
+function notifSupported(){return typeof Notification!=="undefined";}
+async function requestNotifPermission(){
+  if(!notifSupported()) return false;
+  if(Notification.permission==="granted") return true;
+  const r=await Notification.requestPermission();
+  return r==="granted";
+}
+function sendNotif(title,body,icon="💸"){
+  if(!notifSupported()||Notification.permission!=="granted") return;
+  try{new Notification(title,{body,icon:"/icons/icon-192x192.png",badge:"/icons/icon-192x192.png"});}catch{}
+}
+
+function NotifConfig({cats,exps,fixas,mesFiltro,showToast}){
+  const [cfg,setCfg]=useState(getNotifConfig);
+  const [permStatus,setPermStatus]=useState(()=>notifSupported()?Notification.permission:"unsupported");
+  const [testando,setTestando]=useState(false);
+
+  function update(k,v){const novo={...cfg,[k]:v};setCfg(novo);saveNotifConfig(novo);}
+
+  async function ativar(){
+    const ok=await requestNotifPermission();
+    setPermStatus(ok?"granted":"denied");
+    if(ok){update("enabled",true);showToast("✓ Notificações ativadas!");}
+    else showToast("❌ Permissão negada — ative nas configurações do Android");
+  }
+
+  async function testar(){
+    setTestando(true);
+    const ok=await requestNotifPermission();
+    if(ok){
+      sendNotif("💸 Granzo","Notificações funcionando! Você vai receber alertas de orçamento aqui.");
+      showToast("✅ Notificação enviada!");
+    } else showToast("❌ Sem permissão");
+    setTimeout(()=>setTestando(false),2000);
+  }
+
+  const isEnabled=cfg.enabled&&permStatus==="granted";
+
+  return <div>
+    {permStatus==="unsupported"&&<AlertBox tipo="warn" texto="⚠️ Seu dispositivo/navegador não suporta notificações locais."/>}
+    {permStatus==="denied"&&<AlertBox tipo="err" texto="❌ Permissão negada. Vá em Configurações → Apps → Granzo → Notificações para ativar."/>}
+
+    <div style={{...CARD,borderLeft:`3px solid ${isEnabled?"#4ade80":"#f59e0b"}`}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>🔔 Notificações</div>
+          <div style={{fontSize:11,color:isEnabled?"#4ade80":"#64748b"}}>{isEnabled?"Ativas":"Desativadas"}</div>
+        </div>
+        {permStatus!=="unsupported"&&(
+          isEnabled
+            ?<button style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",color:"#f87171",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}} onClick={()=>update("enabled",false)}>Desativar</button>
+            :<button style={{background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:"white",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}} onClick={ativar}>Ativar</button>
+        )}
+      </div>
+      {isEnabled&&<button style={{...btn("rgba(99,102,241,0.1)","#818cf8",{border:"1px solid rgba(99,102,241,0.25)",fontSize:12,padding:"8px 0"}),opacity:testando?0.6:1}} onClick={testar}>🔔 Testar notificação</button>}
+    </div>
+
+    {isEnabled&&<>
+      <SecTitle t="O que notificar"/>
+      {[
+        {key:"orcamento",label:"⚠️ Alerta de orçamento",sub:"Quando um categoria chegar em 80% do limite"},
+        {key:"fixasPendentes",label:"📌 Despesas fixas pendentes",sub:"Lembrete quando fixas não foram lançadas no mês"},
+        {key:"resumoMensal",label:"📊 Resumo mensal",sub:"Resumo automático no dia 1 de cada mês"},
+      ].map(item=>(
+        <div key={item.key} style={{...ROW,justifyContent:"space-between"}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{item.label}</div>
+            <div style={{fontSize:11,color:"#475569"}}>{item.sub}</div>
+          </div>
+          <button style={{background:cfg[item.key]?"rgba(74,222,128,0.15)":"rgba(255,255,255,0.06)",border:cfg[item.key]?"1px solid rgba(74,222,128,0.3)":"1px solid rgba(255,255,255,0.1)",color:cfg[item.key]?"#4ade80":"#64748b",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}
+            onClick={()=>update(item.key,!cfg[item.key])}>
+            {cfg[item.key]?"✓ On":"Off"}
+          </button>
+        </div>
+      ))}
+      <div style={{...CARD,background:"rgba(99,102,241,0.04)",border:"1px solid rgba(99,102,241,0.1)",marginTop:8}}>
+        <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>
+          💡 As notificações são verificadas sempre que você abre o app. Para alertas no horário certo, mantenha o Granzo em segundo plano.
+        </div>
+      </div>
+    </>}
+  </div>;
+}
+
+// Hook: dispara notificações de orçamento ao carregar o app
+function useNotifCheck(cats,exps,fixas,mesFiltro){
+  useEffect(()=>{
+    const cfg=getNotifConfig();
+    if(!cfg.enabled||Notification?.permission!=="granted") return;
+    const agora=new Date();
+    const mesAtualKey=`${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,"0")}`;
+    const expsDoMes=exps.filter(e=>{
+      const p=e.date?.split("/");if(!p||p.length<2) return false;
+      const anoMes=p.length>=3?`${p[2]}-${p[1]}`:`${agora.getFullYear()}-${p[1]}`;
+      return anoMes===mesAtualKey;
+    });
+    const gastos=expsDoMes.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
+
+    // Verifica orçamento
+    if(cfg.orcamento){
+      const lastCheck=localStorage.getItem("mf_notif_last_orc")||"";
+      const today=agora.toISOString().slice(0,10);
+      if(lastCheck!==today){
+        cats.filter(c=>c.budget>0&&c.id!=="investimento").forEach(cat=>{
+          const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
+          const pct=(spent/cat.budget)*100;
+          if(pct>=100) sendNotif(`🚨 ${cat.label} estourou!`,`Você gastou ${fmt(spent)} de ${fmt(cat.budget)} orçados.`);
+          else if(pct>=80) sendNotif(`⚠️ ${cat.label} em ${pct.toFixed(0)}%`,`${fmt(cat.budget-spent)} restando no orçamento.`);
+        });
+        localStorage.setItem("mf_notif_last_orc",today);
+      }
+    }
+
+    // Verifica fixas pendentes (após dia 5 do mês)
+    if(cfg.fixasPendentes&&agora.getDate()>=5){
+      const lastFixaCheck=localStorage.getItem("mf_notif_last_fixa")||"";
+      if(lastFixaCheck!==agora.toISOString().slice(0,7)){
+        const pendentes=fixas.filter(f=>{
+          if(!f.ativo||!f.valor) return false;
+          const descMatch=new RegExp(f.desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(" ")[0],"i");
+          return !expsDoMes.some(e=>e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")));
+        });
+        if(pendentes.length>0){
+          sendNotif(`📌 ${pendentes.length} fixa${pendentes.length>1?"s":""} pendente${pendentes.length>1?"s":""}`,`${pendentes.map(f=>f.desc).join(", ")} ainda não lançadas este mês.`);
+          localStorage.setItem("mf_notif_last_fixa",agora.toISOString().slice(0,7));
+        }
+      }
+    }
+  },[]);
+}
+
+function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, meta, setMeta, setTab, showToast, mesFiltro }){
   const [sec,setsec]=useState("importar");
   const [showNM,setShowNM]=useState(false);
   const [newMkt,setNewMkt]=useState({label:"",emoji:"🏪"});
@@ -1762,7 +2141,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
     onOk={()=>{confirmModal.onOk();setConfirmModal(null);}}
     onCancel={()=>setConfirmModal(null)}/>;
 
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"dados",l:"🗄️ Dados"}];
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"drive",l:"☁️ Drive"},{id:"notif",l:"🔔 Notif."},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -1929,6 +2308,8 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
         </div>
       </>}
        {sec==="chaveIA"&&<ChaveIAConfig/>}
+      {sec==="drive"&&<GoogleDriveBackup exps={exps} cats={cats} markets={markets} fixas={fixas} contas={contas} reservas={reservas} meta={meta} setExps={setExps} setCats={setCats} setMarkets={setMarkets} setFixas={setFixas} setContas={setContas} setReservas={setReservas} setMeta={setMeta} showToast={showToast} setConfirmModal={setConfirmModal}/>}
+      {sec==="notif"&&<NotifConfig cats={cats} exps={exps} fixas={fixas} mesFiltro={mesFiltro} showToast={showToast}/>}
       {sec==="dados"&&<div style={CARD}>
         <button style={{...btn("rgba(99,102,241,0.1)","#818cf8",{border:"1px solid rgba(99,102,241,0.2)",marginBottom:10})}} onClick={()=>{
           try{localStorage.removeItem("mf_onboarding_done");}catch{}
@@ -2086,7 +2467,7 @@ function Reservas({ reservas, setReservas, hide }) {
       </div>
 
       {/* Botões de ação */}
-      <div style={{display:"flex",gap:8,marginBottom:16}}> 
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
         <button style={{...btn("rgba(74,222,128,0.15)","#4ade80",{border:"1px solid rgba(74,222,128,0.3)",flex:1}),padding:"10px 0"}}
           onClick={()=>{setFormMov(p=>({...p,tipo:"depositar"}));setShowMov(true);}}>+ Depositar</button>
         <button style={{...btn("rgba(248,113,113,0.15)","#f87171",{border:"1px solid rgba(248,113,113,0.3)",flex:1}),padding:"10px 0"}}
@@ -2427,6 +2808,8 @@ export default function App() {
   const [meta,    setMeta]    = useState(()=>{ try{const v=localStorage.getItem("mf_meta");return v?JSON.parse(v):0;}catch{return 0;} });
 
   const toastTimer = useRef(null);
+  // Verificar notificações ao abrir o app
+  useNotifCheck(cats,exps,fixas,mesFiltro);
   function showToast(msg){
     if(toastTimer.current) clearTimeout(toastTimer.current);
     setToast(msg);
@@ -2559,7 +2942,7 @@ export default function App() {
         {tab==="reservas" &&<Reservas  reservas={reservas} setReservas={setReservas} hide={hideVals}/>}
         {tab==="mercado"  &&<Mercado   markets={markets} setMarkets={setMarkets} hide={hideVals}/>}
         {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats} mesFiltro={mesFiltro}/>}
-        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast}/>}
+        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast} mesFiltro={mesFiltro}/>}
       </div>
 
       {/* FABs */}
