@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fmt, fmtPct, dateKey } from '../utils/format';
-import { MESES, MESES_CURTO, INC_TIPOS } from '../utils/constants';
-import { ROW } from '../utils/styles';
+import { MESES, MESES_CURTO, INC_TIPOS, CONTAS_DEF } from '../utils/constants';
+import { ROW, CARD } from '../utils/styles';
 import { Bar, SecTitle, AlertBox } from './ui';
 import { gerarRelatorioPDF } from '../utils/pdf';
 
