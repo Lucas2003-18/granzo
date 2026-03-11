@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { fmt, fmtDate } from '../utils/format';
 import { categorizar, detectIncType } from '../utils/categorizar';
+import { INC_TIPOS } from '../utils/constants';
 import { inp, btn, CARD, ROW } from '../utils/styles';
 import { SecTitle, AlertBox, ConfirmModal } from './ui';
 import { detectBank, parseCSVRows, parseTxs, parsePdf } from '../utils/parsers';
