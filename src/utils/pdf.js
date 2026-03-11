@@ -237,6 +237,7 @@ export async function gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,
     const filename="Granzo_"+(MESES[+mes]||mes)+"_"+ano+".pdf";
     const blob=doc.output("blob");
 
+    // 1) Tenta Web Share API com suporte real a arquivos
     if(navigator.share&&navigator.canShare){
       try{
         const file=new File([blob],filename,{type:"application/pdf"});
@@ -250,10 +251,15 @@ export async function gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,
       }
     }
 
+    // 2) Fallback: download via <a> tag (funciona em WebView/Capacitor)
     const url=URL.createObjectURL(blob);
-    window.open(url,"_blank");
-    setTimeout(()=>URL.revokeObjectURL(url),30000);
-    showToast("✓ PDF aberto! Use o menu do visualizador para compartilhar.");
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},3000);
+    showToast("✓ PDF salvo! Verifique sua pasta de Downloads.");
   }catch(err){
     showToast("❌ Erro: "+err.message);
   }
