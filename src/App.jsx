@@ -2126,7 +2126,7 @@ function useNotifCheck(cats,exps,fixas,mesFiltro){
   },[]);
 }
 
-function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, meta, setMeta, setTab, showToast, mesFiltro }){
+function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, reservas, setReservas, meta, setMeta, setTab, showToast, mesFiltro }){
   const [sec,setsec]=useState("importar");
   const [showNM,setShowNM]=useState(false);
   const [newMkt,setNewMkt]=useState({label:"",emoji:"🏪"});
@@ -2808,8 +2808,6 @@ export default function App() {
   const [meta,    setMeta]    = useState(()=>{ try{const v=localStorage.getItem("mf_meta");return v?JSON.parse(v):0;}catch{return 0;} });
 
   const toastTimer = useRef(null);
-  // Verificar notificações ao abrir o app
-  useNotifCheck(cats,exps,fixas,mesFiltro);
   function showToast(msg){
     if(toastTimer.current) clearTimeout(toastTimer.current);
     setToast(msg);
@@ -2864,6 +2862,9 @@ export default function App() {
   const totalInc=expsFiltrados.filter(e=>e.kind==="inc"&&(e.incType==="salario"||e.incType==="extra"||!e.incType)).reduce((s,e)=>s+e.value,0);
   const totalExp=expsFiltrados.filter(e=>e.kind==="exp"&&e.cat!=="investimento").reduce((s,e)=>s+e.value,0);
   const saldo=totalInc-totalExp;
+
+  // Verificar notificações ao abrir o app (após mesFiltro estar definido)
+  useNotifCheck(cats,exps,fixas,mesFiltro);
 
   const TABS=[
     {id:"dashboard",emoji:"📊",label:"Início"},
@@ -2942,7 +2943,7 @@ export default function App() {
         {tab==="reservas" &&<Reservas  reservas={reservas} setReservas={setReservas} hide={hideVals}/>}
         {tab==="mercado"  &&<Mercado   markets={markets} setMarkets={setMarkets} hide={hideVals}/>}
         {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats} mesFiltro={mesFiltro}/>}
-        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast} mesFiltro={mesFiltro}/>}
+        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} reservas={reservas} setReservas={setReservas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast} mesFiltro={mesFiltro}/>}
       </div>
 
       {/* FABs */}
