@@ -18,19 +18,16 @@ export default function App() {
   });
   function finishOnboarding(){ try{localStorage.setItem("mf_onboarding_done","1");}catch{} setShowOnboarding(false); }
 
-  // Capacitor: StatusBar + SplashScreen (dynamic import — não quebra build se pacote não existir)
+  // Capacitor: StatusBar + SplashScreen via API global (sem import — não quebra build)
   useEffect(()=>{
-    (async()=>{
-      try{
-        const {StatusBar,Style}=await import(/* @vite-ignore */"@capacitor/status-bar");
-        await StatusBar.setBackgroundColor({color:"#080e1d"});
-        await StatusBar.setStyle({style:Style.Dark});
-      }catch{}
-      try{
-        const {SplashScreen}=await import(/* @vite-ignore */"@capacitor/splash-screen");
-        await SplashScreen.hide();
-      }catch{}
-    })();
+    const cap=window.Capacitor;
+    if(!cap?.isNativePlatform?.()) return;
+    const plugins=cap.Plugins||{};
+    try{
+      plugins.StatusBar?.setBackgroundColor?.({color:"#080e1d"});
+      plugins.StatusBar?.setStyle?.({style:"DARK"});
+    }catch{}
+    try{ plugins.SplashScreen?.hide?.(); }catch{}
   },[]);
 
   const [tab,      setTab]     = useState("dashboard");
