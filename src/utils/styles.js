@@ -1,0 +1,4 @@
+export function inp(extra) { return {width:"100%",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,color:"#e2e8f0",padding:"11px 13px",fontSize:14,outline:"none",fontFamily:"inherit",boxSizing:"border-box",...extra}; }
+export function btn(bg,c="#fff",extra) { return {background:bg,border:"none",color:c,borderRadius:10,padding:"11px 0",fontSize:14,fontWeight:700,cursor:"pointer",width:"100%",fontFamily:"inherit",...extra}; }
+export const CARD = {background:"rgba(255,255,255,0.04)",borderRadius:14,padding:"14px 16px",marginBottom:12,border:"1px solid rgba(255,255,255,0.07)"};
+export const ROW  = {display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,0.03)",borderRadius:12,padding:"11px 14px",marginBottom:8,border:"1px solid rgba(255,255,255,0.06)"};
