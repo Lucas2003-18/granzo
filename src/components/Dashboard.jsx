@@ -413,7 +413,7 @@ ${totalInvRes>0?"📈 Investido: "+fmt(totalInvRes)+"\n":""}💰 Saldo: ${fmt(sa
 ${linCats}
 
 —
-Gerado pelo meu app financeiro`;
+Gerado pelo Granzo`;
           if(navigator.share){navigator.share({text:txt}).catch(()=>{});}
           else{navigator.clipboard?.writeText(txt).then(()=>showToast("📋 Resumo copiado!")).catch(()=>showToast("❌ Não foi possível copiar"));}
         }
