@@ -236,42 +236,58 @@ export async function gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,
     // ── SALVAR / COMPARTILHAR ──
     const filename="Granzo_"+(MESES[+mes]||mes)+"_"+ano+".pdf";
     const blob=doc.output("blob");
-    const file=new File([blob],filename,{type:"application/pdf"});
 
-    // 1) Tenta Web Share API direto (funciona no Android WebView sem checar canShare)
+    // Converte blob pra base64
+    const base64=await new Promise(res=>{
+      const reader=new FileReader();
+      reader.onload=()=>res(reader.result.split(",")[1]);
+      reader.readAsDataURL(blob);
+    });
+
+    // 1) Capacitor nativo: Filesystem + Share (melhor experiência)
+    const cap=window.Capacitor;
+    if(cap?.isNativePlatform?.()){
+      const plugins=cap.Plugins||{};
+      try{
+        // Escreve o PDF no cache do app
+        const written=await plugins.Filesystem.writeFile({
+          path:filename,
+          data:base64,
+          directory:"CACHE"
+        });
+        // Abre o menu de compartilhamento nativo
+        await plugins.Share.share({
+          title:"Relatório Granzo - "+nomeMes,
+          url:written.uri,
+          dialogTitle:"Compartilhar PDF"
+        });
+        showToast("✓ PDF compartilhado!");
+        return;
+      }catch(e){
+        // Se cancelou o share, não é erro
+        if(e?.message?.includes?.("cancel")||e?.message?.includes?.("dismiss")) return;
+        // Plugins não instalados ou outro erro — tenta fallback web
+      }
+    }
+
+    // 2) Fallback web: navigator.share com File
     if(navigator.share){
       try{
+        const file=new File([blob],filename,{type:"application/pdf"});
         await navigator.share({files:[file],title:"Relatório Granzo - "+nomeMes});
         showToast("✓ PDF compartilhado!");
         return;
       }catch(e){
-        if(e.name==="AbortError") return; // usuário cancelou — não é erro
-        // TypeError = share com files não suportado, tenta fallback
+        if(e.name==="AbortError") return;
       }
     }
 
-    // 2) Fallback: download via <a> tag
-    try{
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement("a");
-      a.href=url;
-      a.download=filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},3000);
-      showToast("✓ PDF salvo na pasta Downloads!");
-    }catch{
-      // 3) Último recurso: base64 data URI
-      const reader=new FileReader();
-      reader.onload=()=>{
-        const a=document.createElement("a");
-        a.href=reader.result;
-        a.download=filename;
-        a.click();
-        showToast("✓ PDF gerado!");
-      };
-      reader.readAsDataURL(blob);
-    }
+    // 3) Último recurso: download via data URI
+    const a=document.createElement("a");
+    a.href="data:application/pdf;base64,"+base64;
+    a.download=filename;
+    a.click();
+    showToast("✓ PDF gerado!");
   }catch(err){
     showToast("❌ Erro: "+err.message);
   }
