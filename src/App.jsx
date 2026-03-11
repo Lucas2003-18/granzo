@@ -279,37 +279,63 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         const diasMes=new Date(+anoP,+mesN,0).getDate();
         const hoje=new Date().getDate();
         const pctMes=Math.round((hoje/diasMes)*100);
-        const pctGasto=totalInc>0?Math.min(100,Math.round((projecao/totalInc)*100)):null;
         const ok=projecaoEconomia>=0;
-        return <div style={{background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:14,padding:"14px 16px",marginBottom:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        // Quanto ainda pode gastar por dia para fechar no zero
+        const saldoAtual=totalInc-totalExp;
+        const limiteDiario=saldoAtual>0&&diasRestantes>0?saldoAtual/diasRestantes:null;
+        // Semáforo: verde <70% renda, amarelo 70-90%, vermelho >90%
+        const pctProjecao=totalInc>0?(projecao/totalInc)*100:0;
+        const semaforo=pctProjecao<=70?"#4ade80":pctProjecao<=90?"#f59e0b":"#f87171";
+        return <div style={{background:"rgba(99,102,241,0.07)",border:`1px solid ${semaforo}33`,borderLeft:`3px solid ${semaforo}`,borderRadius:14,padding:"14px 16px",marginBottom:14}}>
+          {/* Header */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
             <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📅 Projeção do mês</div>
-            <div style={{fontSize:11,color:"#64748b"}}>Dia {hoje}/{diasMes} · {pctMes}% do mês</div>
+            <div style={{fontSize:11,color:"#64748b"}}>{diasRestantes}d restantes</div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-            <div style={{background:"rgba(248,113,113,0.08)",borderRadius:10,padding:"10px 12px"}}>
-              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Projeção gastos</div>
-              <div style={{fontSize:16,fontWeight:800,color:"#f87171"}}>{fmt(projecao)}</div>
-              <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{fmt(mediadiaria)}/dia</div>
-            </div>
-            <div style={{background:ok?"rgba(74,222,128,0.08)":"rgba(248,113,113,0.08)",borderRadius:10,padding:"10px 12px"}}>
-              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:2}}>Saldo projetado</div>
-              <div style={{fontSize:16,fontWeight:800,color:ok?"#4ade80":"#f87171"}}>{fmt(projecaoEconomia)}</div>
-              <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{diasRestantes}d restantes</div>
-            </div>
-          </div>
-          {pctGasto!==null&&<>
+          {/* Barra de progresso do mês */}
+          <div style={{marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-              <span style={{fontSize:11,color:"#64748b"}}>Gastos vs renda</span>
-              <span style={{fontSize:11,fontWeight:700,color:pctGasto>100?"#f87171":pctGasto>80?"#f59e0b":"#4ade80"}}>{pctGasto}%</span>
+              <span style={{fontSize:10,color:"#64748b"}}>Mês: dia {hoje} de {diasMes}</span>
+              <span style={{fontSize:10,color:"#64748b"}}>{pctMes}% decorrido</span>
             </div>
-            <Bar pct={Math.min(100,pctGasto)} color={pctGasto>100?"#f87171":pctGasto>80?"#f59e0b":"#4ade80"}/>
-          </>}
-          {projecaoEconomia<0&&<div style={{marginTop:8,fontSize:12,color:"#f87171",padding:"6px 10px",background:"rgba(248,113,113,0.08)",borderRadius:8}}>
-            ⚠️ No ritmo atual você vai gastar {fmt(Math.abs(projecaoEconomia))} a mais que sua renda este mês.
+            <div style={{background:"rgba(255,255,255,0.06)",borderRadius:99,height:4,overflow:"hidden"}}>
+              <div style={{width:`${pctMes}%`,height:"100%",background:"#475569",borderRadius:99}}/>
+            </div>
+          </div>
+          {/* Métricas principais */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+            <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 12px"}}>
+              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Gasto até agora</div>
+              <div style={{fontSize:15,fontWeight:800,color:"#f87171"}}>{fmt(totalExp)}</div>
+              <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{fmt(mediadiaria)}/dia em média</div>
+            </div>
+            <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 12px"}}>
+              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Se continuar assim</div>
+              <div style={{fontSize:15,fontWeight:800,color:semaforo}}>{fmt(projecao)}</div>
+              <div style={{fontSize:10,color:"#64748b",marginTop:2}}>no fim do mês</div>
+            </div>
+          </div>
+          {/* Limite diário restante */}
+          {limiteDiario!==null&&limiteDiario>0&&<div style={{background:"rgba(74,222,128,0.06)",border:"1px solid rgba(74,222,128,0.15)",borderRadius:10,padding:"9px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:18}}>💡</span>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#4ade80"}}>Gaste até {fmt(limiteDiario)}/dia</div>
+              <div style={{fontSize:10,color:"#64748b"}}>para fechar o mês no zero com sua renda atual</div>
+            </div>
           </div>}
-          {ok&&projecaoEconomia>0&&<div style={{marginTop:8,fontSize:12,color:"#4ade80",padding:"6px 10px",background:"rgba(74,222,128,0.06)",borderRadius:8}}>
-            ✅ Projeção positiva! Você pode poupar ~{fmt(projecaoEconomia)} este mês.
+          {!ok&&<div style={{background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:18}}>⚠️</span>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#f87171"}}>Renda insuficiente no ritmo atual</div>
+              <div style={{fontSize:10,color:"#64748b"}}>Reduza {fmt(Math.abs(mediadiaria-(totalInc/diasMes)))}/dia para equilibrar</div>
+            </div>
+          </div>}
+          {ok&&projecaoEconomia>0&&<div style={{background:"rgba(74,222,128,0.06)",border:"1px solid rgba(74,222,128,0.15)",borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:18}}>✅</span>
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#4ade80"}}>Projeção de sobra: {fmt(projecaoEconomia)}</div>
+              <div style={{fontSize:10,color:"#64748b"}}>mantendo o ritmo de {fmt(mediadiaria)}/dia</div>
+            </div>
           </div>}
         </div>;
       })()}
@@ -537,8 +563,7 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
 
 💼 Renda: ${fmt(rendaRes)}
 💸 Gastos: ${fmt(totalGastos)}
-${totalInvRes>0?`📈 Investido: ${fmt(totalInvRes)}
-`:""}💰 Saldo: ${fmt(saldoRes)} (${poupPct}% poupado)
+${totalInvRes>0?"📈 Investido: "+fmt(totalInvRes)+"\n":""}💰 Saldo: ${fmt(saldoRes)} (${poupPct}% poupado)
 
 📋 Por categoria:
 ${linCats}
@@ -651,7 +676,7 @@ function Graficos({ exps, cats, hide, allExps, mesFiltro }) {
                   <stop offset="100%" stopColor={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#4ade80":"#f87171"} stopOpacity="0.02"/>
                 </linearGradient>
               </defs>
-              <polygon points={`${saldoAcum.map((e,i)=>`${i*64+16},${saldoY(e.saldo)}`).join(" ")} ${(saldoAcum.length-1)*64+16},${lineH} 16,${lineH}`} fill="url(#saldoGrad)"/>
+              <polygon points={saldoAcum.map((e,i)=>(i*64+16)+","+saldoY(e.saldo)).join(" ")+" "+((saldoAcum.length-1)*64+16)+","+lineH+" 16,"+lineH} fill="url(#saldoGrad)"/>
               {/* Linha principal */}
               <polyline points={pts} fill="none" stroke={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#4ade80":"#f87171"} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
               {/* Pontos e labels */}
@@ -1199,7 +1224,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
               </div>
             </div>
           )}
-        </SwipeRow>;
+        </SwipeRow>
       })}
     </div>
   );
@@ -1427,7 +1452,7 @@ Dados do usuário:
 - Salário/Renda real: ${fmt(totalInc)} (excluindo transferências e retornos)
 - Gastos: ${fmt(totalExp)} | Saldo: ${fmt(totalInc-totalExp)}
 - Investimentos aportados: ${fmt(totalInv)} | Taxa de poupança: ${typeof txPoup==="number"?txPoup.toFixed(1)+"%":txPoup}
-${totalTransf>0?`- Transferências/retornos recebidos (não contam como renda): ${fmt(totalTransf)}`:""}
+${totalTransf>0?"- Transferências/retornos recebidos (não contam como renda): "+fmt(totalTransf):""}
 - Categorias: ${catRes}
 - Maiores gastos: ${top3}
 Responda em português. Seja específico com os números. Escreva a resposta COMPLETA — nunca corte no meio. Use entre 2 e 4 parágrafos.`;
@@ -1518,8 +1543,37 @@ function detectIncType(desc) {
 }
 
 // ── IMPORTADOR ─────────────────────────────────────────────
-function detectBank(text){const t=text.toLowerCase();if(t.includes("date")&&t.includes("title")&&t.includes("amount"))return "nubank_card";if(t.includes("identificador")||( t.includes("data")&&t.includes("valor")&&(t.includes("descri")||t.includes("desc"))))return "nubank_conta";if(t.includes("bradesco")||t.includes("histórico")||t.includes("historico"))return "bradesco";return "unknown";}
-function parseCSVRows(text){const lines=text.trim().split(/\r?\n/);const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,"").toLowerCase());return lines.slice(1).filter(l=>l.trim()).map(line=>{const cols=[];let cur="",inQ=false;for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){cols.push(cur.trim());cur="";}else cur+=ch;}cols.push(cur.trim());return Object.fromEntries(header.map((h,i)=>[h,(cols[i]||"").replace(/"/g,"").trim()]));});}
+function detectBank(text){
+  const t=text.toLowerCase();
+  const l1=text.split(/\r?\n/)[0].toLowerCase();
+  // Nubank Cartão: date,title,amount
+  if(t.includes("date")&&t.includes("title")&&t.includes("amount"))return "nubank_card";
+  // Nubank Conta: tem "identificador" ou data+valor+descri
+  if(t.includes("identificador")||(t.includes("data")&&t.includes("valor")&&(t.includes("descri")||t.includes("desc"))))return "nubank_conta";
+  // Bradesco: tem "historico/histórico" ou "bradesco" explícito
+  if(t.includes("bradesco")||t.includes("histórico")||t.includes("historico"))return "bradesco";
+  // Banco Inter: header com "Data Lançamento" ou "data lancamento" + "Categoria"
+  if((t.includes("lançamento")||t.includes("lancamento"))&&(t.includes("categoria")||t.includes("tipo")))return "inter";
+  // Inter alternativo: separador ; e tem data+descrição+valor
+  if(l1.includes(";")&&t.includes("descri")&&t.includes("valor"))return "inter";
+  // C6 Bank: tem "c6" explícito ou header com "estabelecimento"+"parcela"
+  if(t.includes("c6 bank")||t.includes("banco c6")||(t.includes("estabelecimento")&&t.includes("parcela")))return "c6";
+  // C6 alternativo: data;descrição;valor;saldo com ; separador
+  if(l1.includes(";")&&(t.includes("estabelec")||t.includes("portador")))return "c6";
+  return "unknown";
+}
+function detectSep(text){const l=text.split(/\r?\n/).find(l=>l.trim());if(!l)return ",";return(l.match(/;/g)||[]).length>(l.match(/,/g)||[]).length?";":",";}
+function parseCSVRows(text){
+  const sep=detectSep(text);
+  const lines=text.trim().split(/\r?\n/);
+  const header=lines[0].split(sep).map(h=>h.trim().replace(/"/g,"").replace(/\r/g,"").toLowerCase());
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const cols=[];let cur="",inQ=false;
+    for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===sep&&!inQ){cols.push(cur.trim());cur="";}else if(ch!=="\r")cur+=ch;}
+    cols.push(cur.trim());
+    return Object.fromEntries(header.map((h,i)=>[h,(cols[i]||"").replace(/"/g,"").replace(/\r/g,"").trim()]));
+  });
+}
 function parseTxs(rows,tipo){
   if(tipo==="nubank_card")return rows.map(r=>({date:r.date||"",desc:r.title||r.description||"",value:Math.abs(parseFloat((r.amount||"0").replace(",","."))),kind:"exp",source:"Nubank Cartão"})).filter(r=>r.date&&r.value>0);
   if(tipo==="nubank_conta")return rows.map(r=>{
@@ -1548,8 +1602,150 @@ function parseTxs(rows,tipo){
     };
   }).filter(r=>r.date&&r.value>0&&r.kind!=="_skip");
   if(tipo==="bradesco")return rows.map(r=>{const keys=Object.keys(r);const dK=keys.find(k=>k.includes("data")),descK=keys.find(k=>k.includes("hist")||k.includes("desc")),vK=keys.find(k=>k.includes("valor")||k.includes("créd")||k.includes("déb"));const v=parseFloat((r[vK]||"0").replace(/\./g,"").replace(",","."));return{date:r[dK]||"",desc:r[descK]||"",value:Math.abs(v),kind:v>=0?"inc":"exp",source:"Bradesco"};}).filter(r=>r.date&&r.value>0&&r.desc);
+
+  if(tipo==="inter"){
+    // Inter usa ; como separador — parseCSVRows usa , então re-parse aqui
+    return rows.map(r=>{
+      const keys=Object.keys(r);
+      // tenta achar as colunas por nome (podem vir com ; embutido no parse)
+      const dK=keys.find(k=>/data/i.test(k));
+      const descK=keys.find(k=>/descri|hist|lançamento|lancamento/i.test(k)&&!/data/i.test(k));
+      const vK=keys.find(k=>/valor/i.test(k)&&!/saldo/i.test(k));
+      const tipoK=keys.find(k=>/tipo|natureza/i.test(k));
+      const raw=(r[vK]||"0").replace(/\s/g,"");
+      const v=raw.includes(",")?parseFloat(raw.replace(/\./g,"").replace(",",".")):parseFloat(raw);
+      const isEntrada=r[tipoK]&&/créd|entrada|receb|depós/i.test(r[tipoK]);
+      const isDebito=r[tipoK]&&/déb|saída|pagam/i.test(r[tipoK]);
+      const kind=isEntrada?"inc":isDebito?"exp":(v>=0?"inc":"exp");
+      return{date:r[dK]||"",desc:r[descK]||"",value:Math.abs(v),kind,source:"Inter"};
+    }).filter(r=>r.date&&r.value>0&&r.desc);
+  }
+
+  if(tipo==="c6"){
+    return rows.map(r=>{
+      const keys=Object.keys(r);
+      const dK=keys.find(k=>/data/i.test(k));
+      const descK=keys.find(k=>/descri|estabelec|hist|lançamento/i.test(k)&&!/data/i.test(k));
+      const vK=keys.find(k=>/valor/i.test(k)&&!/saldo/i.test(k));
+      const tipoK=keys.find(k=>/tipo|natureza|operac/i.test(k));
+      const raw=(r[vK]||"0").replace(/\s/g,"");
+      const v=raw.includes(",")?parseFloat(raw.replace(/\./g,"").replace(",",".")):parseFloat(raw);
+      const kind=(r[tipoK]&&/créd|entrada|receb/i.test(r[tipoK]))||v>0?"inc":"exp";
+      return{date:r[dK]||"",desc:r[descK]||"",value:Math.abs(v),kind,source:"C6 Bank"};
+    }).filter(r=>r.date&&r.value>0&&r.desc);
+  }
+
   return [];
 }
+
+
+// ── PDF Import ──────────────────────────────────────────────────────────────
+let _pdfjs=null;
+async function loadPdfJs(){
+  if(_pdfjs) return _pdfjs;
+  return new Promise((res,rej)=>{
+    if(window.pdfjsLib){_pdfjs=window.pdfjsLib;return res(_pdfjs);}
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    s.onload=()=>{
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      _pdfjs=window.pdfjsLib;res(_pdfjs);
+    };
+    s.onerror=()=>rej(new Error("Falha ao carregar PDF.js"));
+    document.head.appendChild(s);
+  });
+}
+
+async function extractPdfText(file){
+  const pdfjs=await loadPdfJs();
+  const ab=await file.arrayBuffer();
+  const pdf=await pdfjs.getDocument({data:ab}).promise;
+  let full="";
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const tc=await page.getTextContent();
+    full+=tc.items.map(it=>it.str).join(" ")+"
+";
+  }
+  return full;
+}
+
+function detectBankPdf(text){
+  const t=text.toLowerCase();
+  if(t.includes("nubank"))return "nubank_pdf";
+  if(t.includes("banco inter")||t.includes("inter s.a")||t.includes("interdigital"))return "inter_pdf";
+  if(t.includes("c6 bank")||t.includes("banco c6"))return "c6_pdf";
+  if(t.includes("bradesco"))return "bradesco_pdf";
+  if(t.includes("itaú")||t.includes("itau"))return "itau_pdf";
+  if(t.includes("santander"))return "santander_pdf";
+  if(t.includes("banco do brasil")||t.includes("bb s.a"))return "bb_pdf";
+  if(t.includes("caixa econômica")||t.includes("caixa economica"))return "caixa_pdf";
+  return "pdf_unknown";
+}
+
+function parsePdfGenerico(text, source){
+  const txs=[];
+  // Busca padrao de data brasileira + descricao + valor
+  const re=new RegExp("(\\d{2}\\/\\d{2}\\/\\d{2,4})\\s+(.{4,60}?)\\s+([+-]?\\s*R?\\$?\\s*[\\d.]+,\\d{2})","g");
+  let m;
+  while((m=re.exec(text))!==null){
+    const [,date,desc,rawVal]=m;
+    const clean=rawVal.replace(/[R$\s]/g,"");
+    const v=parseFloat(clean.replace(/\./g,"").replace(",","."));
+    if(!isNaN(v)&&Math.abs(v)>0){
+      txs.push({date,desc:desc.trim(),value:Math.abs(v),kind:v<0?"exp":"inc",source});
+    }
+  }
+  return txs;
+}
+
+async function parsePdfViaGemini(text, source){
+  const key=localStorage.getItem("mf_gemini_key")||"";
+  if(!key) throw new Error("Configure sua chave Gemini em Config > Chave IA para importar PDF deste banco.");
+  const prompt="Voce e um extrator de transacoes financeiras de extratos bancarios brasileiros.\n"+
+    "Analise o texto abaixo (extrato do "+source+") e extraia TODAS as transacoes.\n"+
+    "Retorne APENAS um array JSON valido, sem markdown, sem explicacoes.\n"+
+    "Cada item deve ter exatamente estes campos: {date: DD/MM/AAAA, desc: string, value: numero positivo, kind: exp ou inc}\n"+
+    "- kind exp = debito/saida/pagamento/compra/saque\n"+
+    "- kind inc = credito/entrada/recebimento/deposito/pix recebido/salario\n"+
+    "- value sempre positivo (numero sem R$ ou pontos de milhar, use ponto decimal)\n"+
+    "- Ignore linhas de saldo, total, cabecalho, rodape\n"+
+    "- Se nao encontrar transacoes, retorne []\n\n"+
+    "TEXTO DO EXTRATO:\n"+text.slice(0,8000);
+  const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+key,{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.1}})
+  });
+  if(!r.ok) throw new Error("Gemini API erro: "+r.status);
+  const data=await r.json();
+  const raw=data.candidates?.[0]?.content?.parts?.[0]?.text||"[]";
+  const fence=String.fromCharCode(96,96,96);const clean=raw.replace(fence+"json","").replace(fence,"").trim();
+  const parsed=JSON.parse(clean);
+  if(!Array.isArray(parsed)) throw new Error("Resposta invalida da IA");
+  return parsed.map(p=>({...p,source})).filter(p=>p.date&&p.value>0);
+}
+async function parsePdf(file, setMsg){
+  setMsg("Lendo PDF...");
+  const text=await extractPdfText(file);
+  if(text.trim().length<50) throw new Error("PDF sem texto selecionavel. Use um extrato em PDF de texto, nao escaneado.");
+  const tipo=detectBankPdf(text);
+  const source=tipo.replace("_pdf","").replace("nubank","Nubank").replace("inter","Inter")
+    .replace("c6","C6 Bank").replace("bradesco","Bradesco").replace("itau","Itaú")
+    .replace("santander","Santander").replace("bb","Banco do Brasil").replace("caixa","Caixa").replace("unknown","Banco");
+
+  setMsg("Banco detectado: "+source+". Extraindo transacoes...");
+
+  // Bancos com regex confiável
+  if(["nubank_pdf","inter_pdf","bradesco_pdf"].includes(tipo)){
+    const txs=parsePdfGenerico(text,source);
+    if(txs.length>0) return txs;
+    // fallback para Gemini se regex não encontrou nada
+  }
+  // Demais bancos e fallback → Gemini
+  setMsg("Usando IA para extrair transacoes do "+source+"...");
+  return await parsePdfViaGemini(text, source);
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, showToast }){
   const [step,setStep]=useState("upload");
@@ -1563,11 +1759,18 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
     const file=e.target.files?.[0];if(!file)return;
     setLoading(true);setMsg("Lendo arquivo...");
     try{
-      const text=await file.text();
-      const tipo=detectBank(text);
-      if(tipo==="unknown"){setMsg("❌ Formato não reconhecido. Use CSV exportado pelo app do banco.");setLoading(false);return;}
-      const rows=parseCSVRows(text);
-      const parsed=parseTxs(rows,tipo);
+      const isPdf=file.name.toLowerCase().endsWith(".pdf")||file.type==="application/pdf";
+      let parsed=[];
+      if(isPdf){
+        parsed=await parsePdf(file,setMsg);
+        if(parsed.length===0){setMsg("ℹ️ Nenhuma transação encontrada no PDF. Verifique se o arquivo é um extrato bancário.");setLoading(false);return;}
+      } else {
+        const text=await file.text();
+        const tipo=detectBank(text);
+        if(tipo==="unknown"){setMsg("❌ Formato não reconhecido. Bancos suportados: Nubank, Bradesco, Inter, C6 Bank (CSV) ou qualquer banco (PDF).");setLoading(false);return;}
+        const rows=parseCSVRows(text);
+        parsed=parseTxs(rows,tipo);
+      }
       const semDup=parsed.filter(n=>!exps.some(e=>e.value===n.value&&e.date===n.date&&(e.desc||"").slice(0,10)===(n.desc||"").slice(0,10)));
       const dupCount=parsed.length-semDup.length;
       const catted=semDup.map(p=>({
@@ -1594,6 +1797,8 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
       "Nubank Conta":  {id:"nubank",   label:"Nubank",   emoji:"💜",color:"#8b5cf6"},
       "Nubank Cartão": {id:"nubank",   label:"Nubank",   emoji:"💜",color:"#8b5cf6"},
       "Bradesco":      {id:"bradesco", label:"Bradesco", emoji:"🔴",color:"#ef4444"},
+      "Inter":         {id:"inter",    label:"Inter",    emoji:"🟠",color:"#f97316"},
+      "C6 Bank":       {id:"c6",       label:"C6 Bank",  emoji:"⚫",color:"#374151"},
     };
     const bancosNoImport=[...new Set(preview.map(p=>p.source))];
     const novasCont=[];
@@ -1641,18 +1846,25 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
         <div style={{background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:14,padding:20,marginBottom:16,textAlign:"center"}}>
           <div style={{fontSize:36,marginBottom:10}}>🏦</div>
           <div style={{fontSize:15,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>Importar extrato bancário</div>
-          <div style={{fontSize:13,color:"#64748b",lineHeight:1.6,marginBottom:16}}>CSV do Nubank ou Bradesco. Dados ficam só no celular.</div>
+          <div style={{fontSize:13,color:"#64748b",lineHeight:1.6,marginBottom:12}}>CSV ou PDF do seu banco. Seus dados ficam só no celular.</div>
+          {/* Bancos suportados */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center",marginBottom:16}}>
+            {[["💜","Nubank","CSV"],["🔴","Bradesco","CSV"],["🟠","Inter","CSV"],["⚫","C6","CSV"],["🏦","Qualquer banco","PDF+IA"]].map(([e,n,t])=>(
+              <span key={n} style={{fontSize:11,padding:"3px 9px",borderRadius:99,background:"rgba(255,255,255,0.06)",color:"#94a3b8",border:"1px solid rgba(255,255,255,0.08)"}}>{e} {n} <span style={{color:"#475569",fontSize:10}}>{t}</span></span>
+            ))}
+          </div>
           <label style={{display:"block",width:"100%",background:"linear-gradient(135deg,#4f46e5,#4338ca)",borderRadius:10,padding:"11px 0",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"center",color:"white",fontFamily:"inherit",opacity:loading?0.6:1,boxSizing:"border-box"}}>
-            {loading?"⏳ Processando...":"📂 Selecionar arquivo CSV"}
-            <input type="file" accept=".csv,.CSV" style={{display:"none"}} onChange={handleFile} disabled={loading}/>
+            {loading?"⏳ Processando...":"📂 Selecionar CSV ou PDF"}
+            <input type="file" accept=".csv,.CSV,.pdf,.PDF" style={{display:"none"}} onChange={handleFile} disabled={loading}/>
           </label>
         </div>
         {loading&&<div style={{textAlign:"center",padding:16}}><div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:8}}><span className="dot"/><span className="dot"/><span className="dot"/></div></div>}
         {msg&&!loading&&<AlertBox tipo={msg.startsWith("❌")?"err":"info"} texto={msg}/>}
-        <SecTitle t="Como exportar" sub="Precisamos de um arquivo .CSV do seu banco"/>
+        <SecTitle t="Como exportar" sub="CSV ou PDF direto do app do banco"/>
         <div style={CARD}>
-          <div style={{fontSize:13,color:"#94a3b8",lineHeight:1.7}}>
-            Acesse o extrato ou fatura no app ou internet banking do seu banco e procure a opção <strong style={{color:"#e2e8f0"}}>Exportar</strong> ou <strong style={{color:"#e2e8f0"}}>Baixar CSV</strong>. O arquivo será enviado por e-mail ou ficará disponível para download.
+          <div style={{fontSize:13,color:"#94a3b8",lineHeight:1.9}}>
+            <div style={{marginBottom:10}}><strong style={{color:"#e2e8f0"}}>📊 CSV (recomendado):</strong> Nubank, Bradesco, Inter e C6 exportam CSV direto no app. Procure <em>Exportar extrato</em> ou <em>Baixar CSV</em> na seção de histórico.</div>
+            <div><strong style={{color:"#e2e8f0"}}>📄 PDF (qualquer banco):</strong> Baixe o extrato em PDF pelo app ou internet banking. O Granzo usa IA para ler e extrair as transações automaticamente — requer chave Gemini configurada em ⚙️ Config → Chave IA.</div>
           </div>
         </div>
       </>}
@@ -1755,6 +1967,54 @@ function getGDriveClientId(){try{return localStorage.getItem("mf_gdrive_client_i
 function setGDriveClientId(id){try{localStorage.setItem("mf_gdrive_client_id",id);}catch{}}
 function getGDriveLastSync(){try{return localStorage.getItem("mf_gdrive_last_sync")||"";}catch{return "";}}
 function setGDriveLastSync(d){try{localStorage.setItem("mf_gdrive_last_sync",d);}catch{}}
+function getGDriveAutoBackup(){try{return localStorage.getItem("mf_gdrive_auto")==="true";}catch{return false;}}
+function setGDriveAutoBackup(v){try{localStorage.setItem("mf_gdrive_auto",v?"true":"false");}catch{}}
+
+// Hook: dispara backup automático ao app ir para background ou fechar aba
+function useAutoBackup(exps,cats,markets,fixas,contas,reservas,meta,showToast){
+  const dataRef=useRef({exps,cats,markets,fixas,contas,reservas,meta});
+  const timerRef=useRef(null);
+  const runningRef=useRef(false);
+
+  useEffect(()=>{dataRef.current={exps,cats,markets,fixas,contas,reservas,meta};},[exps,cats,markets,fixas,contas,reservas,meta]);
+
+  useEffect(()=>{
+    async function doBackup(){
+      if(runningRef.current) return;
+      const token=getGDriveToken();
+      const autoOn=getGDriveAutoBackup();
+      if(!token||!autoOn) return;
+      runningRef.current=true;
+      try{
+        const {exps,cats,markets,fixas,contas,reservas,meta}=dataRef.current;
+        const prodsExtra=loadProdsExtra();const precosMkt=loadPrecos();
+        const json=JSON.stringify({exps,cats,markets,fixas,contas,reservas,meta,prodsExtra,precosMkt,_version:2,_savedAt:new Date().toISOString()},null,2);
+        await gdriveUpload(token,json);
+        const agora=new Date().toLocaleString("pt-BR");
+        setGDriveLastSync(agora);
+        if(document.visibilityState==="visible") showToast("☁️ Backup automático salvo!");
+      }catch(e){
+        if(e.message==="TOKEN_EXPIRED") setGDriveToken("");
+      }finally{runningRef.current=false;}
+    }
+
+    function onVisibility(){
+      if(document.visibilityState==="hidden"){
+        clearTimeout(timerRef.current);
+        timerRef.current=setTimeout(doBackup,1000);
+      }
+    }
+    function onUnload(){doBackup();}
+
+    document.addEventListener("visibilitychange",onVisibility);
+    window.addEventListener("beforeunload",onUnload);
+    return ()=>{
+      document.removeEventListener("visibilitychange",onVisibility);
+      window.removeEventListener("beforeunload",onUnload);
+      clearTimeout(timerRef.current);
+    };
+  },[]);
+}
 
 async function gdriveRequest(method,url,body,token){
   const r=await fetch(url,{method,headers:{"Authorization":`Bearer ${token}`,...(body?{"Content-Type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
@@ -1801,6 +2061,8 @@ function GoogleDriveBackup({exps,cats,markets,fixas,contas,reservas,meta,setExps
   const [msg,      setMsgDrive]=useState("");
   const [lastSync, setLastSync]=useState(getGDriveLastSync);
   const [editId,   setEditId]  =useState(false);
+  const [autoBackup,setAutoBackupUI]=useState(getGDriveAutoBackup);
+  function toggleAuto(v){setAutoBackupUI(v);setGDriveAutoBackup(v);if(v&&token) showToast("☁️ Backup automático ativado!");}
 
   const isConnected=!!token;
   const hasClientId=!!clientId;
@@ -1926,6 +2188,16 @@ function GoogleDriveBackup({exps,cats,markets,fixas,contas,reservas,meta,setExps
         <button style={{...btn("rgba(99,102,241,0.15)","#818cf8",{border:"1px solid rgba(99,102,241,0.3)"}),opacity:status==="loading"?0.6:1}} onClick={restaurarDrive} disabled={status==="loading"}>
           {status==="loading"?"⏳ Buscando...":"⬇️ Restaurar do Drive"}
         </button>
+        {/* Toggle backup automático */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"12px 14px",marginTop:4}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>Backup automático</div>
+            <div style={{fontSize:11,color:"#475569",marginTop:2}}>Salva ao minimizar o app</div>
+          </div>
+          <div onClick={()=>toggleAuto(!autoBackup)} style={{width:44,height:24,borderRadius:99,background:autoBackup?"#22c55e":"rgba(255,255,255,0.1)",cursor:"pointer",position:"relative",transition:"background .25s",flexShrink:0}}>
+            <div style={{position:"absolute",top:3,left:autoBackup?22:3,width:18,height:18,borderRadius:"50%",background:"#fff",transition:"left .25s",boxShadow:"0 1px 4px rgba(0,0,0,0.3)"}}/>
+          </div>
+        </div>
       </div>}
       {hasClientId&&<button style={{...btn("rgba(255,255,255,0.04)","#475569",{border:"1px solid rgba(255,255,255,0.06)",marginTop:4,fontSize:11})}} onClick={()=>setEditId(true)}>✏️ Trocar Client ID</button>}
     </>}
@@ -2325,18 +2597,19 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           // Abre modal com textarea para copiar manualmente - funciona em qualquer WebView
           const overlay=document.createElement("div");
           overlay.style.cssText="position:fixed;inset:0;background:rgba(8,14,29,0.98);z-index:9999;display:flex;flex-direction:column;padding:16px;box-sizing:border-box;";
-          overlay.innerHTML=`
-            <div style="color:#e2e8f0;font-size:15px;font-weight:700;margin-bottom:8px;">📋 Copie o JSON abaixo</div>
-            <div style="color:#64748b;font-size:12px;margin-bottom:12px;">Selecione tudo → Copie → Cole no Google Keep, Drive ou Notes</div>
-            <textarea id="backup-json" style="flex:1;background:#0f172a;color:#4ade80;border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:12px;font-size:11px;font-family:monospace;resize:none;outline:none;" readonly>${json}</textarea>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-              <button id="btn-select-all" style="flex:1;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:white;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Selecionar tudo</button>
-              <button id="btn-fechar" style="flex:1;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Fechar</button>
-            </div>`;
+          (()=>{
+            const h=document.createElement("div");h.style.cssText="color:#e2e8f0;font-size:15px;font-weight:700;margin-bottom:8px;";h.textContent="📋 Copie o JSON abaixo";overlay.appendChild(h);
+            const s=document.createElement("div");s.style.cssText="color:#64748b;font-size:12px;margin-bottom:12px;";s.textContent="Selecione tudo → Copie → Cole no Google Keep, Drive ou Notes";overlay.appendChild(s);
+            const ta2=document.createElement("textarea");ta2.id="backup-json";ta2.style.cssText="flex:1;background:#0f172a;color:#4ade80;border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:12px;font-size:11px;font-family:monospace;resize:none;outline:none;";ta2.readOnly=true;ta2.value=json;overlay.appendChild(ta2);
+            const row=document.createElement("div");row.style.cssText="display:flex;gap:8px;margin-top:12px;";
+            const btnSel2=document.createElement("button");btnSel2.id="btn-select-all";btnSel2.style.cssText="flex:1;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:white;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;";btnSel2.textContent="Selecionar tudo";row.appendChild(btnSel2);
+            const btnFch2=document.createElement("button");btnFch2.id="btn-fechar";btnFch2.style.cssText="flex:1;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;";btnFch2.textContent="Fechar";row.appendChild(btnFch2);
+            overlay.appendChild(row);
+          })();
           document.body.appendChild(overlay);
-          const ta=overlay.querySelector("#backup-json");
-          const btnSel=overlay.querySelector("#btn-select-all");
-          const btnFch=overlay.querySelector("#btn-fechar");
+          const ta=ta2;
+          const btnSel=btnSel2;
+          const btnFch=btnFch2;
           setTimeout(()=>{ta.focus();ta.select();},100);
           btnSel.onclick=()=>{ta.focus();ta.select();try{document.execCommand("copy");btnSel.textContent="✓ Copiado!";}catch{}};
           btnFch.onclick=()=>document.body.removeChild(overlay);
@@ -2865,6 +3138,7 @@ export default function App() {
 
   // Verificar notificações ao abrir o app (após mesFiltro estar definido)
   useNotifCheck(cats,exps,fixas,mesFiltro);
+  useAutoBackup(exps,cats,markets,fixas,contas,reservas,meta,showToast);
 
   const TABS=[
     {id:"dashboard",emoji:"📊",label:"Início"},
