@@ -115,7 +115,7 @@ export async function gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,
         const bc=pct>=100?"#dc2626":pct>=80?"#d97706":"#16a34a";
         if(idx2%2===0){fc("#f8fafc");doc.rect(ML,y,CW,10,"F");}
         doc.setFontSize(8);doc.setFont("helvetica","bold");tc("#1e293b");
-        const nm=(cat.emoji?cat.emoji+" ":"")+cat.label;
+        const nm=cat.label;
         doc.text(nm.slice(0,25),ML+2,y+7);
         doc.setFont("helvetica","bold");tc("#dc2626");
         doc.text(fmtR(cat.spent),PW-MR,y+7,{align:"right"});
@@ -183,7 +183,7 @@ export async function gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,
         ):true;
         fc(jaLancou?"#f0fdf4":"#fef9c3");doc.rect(ML,y,CW,9,"F");
         doc.setFontSize(9);doc.setFont("helvetica","normal");tc("#1e293b");
-        doc.text((f.emoji||"•")+" "+f.desc.slice(0,30),ML+2,y+6);
+        doc.text("- "+f.desc.slice(0,30),ML+2,y+6);
         doc.setFont("helvetica","bold");tc(jaLancou?"#16a34a":"#d97706");
         doc.text(fmtR(f.valor),PW-MR-24,y+6);
         doc.text(jaLancou?"OK Lancado":"Pendente",PW-MR,y+6,{align:"right"});
@@ -204,7 +204,7 @@ export async function gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,
         const pct=r.meta>0?Math.min(100,(r.saldo/r.meta)*100):null;
         fc("#eef2ff");doc.rect(ML,y,CW,9,"F");
         doc.setFontSize(9);doc.setFont("helvetica","normal");tc("#1e293b");
-        doc.text((r.emoji||"🏦")+" "+r.nome.slice(0,30),ML+2,y+6);
+        doc.text("- "+r.nome.slice(0,30),ML+2,y+6);
         if(pct!==null){
           const barX=ML+75,barW=50,barH=3,barY=y+4;
           fc("#e2e8f0");doc.roundedRect(barX,barY,barW,barH,0.5,0.5,"F");

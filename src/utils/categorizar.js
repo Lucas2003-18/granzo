@@ -3,7 +3,7 @@ export function categorizar(desc, kind) {
   const d = desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   if (/pagamento de fatura/.test(d)) return "_ignorar";
   if (/pet.?camp|veterinar|petshop|petz|cobasi|racao|pet.?shop|banho.?tosa|castracao/.test(d)) return "pet";
-  if (/ifood|rappi|uber.?eat|james|99.?food|melfood|restaur|lanche|pizza|burguer|mcdon|subway|sushi|padaria|superm|carrefour|atacadao|enxuto|higa|extra|pao.?de.?acucar|hortifrut|acougue|peixar|bebida|sorvete|supermercado|jim\.com|kamikase|espaco.?nobre|d.?burger|cacau/.test(d)) return "alimentacao";
+  if (/ifood|rappi|uber.?eat|james|99.?food|melfood|restaur|lanche|pizza|burguer|mc.?don|subway|sushi|padaria|superm|carrefour|atacadao|enxuto|higa|extra|pao.?de.?acucar|hortifrut|acougue|peixar|bebida|sorvete|supermercado|jim\.com|kamikase|espaco.?nobre|d.?burger|cacau|casa.?de.?carne|sacolao|feira|mercearia/.test(d)) return "alimentacao";
   if (/uber|99pop|cabify|taxi|gasolina|combustiv|posto|shell|ipiranga|chiminazzo|diamante.?auto|pauliceia|estacion|onibus|metro|trem|passagem|pedagio|autopeca|oficina|mecanica|detran|ipva|seguro.?auto|ancar.?park/.test(d)) return "transporte";
   if (/farmac|drogari|remedio|medico|medica|hospital|clinica|consulta|exame|laborat|dentist|odontos|plano.?saude|unimed|amil|notredame|hapvida|academia|gym|crossfit/.test(d)) return "saude";
   if (/netflix|spotify|amazon|disney|hbo|youtube|prime|deezer|apple.?music|cinema|teatro|show|ingresso|jogo|steam|playstation|xbox|nintendo|balada|clube|viagem|hotel|airbnb|booking|ebanx|pagbrasil|ea9/.test(d)) return "lazer";
