@@ -236,30 +236,42 @@ export async function gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,
     // ── SALVAR / COMPARTILHAR ──
     const filename="Granzo_"+(MESES[+mes]||mes)+"_"+ano+".pdf";
     const blob=doc.output("blob");
+    const file=new File([blob],filename,{type:"application/pdf"});
 
-    // 1) Tenta Web Share API com suporte real a arquivos
-    if(navigator.share&&navigator.canShare){
+    // 1) Tenta Web Share API direto (funciona no Android WebView sem checar canShare)
+    if(navigator.share){
       try{
-        const file=new File([blob],filename,{type:"application/pdf"});
-        if(navigator.canShare({files:[file]})){
-          await navigator.share({files:[file],title:"Relatório Granzo - "+nomeMes});
-          showToast("✓ PDF compartilhado!");
-          return;
-        }
+        await navigator.share({files:[file],title:"Relatório Granzo - "+nomeMes});
+        showToast("✓ PDF compartilhado!");
+        return;
       }catch(e){
-        if(e.name==="AbortError") return;
+        if(e.name==="AbortError") return; // usuário cancelou — não é erro
+        // TypeError = share com files não suportado, tenta fallback
       }
     }
 
-    // 2) Fallback: download via <a> tag (funciona em WebView/Capacitor)
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url;
-    a.download=filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},3000);
-    showToast("✓ PDF salvo! Verifique sua pasta de Downloads.");
+    // 2) Fallback: download via <a> tag
+    try{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;
+      a.download=filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},3000);
+      showToast("✓ PDF salvo na pasta Downloads!");
+    }catch{
+      // 3) Último recurso: base64 data URI
+      const reader=new FileReader();
+      reader.onload=()=>{
+        const a=document.createElement("a");
+        a.href=reader.result;
+        a.download=filename;
+        a.click();
+        showToast("✓ PDF gerado!");
+      };
+      reader.readAsDataURL(blob);
+    }
   }catch(err){
     showToast("❌ Erro: "+err.message);
   }
