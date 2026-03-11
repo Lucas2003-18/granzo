@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { fmt } from '../utils/format';
 import { PRESETS } from '../utils/constants';
 import { inp, btn, CARD, ROW } from '../utils/styles';
-import { Bar, SecTitle } from './ui';
+import { Bar, SecTitle, AlertBox } from './ui';
 
 function Orcamento({ exps, cats, setCats, hide, mesFiltro }) {
   const gastos=exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
