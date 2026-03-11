@@ -1786,17 +1786,27 @@ async function gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,showToa
 
     // ── SALVAR / COMPARTILHAR ──
     const filename="Granzo_"+(MESES[+mes]||mes)+"_"+ano+".pdf";
-    if(navigator.share){
-      const blob=doc.output("blob");
-      const file=new File([blob],filename,{type:"application/pdf"});
+    const blob=doc.output("blob");
+
+    // 1) Tenta Web Share API com suporte real a arquivos
+    if(navigator.share&&navigator.canShare){
       try{
-        await navigator.share({files:[file],title:"Relatorio Granzo - "+nomeMes});
-        showToast("✓ PDF compartilhado!");
-        return;
-      }catch{}
+        const file=new File([blob],filename,{type:"application/pdf"});
+        if(navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title:"Relatório Granzo - "+nomeMes});
+          showToast("✓ PDF compartilhado!");
+          return;
+        }
+      }catch(e){
+        if(e.name==="AbortError") return; // usuário cancelou
+      }
     }
-    doc.save(filename);
-    showToast("✓ PDF gerado!");
+
+    // 2) Fallback: abre o PDF em nova aba (funciona em WebView/Capacitor)
+    const url=URL.createObjectURL(blob);
+    window.open(url,"_blank");
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    showToast("✓ PDF aberto! Use o menu do visualizador para compartilhar.");
   }catch(err){
     showToast("❌ Erro: "+err.message);
   }
@@ -2521,141 +2531,6 @@ function MetaConfig({ meta, setMeta }) {
 }
 
 // ── CONFIG ─────────────────────────────────────────────────
-// ── NOTIFICAÇÕES LOCAIS ────────────────────────────────────
-function getNotifConfig(){try{const v=localStorage.getItem("mf_notif");return v?JSON.parse(v):{enabled:false,orcamento:true,fixasPendentes:true,resumoMensal:false,horaResumo:"20:00"};}catch{return {enabled:false,orcamento:true,fixasPendentes:true,resumoMensal:false,horaResumo:"20:00"};}}
-function saveNotifConfig(c){try{localStorage.setItem("mf_notif",JSON.stringify(c));}catch{}}
-
-// Verifica suporte a notificações do browser/WebView
-function notifSupported(){return typeof Notification!=="undefined";}
-async function requestNotifPermission(){
-  if(!notifSupported()) return false;
-  if(Notification.permission==="granted") return true;
-  const r=await Notification.requestPermission();
-  return r==="granted";
-}
-function sendNotif(title,body,icon="💸"){
-  if(!notifSupported()||Notification.permission!=="granted") return;
-  try{new Notification(title,{body,icon:"/icons/icon-192x192.png",badge:"/icons/icon-192x192.png"});}catch{}
-}
-
-function NotifConfig({cats,exps,fixas,mesFiltro,showToast}){
-  const [cfg,setCfg]=useState(getNotifConfig);
-  const [permStatus,setPermStatus]=useState(()=>notifSupported()?Notification.permission:"unsupported");
-  const [testando,setTestando]=useState(false);
-
-  function update(k,v){const novo={...cfg,[k]:v};setCfg(novo);saveNotifConfig(novo);}
-
-  async function ativar(){
-    const ok=await requestNotifPermission();
-    setPermStatus(ok?"granted":"denied");
-    if(ok){update("enabled",true);showToast("✓ Notificações ativadas!");}
-    else showToast("❌ Permissão negada — ative nas configurações do Android");
-  }
-
-  async function testar(){
-    setTestando(true);
-    const ok=await requestNotifPermission();
-    if(ok){
-      sendNotif("💸 Granzo","Notificações funcionando! Você vai receber alertas de orçamento aqui.");
-      showToast("✅ Notificação enviada!");
-    } else showToast("❌ Sem permissão");
-    setTimeout(()=>setTestando(false),2000);
-  }
-
-  const isEnabled=cfg.enabled&&permStatus==="granted";
-
-  return <div>
-    {permStatus==="unsupported"&&<AlertBox tipo="warn" texto="⚠️ Seu dispositivo/navegador não suporta notificações locais."/>}
-    {permStatus==="denied"&&<AlertBox tipo="err" texto="❌ Permissão negada. Vá em Configurações → Apps → Granzo → Notificações para ativar."/>}
-
-    <div style={{...CARD,borderLeft:`3px solid ${isEnabled?"#4ade80":"#f59e0b"}`}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-        <div>
-          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>🔔 Notificações</div>
-          <div style={{fontSize:11,color:isEnabled?"#4ade80":"#64748b"}}>{isEnabled?"Ativas":"Desativadas"}</div>
-        </div>
-        {permStatus!=="unsupported"&&(
-          isEnabled
-            ?<button style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",color:"#f87171",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}} onClick={()=>update("enabled",false)}>Desativar</button>
-            :<button style={{background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:"white",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}} onClick={ativar}>Ativar</button>
-        )}
-      </div>
-      {isEnabled&&<button style={{...btn("rgba(99,102,241,0.1)","#818cf8",{border:"1px solid rgba(99,102,241,0.25)",fontSize:12,padding:"8px 0"}),opacity:testando?0.6:1}} onClick={testar}>🔔 Testar notificação</button>}
-    </div>
-
-    {isEnabled&&<>
-      <SecTitle t="O que notificar"/>
-      {[
-        {key:"orcamento",label:"⚠️ Alerta de orçamento",sub:"Quando um categoria chegar em 80% do limite"},
-        {key:"fixasPendentes",label:"📌 Despesas fixas pendentes",sub:"Lembrete quando fixas não foram lançadas no mês"},
-        {key:"resumoMensal",label:"📊 Resumo mensal",sub:"Resumo automático no dia 1 de cada mês"},
-      ].map(item=>(
-        <div key={item.key} style={{...ROW,justifyContent:"space-between"}}>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{item.label}</div>
-            <div style={{fontSize:11,color:"#475569"}}>{item.sub}</div>
-          </div>
-          <button style={{background:cfg[item.key]?"rgba(74,222,128,0.15)":"rgba(255,255,255,0.06)",border:cfg[item.key]?"1px solid rgba(74,222,128,0.3)":"1px solid rgba(255,255,255,0.1)",color:cfg[item.key]?"#4ade80":"#64748b",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}
-            onClick={()=>update(item.key,!cfg[item.key])}>
-            {cfg[item.key]?"✓ On":"Off"}
-          </button>
-        </div>
-      ))}
-      <div style={{...CARD,background:"rgba(99,102,241,0.04)",border:"1px solid rgba(99,102,241,0.1)",marginTop:8}}>
-        <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>
-          💡 As notificações são verificadas sempre que você abre o app. Para alertas no horário certo, mantenha o Granzo em segundo plano.
-        </div>
-      </div>
-    </>}
-  </div>;
-}
-
-// Hook: dispara notificações de orçamento ao carregar o app
-function useNotifCheck(cats,exps,fixas,mesFiltro){
-  useEffect(()=>{
-    const cfg=getNotifConfig();
-    if(!cfg.enabled||Notification?.permission!=="granted") return;
-    const agora=new Date();
-    const mesAtualKey=`${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,"0")}`;
-    const expsDoMes=exps.filter(e=>{
-      const p=e.date?.split("/");if(!p||p.length<2) return false;
-      const anoMes=p.length>=3?`${p[2]}-${p[1]}`:`${agora.getFullYear()}-${p[1]}`;
-      return anoMes===mesAtualKey;
-    });
-    const gastos=expsDoMes.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
-
-    // Verifica orçamento
-    if(cfg.orcamento){
-      const lastCheck=localStorage.getItem("mf_notif_last_orc")||"";
-      const today=agora.toISOString().slice(0,10);
-      if(lastCheck!==today){
-        cats.filter(c=>c.budget>0&&c.id!=="investimento").forEach(cat=>{
-          const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
-          const pct=(spent/cat.budget)*100;
-          if(pct>=100) sendNotif(`🚨 ${cat.label} estourou!`,`Você gastou ${fmt(spent)} de ${fmt(cat.budget)} orçados.`);
-          else if(pct>=80) sendNotif(`⚠️ ${cat.label} em ${pct.toFixed(0)}%`,`${fmt(cat.budget-spent)} restando no orçamento.`);
-        });
-        localStorage.setItem("mf_notif_last_orc",today);
-      }
-    }
-
-    // Verifica fixas pendentes (após dia 5 do mês)
-    if(cfg.fixasPendentes&&agora.getDate()>=5){
-      const lastFixaCheck=localStorage.getItem("mf_notif_last_fixa")||"";
-      if(lastFixaCheck!==agora.toISOString().slice(0,7)){
-        const pendentes=fixas.filter(f=>{
-          if(!f.ativo||!f.valor) return false;
-          const descMatch=new RegExp(f.desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(" ")[0],"i");
-          return !expsDoMes.some(e=>e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")));
-        });
-        if(pendentes.length>0){
-          sendNotif(`📌 ${pendentes.length} fixa${pendentes.length>1?"s":""} pendente${pendentes.length>1?"s":""}`,`${pendentes.map(f=>f.desc).join(", ")} ainda não lançadas este mês.`);
-          localStorage.setItem("mf_notif_last_fixa",agora.toISOString().slice(0,7));
-        }
-      }
-    }
-  },[]);
-}
 
 function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, reservas, setReservas, meta, setMeta, setTab, showToast, mesFiltro }){
   const [sec,setsec]=useState("importar");
@@ -2672,7 +2547,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
     onOk={()=>{confirmModal.onOk();setConfirmModal(null);}}
     onCancel={()=>setConfirmModal(null)}/>;
 
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"drive",l:"☁️ Drive"},{id:"notif",l:"🔔 Notif."},{id:"dados",l:"🗄️ Dados"}];
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"drive",l:"☁️ Drive"},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -2840,7 +2715,6 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
       </>}
        {sec==="chaveIA"&&<ChaveIAConfig/>}
       {sec==="drive"&&<GoogleDriveBackup exps={exps} cats={cats} markets={markets} fixas={fixas} contas={contas} reservas={reservas} meta={meta} setExps={setExps} setCats={setCats} setMarkets={setMarkets} setFixas={setFixas} setContas={setContas} setReservas={setReservas} setMeta={setMeta} showToast={showToast} setConfirmModal={setConfirmModal}/>}
-      {sec==="notif"&&<NotifConfig cats={cats} exps={exps} fixas={fixas} mesFiltro={mesFiltro} showToast={showToast}/>}
       {sec==="dados"&&<div style={CARD}>
         <button style={{...btn("rgba(99,102,241,0.1)","#818cf8",{border:"1px solid rgba(99,102,241,0.2)",marginBottom:10})}} onClick={()=>{
           try{localStorage.removeItem("mf_onboarding_done");}catch{}
@@ -3395,8 +3269,6 @@ export default function App() {
   const totalExp=expsFiltrados.filter(e=>e.kind==="exp"&&e.cat!=="investimento").reduce((s,e)=>s+e.value,0);
   const saldo=totalInc-totalExp;
 
-  // Verificar notificações ao abrir o app (após mesFiltro estar definido)
-  useNotifCheck(cats,exps,fixas,mesFiltro);
   useAutoBackup(exps,cats,markets,fixas,contas,reservas,meta,showToast);
 
   const TABS=[
