@@ -309,10 +309,10 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
             sub:"Esta ação não pode ser desfeita. Todos os lançamentos, configurações e histórico serão removidos.",
             okLabel:"Apagar tudo",okColor:"#ef4444",
             onOk:()=>{
-              catsInit.current=true;fixasInit.current=true;reservasInit.current=true;
               setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);setContas(CONTAS_DEF);setReservas([]);setMeta(0);
-              try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos"].forEach(k=>localStorage.removeItem(k));}catch{}
+              try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos","mf_onboarding_done"].forEach(k=>localStorage.removeItem(k));}catch{}
               showToast("✓ Dados apagados");
+              setTab("dashboard");
             }
           });
         }}>🗑️ Apagar todos os dados</button>
