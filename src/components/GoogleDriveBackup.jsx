@@ -20,18 +20,10 @@ function GoogleDriveBackup({exps,cats,markets,fixas,contas,reservas,meta,setExps
 
   function handleToken(t){setToken(t);setGDriveToken(t);}
 
-  // Verifica se voltou do Google OAuth com token na URL
+  // Re-lê token do localStorage (App.jsx pode ter salvo durante redirect OAuth)
   useEffect(()=>{
-    const hash=window.location.hash;
-    if(hash&&hash.includes("access_token")){
-      const p=new URLSearchParams(hash.slice(1));
-      const t=p.get("access_token");
-      if(t){
-        handleToken(t);
-        showToast("✓ Google conectado!");
-        window.history.replaceState(null,"",window.location.pathname);
-      }
-    }
+    const t=getGDriveToken();
+    if(t&&!token) setToken(t);
   },[]);
 
   function conectar(){
