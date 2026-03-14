@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Component } from "react";
 import { fmt } from "./utils/format";
 import { MESES, MESES_CURTO, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF } from "./utils/constants";
 import { useAutoBackup } from "./hooks/useAutoBackup";
+import { useNotifCheck } from "./hooks/useNotifications";
 import Dashboard from "./components/Dashboard";
 import Graficos from "./components/Graficos";
 import Orcamento from "./components/Orcamento";
@@ -12,7 +13,32 @@ import Reservas from "./components/Reservas";
 import Onboarding from "./components/Onboarding";
 import Config from "./components/Config";
 
-export default function App() {
+class ErrorBoundary extends Component{
+  constructor(props){super(props);this.state={hasError:false,error:null};}
+  static getDerivedStateFromError(error){return{hasError:true,error};}
+  render(){
+    if(this.state.hasError) return (
+      <div style={{background:"#080e1d",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Outfit',sans-serif"}}>
+        <div style={{background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:18,padding:"32px 24px",maxWidth:360,textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:12}}>⚠️</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#f87171",marginBottom:8}}>Algo deu errado</div>
+          <div style={{fontSize:13,color:"#94a3b8",marginBottom:20,lineHeight:1.6}}>{this.state.error?.message||"Erro inesperado no app"}</div>
+          <button style={{background:"linear-gradient(135deg,#4f46e5,#4338ca)",border:"none",color:"white",borderRadius:12,padding:"12px 24px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
+            onClick={()=>{this.setState({hasError:false,error:null});}}>Tentar novamente</button>
+          <div style={{marginTop:12}}>
+            <button style={{background:"none",border:"none",color:"#64748b",fontSize:12,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}
+              onClick={()=>{try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos","mf_onboarding_done"].forEach(k=>localStorage.removeItem(k));}catch{}window.location.reload();}}>Limpar dados e reiniciar</button>
+          </div>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+export default function App() {return <ErrorBoundary><AppContent/></ErrorBoundary>;}
+
+function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(()=>{
     try{ return !localStorage.getItem("mf_onboarding_done"); }catch{ return true; }
   });
@@ -94,6 +120,7 @@ export default function App() {
   const saldo=totalInc-totalExp;
 
   useAutoBackup(exps,cats,markets,fixas,contas,reservas,meta,showToast);
+  useNotifCheck(cats,exps,fixas,mesFiltro);
 
   const TABS=[
     {id:"dashboard",emoji:"📊",label:"Início"},
