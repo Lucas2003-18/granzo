@@ -40,7 +40,7 @@ jobs:
 
       - name: Adicionar e sincronizar Capacitor Android
         run: |
-          npm install @capacitor/android@^6.0.0 @capacitor/status-bar@^6.0.0 @capacitor/splash-screen@^6.0.0 @capacitor/share@^6.0.0 @capacitor/filesystem@^6.0.0 @capacitor/local-notifications@^6.0.0
+          npm install @capacitor/android@^6.0.0 @capacitor/status-bar@^6.0.0 @capacitor/splash-screen@^6.0.0 @capacitor/share@^6.0.0 @capacitor/filesystem@^6.0.0 @capacitor/local-notifications@^6.0.0 @capacitor/app@^6.0.0
           npx cap add android || true
           npx cap sync android
 
@@ -67,7 +67,12 @@ jobs:
           if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST"; then
             sed -i '/<manifest/a\    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>' "$MANIFEST"
           fi
-          head -10 "$MANIFEST"
+
+          echo "=== 5) Deep link intent-filter para OAuth ==="
+          if ! grep -q "app.granzo.finance" "$MANIFEST"; then
+            sed -i '/<\/activity>/i\            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="app.granzo.finance" />\n            </intent-filter>' "$MANIFEST"
+          fi
+          head -30 "$MANIFEST"
 
       - name: Definir versionCode e versionName
         run: |
