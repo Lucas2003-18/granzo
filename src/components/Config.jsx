@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fmt, fmtDate } from '../utils/format';
-import { PRESETS, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF } from '../utils/constants';
+import { PRESETS, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF, APP_VERSION } from '../utils/constants';
 import { getGeminiKey, setGeminiKey } from '../utils/gemini';
 import { inp, btn, CARD, ROW } from '../utils/styles';
 import { SecTitle, AlertBox, ConfirmModal } from './ui';
@@ -330,6 +330,9 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
             }
           });
         }}>🗑️ Apagar todos os dados</button>
+        <div style={{textAlign:"center",marginTop:20,padding:"12px 0",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+          <div style={{fontSize:11,color:"#374151"}}>Granzo v{APP_VERSION}</div>
+        </div>
       </div>}
     </div>
   );
