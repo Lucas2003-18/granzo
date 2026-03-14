@@ -278,27 +278,61 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           💾 Salvamento automático ativo<br/>
           {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados · {fixas.length} fixas · {(contas||[]).filter(c=>c.id!=="geral").length} contas
         </div>
-        <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{marginBottom:10})} onClick={()=>{
-          const prodsExtra=loadProdsExtra();const precosMkt=loadPrecos();const json=JSON.stringify({exps,cats,markets,fixas,contas,reservas,meta,prodsExtra,precosMkt},null,2);
-          // Abre modal com textarea para copiar manualmente - funciona em qualquer WebView
-          const overlay=document.createElement("div");
-          overlay.style.cssText="position:fixed;inset:0;background:rgba(8,14,29,0.98);z-index:9999;display:flex;flex-direction:column;padding:16px;box-sizing:border-box;";
-          (()=>{
-            const h=document.createElement("div");h.style.cssText="color:#e2e8f0;font-size:15px;font-weight:700;margin-bottom:8px;";h.textContent="📋 Copie o JSON abaixo";overlay.appendChild(h);
-            const s=document.createElement("div");s.style.cssText="color:#64748b;font-size:12px;margin-bottom:12px;";s.textContent="Selecione tudo → Copie → Cole no Google Keep, Drive ou Notes";overlay.appendChild(s);
-            const ta2=document.createElement("textarea");ta2.id="backup-json";ta2.style.cssText="flex:1;background:#0f172a;color:#4ade80;border:1px solid rgba(74,222,128,0.3);border-radius:12px;padding:12px;font-size:11px;font-family:monospace;resize:none;outline:none;";ta2.readOnly=true;ta2.value=json;overlay.appendChild(ta2);
-            const row=document.createElement("div");row.style.cssText="display:flex;gap:8px;margin-top:12px;";
-            const btnSel2=document.createElement("button");btnSel2.id="btn-select-all";btnSel2.style.cssText="flex:1;background:linear-gradient(135deg,#1d4ed8,#1e40af);color:white;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;";btnSel2.textContent="Selecionar tudo";row.appendChild(btnSel2);
-            const btnFch2=document.createElement("button");btnFch2.id="btn-fechar";btnFch2.style.cssText="flex:1;background:rgba(255,255,255,0.08);color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;";btnFch2.textContent="Fechar";row.appendChild(btnFch2);
-            overlay.appendChild(row);
-          })();
-          document.body.appendChild(overlay);
-          const ta=ta2;
-          const btnSel=btnSel2;
-          const btnFch=btnFch2;
-          setTimeout(()=>{ta.focus();ta.select();},100);
-          btnSel.onclick=()=>{ta.focus();ta.select();try{document.execCommand("copy");btnSel.textContent="✓ Copiado!";}catch{}};
-          btnFch.onclick=()=>document.body.removeChild(overlay);
+        <button style={btn("linear-gradient(135deg,#1d4ed8,#1e40af)",undefined,{marginBottom:10})} onClick={async()=>{
+          const prodsExtra=loadProdsExtra();const precosMkt=loadPrecos();
+          const json=JSON.stringify({exps,cats,markets,fixas,contas,reservas,meta,prodsExtra,precosMkt,_version:2,_savedAt:new Date().toISOString()},null,2);
+          const filename="granzo_backup_"+new Date().toISOString().slice(0,10)+".json";
+          const blob=new Blob([json],{type:"application/json"});
+
+          // 1) Capacitor nativo: Filesystem + Share
+          const cap=window.Capacitor;
+          if(cap?.isNativePlatform?.()){
+            const plugins=cap.Plugins||{};
+            try{
+              // Converte JSON pra base64 de forma segura
+              const base64=await new Promise(res=>{
+                const reader=new FileReader();
+                reader.onload=()=>res(reader.result.split(",")[1]);
+                reader.readAsDataURL(blob);
+              });
+              const written=await plugins.Filesystem.writeFile({
+                path:filename,
+                data:base64,
+                directory:"CACHE"
+              });
+              await plugins.Share.share({
+                title:"Backup Granzo",
+                url:written.uri,
+                dialogTitle:"Compartilhar backup"
+              });
+              showToast("✓ Backup exportado!");
+              return;
+            }catch(e){
+              if(e?.message?.includes?.("cancel")||e?.message?.includes?.("dismiss")) return;
+            }
+          }
+
+          // 2) Fallback web: navigator.share com File
+          if(navigator.share){
+            try{
+              const file=new File([blob],filename,{type:"application/json"});
+              await navigator.share({files:[file],title:"Backup Granzo"});
+              showToast("✓ Backup exportado!");
+              return;
+            }catch(e){
+              if(e.name==="AbortError") return;
+            }
+          }
+
+          // 3) Último recurso: data URI download
+          const base64=await new Promise(res=>{
+            const reader=new FileReader();
+            reader.onload=()=>res(reader.result);
+            reader.readAsDataURL(blob);
+          });
+          const a=document.createElement("a");
+          a.href=base64;a.download=filename;a.click();
+          showToast("✓ Backup baixado!");
         }}>📤 Exportar backup JSON</button>
         <label style={{display:"block",width:"100%",background:"rgba(99,102,241,0.12)",border:"1px solid rgba(99,102,241,0.3)",color:"#818cf8",borderRadius:12,padding:"11px 0",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"center",fontFamily:"inherit",marginBottom:10,boxSizing:"border-box"}}>
           📥 Importar backup JSON
