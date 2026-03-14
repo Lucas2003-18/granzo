@@ -40,9 +40,18 @@ jobs:
 
       - name: Adicionar e sincronizar Capacitor Android
         run: |
-          npm install @capacitor/android @capacitor/status-bar @capacitor/splash-screen @capacitor/share @capacitor/filesystem
+          npm install @capacitor/android @capacitor/status-bar @capacitor/splash-screen @capacitor/share @capacitor/filesystem @capacitor/local-notifications
           npx cap add android || true
           npx cap sync android
+
+      - name: Definir versionCode e versionName
+        run: |
+          GRADLE_FILE="android/app/build.gradle"
+          if [ -f "android/app/build.gradle.kts" ]; then GRADLE_FILE="android/app/build.gradle.kts"; fi
+          # Usa o run_number do GitHub como versionCode (auto-incrementa)
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$GRADLE_FILE"
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.1.${{ github.run_number }}\"/" "$GRADLE_FILE"
+          echo "versionCode=${{ github.run_number }}, versionName=1.1.${{ github.run_number }}"
 
       - name: Gerar icone do app
         run: |
