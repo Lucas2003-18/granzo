@@ -42,7 +42,7 @@ function Importador({ exps, setExps, cats, setCats, contas, setContas, setTab, s
         setLoading(false);return;
       }
       setPreview(catted);
-      setMsg(dupCount>0?`ℹ️ ${dupCount} duplicata(s) já existente(s) foram ignoradas`:"");
+      setMsg(dupCount>0?`ℹ️ ${dupCount} duplicata${dupCount>1?"s":""} ignorada${dupCount>1?"s":""}. ${catted.length} lançamento${catted.length>1?"s":""} novo${catted.length>1?"s":""}:`:"");
       setStep("preview");
     }catch(err){setMsg(`❌ ${err.message}`);}
     setLoading(false);
