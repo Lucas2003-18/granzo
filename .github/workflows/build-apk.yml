@@ -46,23 +46,33 @@ jobs:
 
       - name: Atualizar para API level 35
         run: |
-          # Capacitor 5 gera variables.gradle com minSdk/targetSdk/compileSdk
           VARS="android/variables.gradle"
           if [ -f "$VARS" ]; then
             sed -i "s/compileSdkVersion = [0-9]*/compileSdkVersion = 35/" "$VARS"
             sed -i "s/targetSdkVersion = [0-9]*/targetSdkVersion = 35/" "$VARS"
-            echo "variables.gradle atualizado para API 35"
+            echo "=== variables.gradle ==="
+            cat "$VARS"
+          else
+            echo "variables.gradle não encontrado — criando..."
+            cat > "$VARS" << 'EOF'
+ext {
+    minSdkVersion = 22
+    compileSdkVersion = 35
+    targetSdkVersion = 35
+    androidxActivityVersion = '1.7.0'
+    androidxAppCompatVersion = '1.6.1'
+    androidxCoordinatorLayoutVersion = '1.2.0'
+    androidxCoreVersion = '1.10.0'
+    androidxFragmentVersion = '1.5.6'
+    junitVersion = '4.13.2'
+    androidxJunitVersion = '1.1.5'
+    androidxEspressoCoreVersion = '3.5.1'
+    cordovaAndroidVersion = '10.1.1'
+}
+EOF
+            echo "=== variables.gradle criado ==="
             cat "$VARS"
           fi
-          # Fallback: patch direto no build.gradle se não usar variables.gradle
-          for GF in android/app/build.gradle android/app/build.gradle.kts; do
-            if [ -f "$GF" ]; then
-              sed -i "s/compileSdkVersion [0-9]*/compileSdkVersion 35/" "$GF"
-              sed -i "s/compileSdk [0-9]*/compileSdk 35/" "$GF"
-              sed -i "s/targetSdkVersion [0-9]*/targetSdkVersion 35/" "$GF"
-              sed -i "s/targetSdk [0-9]*/targetSdk 35/" "$GF"
-            fi
-          done
 
       - name: Definir versionCode e versionName
         run: |
