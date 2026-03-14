@@ -6,6 +6,8 @@ import { inp, btn, CARD, ROW } from '../utils/styles';
 import { SecTitle, AlertBox, ConfirmModal } from './ui';
 import Importador from './Importador';
 import GoogleDriveBackup from './GoogleDriveBackup';
+import NotifConfig from './NotifConfig';
+import { categorizar } from '../utils/categorizar';
 import { loadPrecos, savePrecos, loadProdsExtra, saveProdsExtra } from '../utils/mercadoStorage';
 
 function ChaveIAConfig() {
@@ -72,7 +74,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
     onOk={()=>{confirmModal.onOk();setConfirmModal(null);}}
     onCancel={()=>setConfirmModal(null)}/>;
 
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"drive",l:"☁️ Drive"},{id:"dados",l:"🗄️ Dados"}];
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"drive",l:"☁️ Drive"},{id:"notif",l:"🔔 Notif."},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -240,11 +242,23 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
       </>}
        {sec==="chaveIA"&&<ChaveIAConfig/>}
       {sec==="drive"&&<GoogleDriveBackup exps={exps} cats={cats} markets={markets} fixas={fixas} contas={contas} reservas={reservas} meta={meta} setExps={setExps} setCats={setCats} setMarkets={setMarkets} setFixas={setFixas} setContas={setContas} setReservas={setReservas} setMeta={setMeta} showToast={showToast} setConfirmModal={setConfirmModal}/>}
+      {sec==="notif"&&<NotifConfig showToast={showToast}/>}
       {sec==="dados"&&<div style={CARD}>
         <button style={{...btn("rgba(99,102,241,0.1)","#818cf8",{border:"1px solid rgba(99,102,241,0.2)",marginBottom:10})}} onClick={()=>{
           try{localStorage.removeItem("mf_onboarding_done");}catch{}
           window.location.reload();
         }}>🎓 Ver tutorial novamente</button>
+        <button style={{...btn("rgba(245,158,11,0.1)","#f59e0b",{border:"1px solid rgba(245,158,11,0.2)",marginBottom:10})}} onClick={()=>{
+          let changed=0;
+          const updated=exps.map(e=>{
+            if(e.kind!=="exp") return e;
+            const novaCat=categorizar(e.desc,"exp");
+            if(novaCat&&novaCat!=="_ignorar"&&novaCat!==e.cat){changed++;return {...e,cat:novaCat};}
+            return e;
+          });
+          if(changed>0){setExps(updated);showToast(`✓ ${changed} lançamento${changed>1?"s":""} recategorizado${changed>1?"s":""}`);}
+          else showToast("Nenhuma mudança — tudo já está categorizado corretamente.");
+        }}>🏷️ Recategorizar lançamentos</button>
         <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0",marginBottom:8}}>🗄️ Dados</div>
         <div style={{fontSize:13,color:"#64748b",marginBottom:16,lineHeight:1.6}}>
           💾 Salvamento automático ativo<br/>
