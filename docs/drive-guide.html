@@ -23,7 +23,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .orb1{width:500px;height:500px;background:radial-gradient(circle,rgba(96,149,255,.10),transparent 70%);top:-150px;left:50%;transform:translateX(-50%)}
 .orb2{width:350px;height:350px;background:radial-gradient(circle,rgba(74,222,128,.06),transparent 70%);bottom:30%;right:-80px}
 
-/* NAV */
 nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:18px 48px;background:rgba(7,9,18,.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
 .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
 .nav-logo svg{width:28px;height:28px}
@@ -31,7 +30,6 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .nav-back{font-size:13px;color:var(--muted2);text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .2s}
 .nav-back:hover{color:var(--blue)}
 
-/* HERO */
 .hero{position:relative;z-index:1;padding:140px 24px 60px;text-align:center;max-width:740px;margin:0 auto}
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(96,149,255,.08);border:1px solid rgba(96,149,255,.2);border-radius:99px;padding:6px 16px;font-size:12px;color:var(--blue);font-weight:600;margin-bottom:24px;text-transform:uppercase;letter-spacing:.08em}
 .hero h1{font-size:clamp(32px,5vw,52px);font-weight:800;line-height:1.1;letter-spacing:-1.5px;margin-bottom:16px}
@@ -39,12 +37,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .hero p{font-size:17px;color:var(--muted2);line-height:1.7;margin-bottom:32px}
 .meta-row{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap}
 .meta-pill{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted2)}
-.meta-pill svg{width:14px;height:14px;opacity:.6}
 
-/* CONTENT */
 .content{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:0 24px 80px}
 
-/* PROGRESS BAR */
 .progress-bar{position:sticky;top:72px;z-index:50;background:rgba(7,9,18,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:12px 0;margin-bottom:48px}
 .progress-track{max-width:760px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:12px}
 .progress-steps{display:flex;gap:6px;flex:1}
@@ -53,14 +48,12 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .progress-step.active{background:var(--blue)}
 .progress-label{font-size:11px;color:var(--muted);white-space:nowrap}
 
-/* SECTION */
 .section{margin-bottom:56px}
 .section-header{display:flex;align-items:center;gap:14px;margin-bottom:28px}
 .section-num{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--blue2));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
 .section-num.green{background:linear-gradient(135deg,var(--green2),#16a34a)}
 .section-header h2{font-size:22px;font-weight:700;letter-spacing:-.3px}
 
-/* STEPS */
 .step{display:flex;gap:16px;margin-bottom:20px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);transition:border-color .2s}
 .step:hover{border-color:var(--border2)}
 .step-num{width:28px;height:28px;border-radius:8px;background:rgba(96,149,255,.12);border:1px solid rgba(96,149,255,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--blue);flex-shrink:0;margin-top:1px}
@@ -70,15 +63,8 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .step-body a{color:var(--blue);text-decoration:none}
 .step-body a:hover{text-decoration:underline}
 
-/* CODE */
 code{font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(96,149,255,.08);border:1px solid rgba(96,149,255,.15);border-radius:6px;padding:2px 7px;color:#93C5FD}
-.code-block{background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px 20px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;overflow-x:auto}
-.code-block .cm{color:#475569}
-.code-block .kw{color:var(--blue)}
-.code-block .str{color:var(--green)}
-.code-block .url{color:#f59e0b}
 
-/* CALLOUTS */
 .callout{display:flex;gap:14px;padding:16px 18px;border-radius:14px;margin:16px 0}
 .callout-tip{background:rgba(96,149,255,.06);border:1px solid rgba(96,149,255,.18)}
 .callout-warn{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2)}
@@ -92,7 +78,6 @@ code{font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(96,14
 .callout-err .callout-text{color:#FCA5A5}
 .callout-text strong{font-weight:700}
 
-/* TABLE */
 .table-wrap{overflow-x:auto;margin:16px 0;border-radius:12px;border:1px solid var(--border)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{background:rgba(96,149,255,.06);color:var(--muted2);font-weight:600;padding:10px 16px;text-align:left;border-bottom:1px solid var(--border)}
@@ -100,8 +85,9 @@ td{padding:10px 16px;color:var(--text);border-bottom:1px solid rgba(255,255,255,
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,.02)}
 td code{font-size:11px}
+td .required{display:inline-block;background:rgba(74,222,128,.12);color:var(--green);font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:6px}
+td .optional{display:inline-block;background:rgba(148,163,184,.1);color:var(--muted2);font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;margin-left:6px}
 
-/* SUMMARY BOX */
 .summary{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:32px;margin:48px 0}
 .summary h3{font-size:18px;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:10px}
 .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
@@ -110,7 +96,6 @@ td code{font-size:11px}
 .summary-item-text{font-size:12px;color:var(--muted2);line-height:1.5}
 .summary-item-text strong{display:block;font-size:13px;color:var(--text);font-weight:600;margin-bottom:2px}
 
-/* FAQ */
 .faq{margin-bottom:8px;border:1px solid var(--border);border-radius:14px;overflow:hidden}
 .faq summary{padding:16px 20px;font-size:14px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;user-select:none}
 .faq summary::-webkit-details-marker{display:none}
@@ -120,21 +105,18 @@ details[open].faq summary::after{transform:rotate(45deg)}
 .faq-body strong{color:var(--text)}
 details[open].faq{border-color:var(--border2)}
 
-/* CTA */
 .cta-section{text-align:center;padding:48px 24px;background:linear-gradient(135deg,rgba(96,149,255,.08),rgba(61,33,236,.06));border:1px solid rgba(96,149,255,.15);border-radius:24px;margin:48px 0}
 .btn-primary{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;font-family:'Sora',sans-serif;font-size:15px;font-weight:700;padding:14px 28px;border-radius:12px;text-decoration:none;transition:opacity .2s}
 .btn-primary:hover{opacity:.88}
 .btn-ghost{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--muted2);font-family:'Sora',sans-serif;font-size:14px;font-weight:600;padding:12px 24px;border-radius:12px;border:1px solid var(--border);text-decoration:none;transition:all .2s;margin-top:12px}
 .btn-ghost:hover{color:var(--text);border-color:var(--border2)}
 
-/* FOOTER */
 footer{position:relative;z-index:1;border-top:1px solid var(--border);padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
 footer .copy{font-size:13px;color:var(--muted)}
 footer a{font-size:13px;color:var(--muted);text-decoration:none;transition:color .2s}
 footer a:hover{color:var(--blue)}
 footer .footer-links{display:flex;gap:24px}
 
-/* REVEAL */
 .reveal{opacity:0;transform:translateY(20px);transition:opacity .5s ease,transform .5s ease}
 .reveal.visible{opacity:1;transform:none}
 
@@ -149,7 +131,6 @@ footer .footer-links{display:flex;gap:24px}
 <div class="orb orb1"></div>
 <div class="orb orb2"></div>
 
-<!-- NAV -->
 <nav>
   <a class="nav-logo" href="./index.html">
     <svg viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -163,7 +144,6 @@ footer .footer-links{display:flex;gap:24px}
   <a class="nav-back" href="./index.html">← Página inicial</a>
 </nav>
 
-<!-- PROGRESS BAR -->
 <div class="progress-bar">
   <div class="progress-track">
     <div class="progress-steps">
@@ -175,7 +155,6 @@ footer .footer-links{display:flex;gap:24px}
   </div>
 </div>
 
-<!-- HERO -->
 <div class="hero">
   <div class="hero-badge">☁️ Guia de configuração</div>
   <h1>Backup no<br/><span>Google Drive</span></h1>
@@ -187,10 +166,8 @@ footer .footer-links{display:flex;gap:24px}
   </div>
 </div>
 
-<!-- CONTENT -->
 <div class="content">
 
-  <!-- VISÃO GERAL -->
   <div class="callout callout-tip reveal">
     <span class="callout-icon">💡</span>
     <span class="callout-text">
@@ -220,7 +197,7 @@ footer .footer-links{display:flex;gap:24px}
       <div class="step-num">2</div>
       <div class="step-body">
         <h4>Crie um novo projeto</h4>
-        <p>No topo da página, clique no seletor de projeto → <strong>Novo Projeto</strong>.<br/>
+        <p>No topo da página, ao lado do logo "Google Cloud", clique no seletor de projeto → <strong>Novo Projeto</strong>.<br/>
         Nome: <code>Granzo</code> (pode ser qualquer nome). Clique em <strong>Criar</strong> e depois <strong>Selecionar</strong> para ativá-lo.</p>
       </div>
     </div>
@@ -229,7 +206,7 @@ footer .footer-links{display:flex;gap:24px}
       <div class="step-num">3</div>
       <div class="step-body">
         <h4>Ative a Google Drive API</h4>
-        <p>Menu lateral → <strong>APIs e Serviços</strong> → <strong>Biblioteca</strong>.<br/>
+        <p>No menu lateral (☰) → <strong>APIs e Serviços</strong> → <strong>Biblioteca</strong>.<br/>
         Busque por <code>Google Drive API</code>, clique no resultado e clique em <strong>Ativar</strong>.</p>
       </div>
     </div>
@@ -238,7 +215,7 @@ footer .footer-links{display:flex;gap:24px}
       <div class="step-num">4</div>
       <div class="step-body">
         <h4>Configure a Tela de Consentimento OAuth</h4>
-        <p>Menu lateral → <strong>APIs e Serviços</strong> → <strong>Tela de consentimento OAuth</strong>.<br/>
+        <p>Menu lateral (☰) → <strong>APIs e Serviços</strong> → <strong>Tela de consentimento OAuth</strong>.<br/>
         Selecione tipo <strong>Externo</strong> → Criar. Preencha:</p>
         <ul style="margin:10px 0 0 16px;font-size:13px;color:var(--muted2);line-height:2">
           <li><strong>Nome do app:</strong> Granzo</li>
@@ -269,33 +246,55 @@ footer .footer-links{display:flex;gap:24px}
       <div class="step-num">5</div>
       <div class="step-body">
         <h4>Crie as credenciais</h4>
-        <p>Menu lateral → <strong>APIs e Serviços</strong> → <strong>Credenciais</strong>.<br/>
-        Clique em <strong>+ Criar Credenciais</strong> → <strong>ID do cliente OAuth</strong>.<br/>
-        Tipo de aplicativo: <strong>Aplicativo da Web</strong>.</p>
+        <p>Menu lateral (☰) → <strong>APIs e Serviços</strong> → <strong>Credenciais</strong>.<br/>
+        Clique em <strong>+ Criar Credenciais</strong> → <strong>ID do cliente OAuth</strong>.</p>
       </div>
     </div>
 
     <div class="step reveal">
       <div class="step-num">6</div>
       <div class="step-body">
-        <h4>Adicione as origens autorizadas</h4>
-        <p>Em <strong>Origens JavaScript autorizadas</strong>, adicione as URLs onde o Granzo vai rodar:</p>
-        <div class="table-wrap" style="margin-top:12px">
-          <table>
-            <thead><tr><th>Situação</th><th>URI para adicionar</th></tr></thead>
-            <tbody>
-              <tr><td>Desenvolvimento local</td><td><code>http://localhost:5173</code></td></tr>
-              <tr><td>GitHub Pages</td><td><code>https://lucas2003-18.github.io</code></td></tr>
-              <tr><td>Domínio próprio</td><td><code>https://granzo.app</code></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p style="margin-top:10px">Clique em <strong>Criar</strong>.</p>
+        <h4>Selecione "Aplicativo da Web"</h4>
+        <p>Na lista de tipos, selecione <strong>Aplicativo da Web</strong>.</p>
       </div>
+    </div>
+
+    <div class="callout callout-err reveal">
+      <span class="callout-icon">🚫</span>
+      <span class="callout-text">
+        <strong>Não selecione "Android"!</strong> Mesmo o Granzo sendo um app Android, o backup funciona via WebView — que se comporta como um navegador. A opção "Android" vai pedir SHA-1 fingerprint e não vai funcionar.
+      </span>
     </div>
 
     <div class="step reveal">
       <div class="step-num">7</div>
+      <div class="step-body">
+        <h4>Adicione as origens autorizadas</h4>
+        <p>Em <strong>Origens JavaScript autorizadas</strong>, adicione as URLs de acordo com o que você usa:</p>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead><tr><th>Situação</th><th>URI para adicionar</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>App Android (APK / Play Store)</td><td><code>https://localhost</code></td><td><span class="required">obrigatório</span></td></tr>
+              <tr><td>Site granzo.app</td><td><code>https://granzo.app</code></td><td><span class="required">obrigatório</span></td></tr>
+              <tr><td>Desenvolvimento local (PC)</td><td><code>http://localhost:5173</code></td><td><span class="optional">opcional</span></td></tr>
+              <tr><td>GitHub Pages</td><td><code>https://lucas2003-18.github.io</code></td><td><span class="optional">opcional</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:10px">Adicione pelo menos as duas marcadas como <strong>obrigatório</strong>. Depois clique em <strong>Criar</strong>.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-tip reveal">
+      <span class="callout-icon">💡</span>
+      <span class="callout-text">
+        O <code>https://localhost</code> é necessário porque o app Android roda num WebView que usa essa origem internamente. Sem ele, o backup não vai funcionar no APK.
+      </span>
+    </div>
+
+    <div class="step reveal">
+      <div class="step-num">8</div>
       <div class="step-body">
         <h4>Copie o Client ID</h4>
         <p>Uma janela vai mostrar o <strong>ID do cliente</strong> — copie esse valor. Ele termina com <code>.apps.googleusercontent.com</code>.</p>
@@ -319,7 +318,7 @@ footer .footer-links{display:flex;gap:24px}
     </div>
 
     <div class="step reveal">
-      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">8</div>
+      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">9</div>
       <div class="step-body">
         <h4>Cole o Client ID no app</h4>
         <p>Abra o Granzo → <strong>⚙️ Config</strong> → <strong>☁️ Drive</strong> → toque em <strong>Configurar Client ID</strong>.<br/>
@@ -328,7 +327,7 @@ footer .footer-links{display:flex;gap:24px}
     </div>
 
     <div class="step reveal">
-      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">9</div>
+      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">10</div>
       <div class="step-body">
         <h4>Conecte sua conta Google</h4>
         <p>Toque em <strong>Conectar Google Drive</strong>. Uma janela de login do Google vai abrir.<br/>
@@ -342,7 +341,7 @@ footer .footer-links{display:flex;gap:24px}
     </div>
 
     <div class="step reveal">
-      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">10</div>
+      <div class="step-num" style="background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.25);color:var(--green)">11</div>
       <div class="step-body">
         <h4>Faça o primeiro backup 🎉</h4>
         <p>Toque em <strong>Salvar backup agora</strong>. Aguarde a mensagem <strong>"✓ Backup salvo no Google Drive!"</strong>.<br/>
@@ -356,10 +355,10 @@ footer .footer-links{display:flex;gap:24px}
     <h3>📋 Resumo dos passos</h3>
     <div class="summary-grid">
       <div class="summary-item"><span class="summary-item-num">1–4</span><div class="summary-item-text"><strong>Google Cloud Console</strong>Criar projeto, ativar Drive API, configurar OAuth</div></div>
-      <div class="summary-item"><span class="summary-item-num">5–7</span><div class="summary-item-text"><strong>Client ID OAuth</strong>Criar credencial e copiar o ID</div></div>
-      <div class="summary-item"><span class="summary-item-num">8</span><div class="summary-item-text"><strong>Colar no Granzo</strong>⚙️ Config → ☁️ Drive</div></div>
-      <div class="summary-item"><span class="summary-item-num">9</span><div class="summary-item-text"><strong>Conectar Google</strong>Login + autorizar acesso</div></div>
-      <div class="summary-item"><span class="summary-item-num">10</span><div class="summary-item-text"><strong>Primeiro backup</strong>Salvar e confirmar</div></div>
+      <div class="summary-item"><span class="summary-item-num">5–8</span><div class="summary-item-text"><strong>Client ID OAuth</strong>Tipo "Aplicativo da Web", adicionar origens, copiar ID</div></div>
+      <div class="summary-item"><span class="summary-item-num">9</span><div class="summary-item-text"><strong>Colar no Granzo</strong>⚙️ Config → ☁️ Drive</div></div>
+      <div class="summary-item"><span class="summary-item-num">10</span><div class="summary-item-text"><strong>Conectar Google</strong>Login + autorizar acesso</div></div>
+      <div class="summary-item"><span class="summary-item-num">11</span><div class="summary-item-text"><strong>Primeiro backup</strong>Salvar e confirmar</div></div>
     </div>
   </div>
 
@@ -376,6 +375,11 @@ footer .footer-links{display:flex;gap:24px}
     </details>
 
     <details class="faq reveal">
+      <summary>Por que selecionar "Aplicativo da Web" e não "Android"?</summary>
+      <div class="faq-body">O Granzo usa um <strong>WebView</strong> internamente — é como um navegador embutido no app. O fluxo de login OAuth funciona via web, não pelo SDK nativo do Android. Se selecionar "Android", o Google vai pedir SHA-1 fingerprint e o backup não vai funcionar.</div>
+    </details>
+
+    <details class="faq reveal">
       <summary>A janela de login não abre / popup bloqueado</summary>
       <div class="faq-body">O navegador bloqueou o popup. Procure o ícone de popup bloqueado na barra de endereço e permita para o Granzo. Em Android, verifique se o Chrome/WebView está atualizado.</div>
     </details>
@@ -387,7 +391,7 @@ footer .footer-links{display:flex;gap:24px}
 
     <details class="faq reveal">
       <summary>Erro 400: redirect_uri_mismatch</summary>
-      <div class="faq-body">A URL do seu app não foi adicionada nas origens autorizadas. Volte ao Google Cloud Console → Credenciais → edite o Client ID e adicione a URL exata onde o Granzo está rodando.</div>
+      <div class="faq-body">A URL do seu app não foi adicionada nas origens autorizadas. Volte ao Google Cloud Console → Credenciais → edite o Client ID e adicione a URL exata. Para o APK Android, adicione <code>https://localhost</code>.</div>
     </details>
 
     <details class="faq reveal">
@@ -412,9 +416,8 @@ footer .footer-links{display:flex;gap:24px}
     <a class="btn-ghost" href="./index.html">← Voltar ao início</a>
   </div>
 
-</div><!-- /content -->
+</div>
 
-<!-- FOOTER -->
 <footer>
   <span class="copy">© 2026 Granzo Labs. Todos os direitos reservados.</span>
   <div class="footer-links">
@@ -425,7 +428,6 @@ footer .footer-links{display:flex;gap:24px}
 </footer>
 
 <script>
-// Scroll reveal
 const observer = new IntersectionObserver(entries => {
   entries.forEach(e => {
     if(e.isIntersecting){ e.target.classList.add('visible'); }
@@ -433,7 +435,6 @@ const observer = new IntersectionObserver(entries => {
 }, { threshold: 0.08 });
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-// Progress bar — atualiza conforme scrolla pelas seções
 const sections = ['parte1','parte2','parte3'];
 const steps = document.querySelectorAll('[id^="ps"]');
 const label = document.getElementById('progress-label');
