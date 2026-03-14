@@ -67,6 +67,7 @@ export async function sendNotif(id,title,body){
       id,
       title,
       body,
+      smallIcon:"ic_notif",
       channelId:"granzo_alerts",
       schedule:{at,allowWhileIdle:true}
     }]});
@@ -74,7 +75,7 @@ export async function sendNotif(id,title,body){
   }catch(e){
     // Fallback: tenta sem schedule (disparo imediato)
     try{
-      await ln.schedule({notifications:[{id,title,body,channelId:"granzo_alerts"}]});
+      await ln.schedule({notifications:[{id,title,body,smallIcon:"ic_notif",channelId:"granzo_alerts"}]});
       return true;
     }catch(e2){
       console.warn("Notif erro:",e2);
