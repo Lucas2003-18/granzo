@@ -56,7 +56,10 @@ function AppContent() {
     try{ plugins.SplashScreen?.hide?.(); }catch{}
   },[]);
 
-  const [tab,      setTab]     = useState("dashboard");
+  const [tab,      setTab]     = useState(()=>{
+    if(window.location.hash?.includes("access_token")) return "config";
+    return "dashboard";
+  });
   const [openWith, setOpenWith]= useState(null);
   const [hideVals, setHideVals]= useState(false);
   const [catModal, setCatModal]= useState(null);
@@ -76,6 +79,20 @@ function AppContent() {
     setToast(msg);
     toastTimer.current=setTimeout(()=>setToast(""),2000);
   }
+
+  // Captura token do Google OAuth no hash da URL (redirect volta aqui)
+  useEffect(()=>{
+    const hash=window.location.hash;
+    if(hash&&hash.includes("access_token")){
+      const p=new URLSearchParams(hash.slice(1));
+      const t=p.get("access_token");
+      if(t){
+        try{localStorage.setItem("mf_gdrive_token",t);}catch{}
+        window.history.replaceState(null,"",window.location.pathname);
+        showToast("✓ Google Drive conectado!");
+      }
+    }
+  },[]);
 
   useEffect(()=>{ try{localStorage.setItem("mf_exps",JSON.stringify(exps));}catch{} },[exps]);
   const catsInit=useRef(true);
@@ -135,7 +152,7 @@ function AppContent() {
   return (
     <>
     {showOnboarding&&<Onboarding onDone={finishOnboarding} setTab={t=>{finishOnboarding();setTab(t);}}/>}
-    <div style={{fontFamily:"'Outfit',sans-serif",background:"#080e1d",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",maxWidth:"min(600px,100vw)",margin:"0 auto",paddingTop:"env(safe-area-inset-top,0px)"}}>
+    <div style={{fontFamily:"'Outfit',sans-serif",background:"#080e1d",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",maxWidth:"min(600px,100vw)",margin:"0 auto"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -149,7 +166,7 @@ function AppContent() {
       `}</style>
 
       {toast&&(
-        <div style={{position:"fixed",top:"calc(env(safe-area-inset-top,0px) + 12px)",left:"50%",transform:"translateX(-50%)",background:"rgba(74,222,128,0.15)",border:"1px solid rgba(74,222,128,0.35)",backdropFilter:"blur(12px)",borderRadius:99,padding:"6px 18px",fontSize:12,fontWeight:700,color:"#4ade80",zIndex:999,whiteSpace:"nowrap",pointerEvents:"none",transition:"opacity 0.3s"}}>
+        <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(74,222,128,0.15)",border:"1px solid rgba(74,222,128,0.35)",backdropFilter:"blur(12px)",borderRadius:99,padding:"6px 18px",fontSize:12,fontWeight:700,color:"#4ade80",zIndex:999,whiteSpace:"nowrap",pointerEvents:"none",transition:"opacity 0.3s"}}>
           {toast}
         </div>
       )}
