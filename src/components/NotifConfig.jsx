@@ -23,12 +23,26 @@ export default function NotifConfig({ showToast }){
 
   async function testar(){
     setTestando(true);
+    // Debug: verifica se plugin existe
+    const cap=window.Capacitor;
+    if(!cap?.isNativePlatform?.()){
+      showToast("⚠️ Não está rodando em plataforma nativa");
+      setTestando(false);return;
+    }
+    const ln=cap.Plugins?.LocalNotifications;
+    if(!ln){
+      showToast("❌ Plugin LocalNotifications não encontrado");
+      setTestando(false);return;
+    }
     const ok=await requestPermission();
-    if(ok){
-      await sendNotif(9999,"💸 Granzo","Notificações funcionando! Você vai receber alertas de orçamento aqui.");
-      showToast("✅ Notificação enviada!");
-    } else showToast("❌ Sem permissão");
-    setTimeout(()=>setTestando(false),2000);
+    if(!ok){
+      showToast("❌ Sem permissão de notificação");
+      setTestando(false);return;
+    }
+    const sent=await sendNotif(9999,"Granzo","Notificacoes funcionando! Alertas de orcamento aparecerao aqui.");
+    if(sent) showToast("✅ Notificação agendada! Aparece em ~1 segundo.");
+    else showToast("❌ Falha ao agendar notificação");
+    setTimeout(()=>setTestando(false),3000);
   }
 
   const isEnabled=cfg.enabled&&permStatus==="granted";
