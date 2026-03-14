@@ -35,55 +35,44 @@ jobs:
           cmdline-tools-version: '11076708'
           accept-android-sdk-licenses: true
 
-      - name: Instalar build tools
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - name: Instalar SDK platforms
+        run: sdkmanager "platforms;android-35" "platforms;android-34" "build-tools;35.0.0" "platform-tools"
 
       - name: Adicionar e sincronizar Capacitor Android
         run: |
-          npm install @capacitor/android @capacitor/status-bar @capacitor/splash-screen @capacitor/share @capacitor/filesystem @capacitor/local-notifications
+          npm install @capacitor/android@^6.0.0 @capacitor/status-bar@^6.0.0 @capacitor/splash-screen@^6.0.0 @capacitor/share@^6.0.0 @capacitor/filesystem@^6.0.0 @capacitor/local-notifications@^6.0.0
           npx cap add android || true
           npx cap sync android
 
-      - name: Atualizar para API level 35 (Gradle + AGP + SDK)
+      - name: Atualizar projeto para API 35
         run: |
-          # 1) Atualizar Gradle wrapper para 8.7 (necessário para AGP 8.3+)
+          echo "=== 1) Gradle wrapper → 8.7 ==="
           sed -i 's|gradle-[0-9.]*-|gradle-8.7-|' android/gradle/wrapper/gradle-wrapper.properties
-          echo "=== Gradle wrapper ==="
           cat android/gradle/wrapper/gradle-wrapper.properties
 
-          # 2) Atualizar AGP para 8.3.2 (suporta compileSdk 35)
+          echo "=== 2) AGP → 8.3.2 ==="
           sed -i "s/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.3.2/" android/build.gradle
-          echo "=== AGP version ==="
           grep "com.android.tools.build" android/build.gradle
 
-          # 3) Atualizar variables.gradle para SDK 35
+          echo "=== 3) variables.gradle → SDK 35 ==="
           VARS="android/variables.gradle"
           if [ -f "$VARS" ]; then
             sed -i "s/compileSdkVersion = [0-9]*/compileSdkVersion = 35/" "$VARS"
             sed -i "s/targetSdkVersion = [0-9]*/targetSdkVersion = 35/" "$VARS"
-          else
-            printf 'ext {\n    minSdkVersion = 22\n    compileSdkVersion = 35\n    targetSdkVersion = 35\n    androidxActivityVersion = '"'"'1.7.0'"'"'\n    androidxAppCompatVersion = '"'"'1.6.1'"'"'\n    androidxCoordinatorLayoutVersion = '"'"'1.2.0'"'"'\n    androidxCoreVersion = '"'"'1.10.0'"'"'\n    androidxFragmentVersion = '"'"'1.5.6'"'"'\n    junitVersion = '"'"'4.13.2'"'"'\n    androidxJunitVersion = '"'"'1.1.5'"'"'\n    androidxEspressoCoreVersion = '"'"'3.5.1'"'"'\n    cordovaAndroidVersion = '"'"'10.1.1'"'"'\n}\n' > "$VARS"
+            cat "$VARS"
           fi
-          echo "=== variables.gradle ==="
-          cat "$VARS"
 
-      - name: Patch AndroidManifest para API 35
-        run: |
+          echo "=== 4) AndroidManifest permissoes ==="
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          # Adiciona permissões necessárias pro API 35 + plugins do Capacitor
-          sed -i '/<manifest/a\
-              <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\
-              <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\
-              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>\
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>' "$MANIFEST"
-          echo "=== AndroidManifest.xml (primeiras 20 linhas) ==="
-          head -20 "$MANIFEST"
+          if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST"; then
+            sed -i '/<manifest/a\    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>' "$MANIFEST"
+          fi
+          head -10 "$MANIFEST"
 
       - name: Definir versionCode e versionName
         run: |
           GRADLE_FILE="android/app/build.gradle"
           if [ -f "android/app/build.gradle.kts" ]; then GRADLE_FILE="android/app/build.gradle.kts"; fi
-          # Usa o run_number do GitHub como versionCode (auto-incrementa)
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$GRADLE_FILE"
           sed -i "s/versionName \"[^\"]*\"/versionName \"1.1.${{ github.run_number }}\"/" "$GRADLE_FILE"
           echo "versionCode=${{ github.run_number }}, versionName=1.1.${{ github.run_number }}"
@@ -106,7 +95,7 @@ jobs:
 
       - name: Configurar Gradle
         run: |
-          echo "org.gradle.jvmargs=-Xmx1536m -XX:MaxMetaspaceSize=384m" >> android/gradle.properties
+          echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
           echo "org.gradle.daemon=false" >> android/gradle.properties
           echo "org.gradle.parallel=false" >> android/gradle.properties
           echo "android.useAndroidX=true" >> android/gradle.properties
@@ -118,14 +107,9 @@ jobs:
 
       - name: Injetar signingConfig no build.gradle
         run: |
-          echo "=== build.gradle original ==="
-          cat android/app/build.gradle
-          echo "=== fim ==="
-
           python3 - << 'PYEOF'
           import re, os
 
-          # Verificar se existe .kts (Kotlin DSL) ou .gradle (Groovy)
           kts_path = "android/app/build.gradle.kts"
           groovy_path = "android/app/build.gradle"
 
@@ -146,7 +130,6 @@ jobs:
               exit(0)
 
           if is_kotlin:
-              # Kotlin DSL
               signing = '''
               signingConfigs {
                   create("release") {
@@ -164,7 +147,6 @@ jobs:
                   src, count=1
               )
           else:
-              # Groovy DSL
               signing = '''
               signingConfigs {
                   release {
@@ -176,7 +158,6 @@ jobs:
               }
           '''
               src = src.replace("    buildTypes {", signing + "    buildTypes {", 1)
-              # Encontrar o bloco release dentro de buildTypes e adicionar signingConfig
               src = re.sub(
                   r'(buildTypes\s*\{[^}]*release\s*\{)',
                   r'\1\n            signingConfig signingConfigs.release',
@@ -187,17 +168,15 @@ jobs:
               f.write(src)
 
           print("signingConfig injetado com sucesso")
-          print("=== resultado ===")
-          print(src)
           PYEOF
 
       - name: Build APK release assinado
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2
+          ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2 --stacktrace
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1536m"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -207,7 +186,7 @@ jobs:
           cd android
           ./gradlew bundleRelease --no-daemon --no-parallel --max-workers=2
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx1536m"
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
