@@ -18,12 +18,32 @@ function getPlugins(){
   return cap.Plugins?.LocalNotifications||null;
 }
 
+// Garante que o canal existe antes de qualquer notificação
+let _channelReady=false;
+async function ensureChannel(){
+  if(_channelReady) return;
+  const ln=getPlugins();
+  if(!ln) return;
+  try{
+    await ln.createChannel({
+      id:"granzo_alerts",
+      name:"Alertas Granzo",
+      description:"Alertas de orçamento e despesas fixas",
+      importance:4,
+      vibration:true
+    });
+    _channelReady=true;
+  }catch(e){
+    console.warn("Canal notif:",e);
+  }
+}
+
 export async function checkPermission(){
   const ln=getPlugins();
   if(!ln) return "unsupported";
   try{
     const r=await ln.checkPermissions();
-    return r.display; // "granted" | "denied" | "prompt"
+    return r.display;
   }catch{return "unsupported";}
 }
 
@@ -38,18 +58,29 @@ export async function requestPermission(){
 
 export async function sendNotif(id,title,body){
   const ln=getPlugins();
-  if(!ln) return;
+  if(!ln) return false;
   try{
+    await ensureChannel();
+    // Agenda 1s no futuro — Android exige schedule.at pra notificações locais via Capacitor bridge
+    const at=new Date(Date.now()+1000).toISOString();
     await ln.schedule({notifications:[{
       id,
       title,
       body,
-      smallIcon:"ic_launcher",
-      largeIcon:"ic_launcher",
-      sound:null,
-      channelId:"granzo_alerts"
+      channelId:"granzo_alerts",
+      schedule:{at,allowWhileIdle:true}
     }]});
-  }catch{}
+    return true;
+  }catch(e){
+    // Fallback: tenta sem schedule (disparo imediato)
+    try{
+      await ln.schedule({notifications:[{id,title,body,channelId:"granzo_alerts"}]});
+      return true;
+    }catch(e2){
+      console.warn("Notif erro:",e2);
+      return false;
+    }
+  }
 }
 
 // ── Hook: dispara notificações ao abrir o app ──
@@ -61,19 +92,7 @@ export function useNotifCheck(cats,exps,fixas,mesFiltro){
     (async()=>{
       const perm=await checkPermission();
       if(perm!=="granted") return;
-
-      // Criar canal (Android exige)
-      const ln=getPlugins();
-      if(!ln) return;
-      try{
-        await ln.createChannel({
-          id:"granzo_alerts",
-          name:"Alertas Granzo",
-          importance:3,
-          sound:null,
-          vibration:true
-        });
-      }catch{}
+      await ensureChannel();
 
       const agora=new Date();
       const mesAtualKey=`${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,"0")}`;
@@ -94,9 +113,9 @@ export function useNotifCheck(cats,exps,fixas,mesFiltro){
             const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
             const pct=(spent/cat.budget)*100;
             if(pct>=100){
-              sendNotif(notifId++,`🚨 ${cat.label} estourou!`,`Gastou ${fmt(spent)} de ${fmt(cat.budget)} orçados.`);
+              sendNotif(notifId++,`${cat.label} estourou!`,`Gastou ${fmt(spent)} de ${fmt(cat.budget)} orçados.`);
             }else if(pct>=80){
-              sendNotif(notifId++,`⚠️ ${cat.label} em ${pct.toFixed(0)}%`,`${fmt(cat.budget-spent)} restando no orçamento.`);
+              sendNotif(notifId++,`${cat.label} em ${pct.toFixed(0)}%`,`${fmt(cat.budget-spent)} restando no orçamento.`);
             }
           });
           localStorage.setItem("mf_notif_last_orc",today);
@@ -114,7 +133,7 @@ export function useNotifCheck(cats,exps,fixas,mesFiltro){
           });
           if(pendentes.length>0){
             sendNotif(2000,
-              `📌 ${pendentes.length} fixa${pendentes.length>1?"s":""} pendente${pendentes.length>1?"s":""}`,
+              `${pendentes.length} fixa${pendentes.length>1?"s":""} pendente${pendentes.length>1?"s":""}`,
               `${pendentes.map(f=>f.desc).join(", ")} ainda não lançadas este mês.`
             );
             localStorage.setItem("mf_notif_last_fixa",agora.toISOString().slice(0,7));
