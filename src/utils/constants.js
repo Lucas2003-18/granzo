@@ -42,3 +42,5 @@ export const PRESETS = ["#60a5fa","#4ade80","#f59e0b","#f472b6","#a78bfa","#fb92
 export const CONTAS_DEF = [
   { id:"geral", label:"Geral", emoji:"🏦", color:"#94a3b8" },
 ];
+
+export const APP_VERSION = "1.1";
