@@ -36,13 +36,33 @@ jobs:
           accept-android-sdk-licenses: true
 
       - name: Instalar build tools
-        run: sdkmanager "platforms;android-33" "build-tools;33.0.2" "platform-tools"
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Adicionar e sincronizar Capacitor Android
         run: |
           npm install @capacitor/android @capacitor/status-bar @capacitor/splash-screen @capacitor/share @capacitor/filesystem @capacitor/local-notifications
           npx cap add android || true
           npx cap sync android
+
+      - name: Atualizar para API level 35
+        run: |
+          # Capacitor 5 gera variables.gradle com minSdk/targetSdk/compileSdk
+          VARS="android/variables.gradle"
+          if [ -f "$VARS" ]; then
+            sed -i "s/compileSdkVersion = [0-9]*/compileSdkVersion = 35/" "$VARS"
+            sed -i "s/targetSdkVersion = [0-9]*/targetSdkVersion = 35/" "$VARS"
+            echo "variables.gradle atualizado para API 35"
+            cat "$VARS"
+          fi
+          # Fallback: patch direto no build.gradle se não usar variables.gradle
+          for GF in android/app/build.gradle android/app/build.gradle.kts; do
+            if [ -f "$GF" ]; then
+              sed -i "s/compileSdkVersion [0-9]*/compileSdkVersion 35/" "$GF"
+              sed -i "s/compileSdk [0-9]*/compileSdk 35/" "$GF"
+              sed -i "s/targetSdkVersion [0-9]*/targetSdkVersion 35/" "$GF"
+              sed -i "s/targetSdk [0-9]*/targetSdk 35/" "$GF"
+            fi
+          done
 
       - name: Definir versionCode e versionName
         run: |
