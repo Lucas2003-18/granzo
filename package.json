@@ -1,5 +1,5 @@
 {
-  "name": "meu-financeiro",
+  "name": "granzo",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -14,7 +14,8 @@
     "@capacitor/status-bar": "^5.0.0",
     "@capacitor/splash-screen": "^5.0.0",
     "@capacitor/share": "^5.0.0",
-    "@capacitor/filesystem": "^5.0.0"
+    "@capacitor/filesystem": "^5.0.0",
+    "@capacitor/local-notifications": "^5.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
