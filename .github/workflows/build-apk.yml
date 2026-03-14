@@ -58,6 +58,9 @@ jobs:
           pip install Pillow -q
           python3 generate_icons.py
 
+      - name: Gerar icone de notificacao
+        run: python3 generate_notif_icon.py
+
       - name: Configurar adaptive icon XML
         run: |
           mkdir -p android/app/src/main/res/mipmap-anydpi-v26
