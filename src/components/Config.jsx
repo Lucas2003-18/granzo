@@ -217,13 +217,27 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           Gerencie suas contas. Transferências entre contas próprias são marcadas como neutras — não inflam renda nem gastos.
         </div>
         {contas.map((c,i)=>(
-          <div key={c.id} style={{...ROW,borderLeft:`3px solid ${c.color}`}}>
-            <div style={{width:36,height:36,borderRadius:10,background:`${c.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{c.emoji}</div>
-            <div style={{flex:1}}>
-              <input style={{...inp({padding:"6px 10px",fontSize:13,fontWeight:600,background:"transparent",border:"none",color:"#e2e8f0"})}} value={c.label}
+          <div key={c.id} style={{...CARD,borderLeft:`3px solid ${c.color}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+              <div style={{width:36,height:36,borderRadius:10,background:`${c.color}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{c.emoji}</div>
+              <input style={{...inp({padding:"6px 10px",fontSize:13,fontWeight:600,background:"transparent",border:"none",color:"#e2e8f0",flex:1})}} value={c.label}
                 onChange={e=>setContas(p=>p.map((x,j)=>j===i?{...x,label:e.target.value}:x))}/>
+              {c.id!=="geral"&&<button style={{fontSize:11,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>setContas(p=>p.filter((_,j)=>j!==i))}>✕</button>}
             </div>
-            {c.id!=="geral"&&<button style={{fontSize:11,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>setContas(p=>p.filter((_,j)=>j!==i))}>✕</button>}
+            <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:10,color:"#475569",marginRight:4}}>Emoji:</span>
+              {["🏦","💜","🟠","🔴","⚫","💛","🔵","🟢","💰","🏧"].map(em=>(
+                <button key={em} style={{fontSize:16,padding:"2px 4px",background:c.emoji===em?"rgba(99,102,241,0.2)":"transparent",border:c.emoji===em?"1px solid rgba(99,102,241,0.5)":"1px solid transparent",borderRadius:6,cursor:"pointer"}}
+                  onClick={()=>setContas(p=>p.map((x,j)=>j===i?{...x,emoji:em}:x))}>{em}</button>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:5,alignItems:"center",marginTop:6}}>
+              <span style={{fontSize:10,color:"#475569",marginRight:4}}>Cor:</span>
+              {["#8b5cf6","#f97316","#ef4444","#374151","#f59e0b","#3b82f6","#22c55e","#ec4899","#94a3b8","#06b6d4"].map(cor=>(
+                <button key={cor} style={{width:20,height:20,borderRadius:6,background:cor,border:c.color===cor?"2px solid #fff":"2px solid transparent",cursor:"pointer"}}
+                  onClick={()=>setContas(p=>p.map((x,j)=>j===i?{...x,color:cor}:x))}/>
+              ))}
+            </div>
           </div>
         ))}
         <button style={{...btn("rgba(99,102,241,0.15)","#818cf8",{border:"1px solid rgba(99,102,241,0.3)",marginTop:8})}} onClick={()=>{
