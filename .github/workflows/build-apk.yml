@@ -53,23 +53,8 @@ jobs:
             echo "=== variables.gradle ==="
             cat "$VARS"
           else
-            echo "variables.gradle não encontrado — criando..."
-            cat > "$VARS" << 'EOF'
-ext {
-    minSdkVersion = 22
-    compileSdkVersion = 35
-    targetSdkVersion = 35
-    androidxActivityVersion = '1.7.0'
-    androidxAppCompatVersion = '1.6.1'
-    androidxCoordinatorLayoutVersion = '1.2.0'
-    androidxCoreVersion = '1.10.0'
-    androidxFragmentVersion = '1.5.6'
-    junitVersion = '4.13.2'
-    androidxJunitVersion = '1.1.5'
-    androidxEspressoCoreVersion = '3.5.1'
-    cordovaAndroidVersion = '10.1.1'
-}
-EOF
+            echo "variables.gradle nao encontrado — criando..."
+            printf 'ext {\n    minSdkVersion = 22\n    compileSdkVersion = 35\n    targetSdkVersion = 35\n    androidxActivityVersion = '"'"'1.7.0'"'"'\n    androidxAppCompatVersion = '"'"'1.6.1'"'"'\n    androidxCoordinatorLayoutVersion = '"'"'1.2.0'"'"'\n    androidxCoreVersion = '"'"'1.10.0'"'"'\n    androidxFragmentVersion = '"'"'1.5.6'"'"'\n    junitVersion = '"'"'4.13.2'"'"'\n    androidxJunitVersion = '"'"'1.1.5'"'"'\n    androidxEspressoCoreVersion = '"'"'3.5.1'"'"'\n    cordovaAndroidVersion = '"'"'10.1.1'"'"'\n}\n' > "$VARS"
             echo "=== variables.gradle criado ==="
             cat "$VARS"
           fi
