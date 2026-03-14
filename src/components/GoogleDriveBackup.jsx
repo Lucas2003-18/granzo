@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { inp, btn, CARD, ROW } from '../utils/styles';
 import { CATS_DEF, FIXAS_DEF, MKTS_DEF } from '../utils/constants';
 import { SecTitle, AlertBox, ConfirmModal } from './ui';
-import { getGDriveToken, setGDriveToken, getGDriveClientId, setGDriveClientId, getGDriveLastSync, setGDriveLastSync, getGDriveAutoBackup, setGDriveAutoBackup, gdriveUpload, gdriveDownload } from '../utils/gdrive';
+import { GDrive, getGDriveToken, setGDriveToken, getGDriveClientId, setGDriveClientId, getGDriveLastSync, setGDriveLastSync, getGDriveAutoBackup, setGDriveAutoBackup, gdriveUpload, gdriveDownload } from '../utils/gdrive';
 import { loadPrecos, savePrecos, loadProdsExtra, saveProdsExtra } from '../utils/mercadoStorage';
 
 function GoogleDriveBackup({exps,cats,markets,fixas,contas,reservas,meta,setExps,setCats,setMarkets,setFixas,setContas,setReservas,setMeta,showToast,setConfirmModal}){
   const [clientId, setClientId]=useState(getGDriveClientId);
   const [token,    setToken]   =useState(getGDriveToken);
-  const [status,   setStatus]  =useState("idle"); // idle|loading|ok|err
+  const [status,   setStatus]  =useState("idle");
   const [msg,      setMsgDrive]=useState("");
   const [lastSync, setLastSync]=useState(getGDriveLastSync);
   const [editId,   setEditId]  =useState(false);
@@ -20,31 +20,59 @@ function GoogleDriveBackup({exps,cats,markets,fixas,contas,reservas,meta,setExps
 
   function handleToken(t){setToken(t);setGDriveToken(t);}
 
-  // OAuth2 implicit flow — abre popup do Google
+  // Verifica se voltou do Google OAuth com token na URL
+  useEffect(()=>{
+    const hash=window.location.hash;
+    if(hash&&hash.includes("access_token")){
+      const p=new URLSearchParams(hash.slice(1));
+      const t=p.get("access_token");
+      if(t){
+        handleToken(t);
+        showToast("✓ Google conectado!");
+        window.history.replaceState(null,"",window.location.pathname);
+      }
+    }
+  },[]);
+
   function conectar(){
     const id=getGDriveClientId();
     if(!id){setEditId(true);return;}
+
+    const redirectUri=window.location.origin+window.location.pathname;
     const params=new URLSearchParams({
       client_id:id,
-      redirect_uri:window.location.origin+window.location.pathname,
+      redirect_uri:redirectUri,
       response_type:"token",
       scope:GDrive.SCOPE,
       include_granted_scopes:"true",
       state:"gdrive_auth",
     });
-    const w=window.open(`https://accounts.google.com/o/oauth2/v2/auth?${params}`,"_blank","width=500,height=600");
-    // Escuta o token via postMessage ou polling da URL
+    const authUrl=`https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+
+    // No Capacitor nativo: redireciona a página (popup não funciona no WebView)
+    const cap=window.Capacitor;
+    if(cap?.isNativePlatform?.()){
+      window.location.href=authUrl;
+      return;
+    }
+
+    // No browser: tenta popup primeiro
+    const w=window.open(authUrl,"_blank","width=500,height=600");
+    if(!w||w.closed){
+      window.location.href=authUrl;
+      return;
+    }
     const poll=setInterval(()=>{
       try{
-        if(w&&w.closed){clearInterval(poll);return;}
+        if(w.closed){clearInterval(poll);return;}
         const url=w?.location?.href||"";
         if(url.includes("access_token")){
-          const hash=url.split("#")[1]||"";
-          const p=new URLSearchParams(hash);
-          const t=p.get("access_token");
+          const hash2=url.split("#")[1]||"";
+          const p2=new URLSearchParams(hash2);
+          const t=p2.get("access_token");
           if(t){handleToken(t);clearInterval(poll);w.close();showToast("✓ Google conectado!");}
         }
-      }catch{/*cross-origin — normal enquanto na página do Google*/}
+      }catch{/*cross-origin*/}
     },500);
   }
 
