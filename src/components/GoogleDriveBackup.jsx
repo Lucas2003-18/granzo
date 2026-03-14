@@ -30,7 +30,8 @@ function GoogleDriveBackup({exps,cats,markets,fixas,contas,reservas,meta,setExps
     const id=getGDriveClientId();
     if(!id){setEditId(true);return;}
 
-    const redirectUri=window.location.origin+window.location.pathname;
+    // Callback no granzo.app — abre no Chrome do sistema (Google exige, não aceita WebView)
+    const redirectUri="https://granzo.app/callback.html";
     const params=new URLSearchParams({
       client_id:id,
       redirect_uri:redirectUri,
@@ -41,31 +42,21 @@ function GoogleDriveBackup({exps,cats,markets,fixas,contas,reservas,meta,setExps
     });
     const authUrl=`https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 
-    // No Capacitor nativo: redireciona a página (popup não funciona no WebView)
+    // Sempre abre no navegador externo (Chrome)
     const cap=window.Capacitor;
     if(cap?.isNativePlatform?.()){
-      window.location.href=authUrl;
-      return;
+      // Usa o plugin Browser se disponível, senão window.open
+      const plugins=cap.Plugins||{};
+      if(plugins.Browser){
+        plugins.Browser.open({url:authUrl});
+      } else {
+        window.open(authUrl,"_system");
+      }
+    } else {
+      // Web: popup ou redirect
+      const w=window.open(authUrl,"_blank","width=500,height=600");
+      if(!w||w.closed) window.location.href=authUrl;
     }
-
-    // No browser: tenta popup primeiro
-    const w=window.open(authUrl,"_blank","width=500,height=600");
-    if(!w||w.closed){
-      window.location.href=authUrl;
-      return;
-    }
-    const poll=setInterval(()=>{
-      try{
-        if(w.closed){clearInterval(poll);return;}
-        const url=w?.location?.href||"";
-        if(url.includes("access_token")){
-          const hash2=url.split("#")[1]||"";
-          const p2=new URLSearchParams(hash2);
-          const t=p2.get("access_token");
-          if(t){handleToken(t);clearInterval(poll);w.close();showToast("✓ Google conectado!");}
-        }
-      }catch{/*cross-origin*/}
-    },500);
   }
 
   async function salvarDrive(){
