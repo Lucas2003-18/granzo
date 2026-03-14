@@ -44,20 +44,28 @@ jobs:
           npx cap add android || true
           npx cap sync android
 
-      - name: Atualizar para API level 35
+      - name: Atualizar para API level 35 (Gradle + AGP + SDK)
         run: |
+          # 1) Atualizar Gradle wrapper para 8.7 (necessário para AGP 8.3+)
+          sed -i 's|gradle-[0-9.]*-|gradle-8.7-|' android/gradle/wrapper/gradle-wrapper.properties
+          echo "=== Gradle wrapper ==="
+          cat android/gradle/wrapper/gradle-wrapper.properties
+
+          # 2) Atualizar AGP para 8.3.2 (suporta compileSdk 35)
+          sed -i "s/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.3.2/" android/build.gradle
+          echo "=== AGP version ==="
+          grep "com.android.tools.build" android/build.gradle
+
+          # 3) Atualizar variables.gradle para SDK 35
           VARS="android/variables.gradle"
           if [ -f "$VARS" ]; then
             sed -i "s/compileSdkVersion = [0-9]*/compileSdkVersion = 35/" "$VARS"
             sed -i "s/targetSdkVersion = [0-9]*/targetSdkVersion = 35/" "$VARS"
-            echo "=== variables.gradle ==="
-            cat "$VARS"
           else
-            echo "variables.gradle nao encontrado — criando..."
             printf 'ext {\n    minSdkVersion = 22\n    compileSdkVersion = 35\n    targetSdkVersion = 35\n    androidxActivityVersion = '"'"'1.7.0'"'"'\n    androidxAppCompatVersion = '"'"'1.6.1'"'"'\n    androidxCoordinatorLayoutVersion = '"'"'1.2.0'"'"'\n    androidxCoreVersion = '"'"'1.10.0'"'"'\n    androidxFragmentVersion = '"'"'1.5.6'"'"'\n    junitVersion = '"'"'4.13.2'"'"'\n    androidxJunitVersion = '"'"'1.1.5'"'"'\n    androidxEspressoCoreVersion = '"'"'3.5.1'"'"'\n    cordovaAndroidVersion = '"'"'10.1.1'"'"'\n}\n' > "$VARS"
-            echo "=== variables.gradle criado ==="
-            cat "$VARS"
           fi
+          echo "=== variables.gradle ==="
+          cat "$VARS"
 
       - name: Definir versionCode e versionName
         run: |
