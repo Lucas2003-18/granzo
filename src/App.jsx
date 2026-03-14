@@ -80,8 +80,9 @@ function AppContent() {
     toastTimer.current=setTimeout(()=>setToast(""),2000);
   }
 
-  // Captura token do Google OAuth no hash da URL (redirect volta aqui)
+  // Captura token do Google OAuth — via deep link (nativo) ou hash na URL (web)
   useEffect(()=>{
+    // 1) Verifica hash na URL (fallback web)
     const hash=window.location.hash;
     if(hash&&hash.includes("access_token")){
       const p=new URLSearchParams(hash.slice(1));
@@ -90,6 +91,25 @@ function AppContent() {
         try{localStorage.setItem("mf_gdrive_token",t);}catch{}
         window.history.replaceState(null,"",window.location.pathname);
         showToast("✓ Google Drive conectado!");
+      }
+    }
+
+    // 2) Escuta deep link do Capacitor (nativo — app.granzo.finance://oauth?token=...)
+    const cap=window.Capacitor;
+    if(cap?.isNativePlatform?.()){
+      const appPlugin=cap.Plugins?.App;
+      if(appPlugin?.addListener){
+        appPlugin.addListener("appUrlOpen",(data)=>{
+          const url=data?.url||"";
+          if(url.includes("oauth")&&url.includes("token=")){
+            const params=new URL(url).searchParams||new URLSearchParams(url.split("?")[1]||"");
+            const t=params.get("token");
+            if(t){
+              try{localStorage.setItem("mf_gdrive_token",t);}catch{}
+              showToast("✓ Google Drive conectado!");
+            }
+          }
+        });
       }
     }
   },[]);
