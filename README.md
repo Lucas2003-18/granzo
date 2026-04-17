@@ -1,4 +1,4 @@
-# Granzo 💰
+# Granzo 💰 
 
 > Seu dinheiro, do seu jeito.
 
