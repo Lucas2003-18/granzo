@@ -1,0 +1,211 @@
+name: Build Granzo APK + AAB
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias e build
+        run: |
+          npm install
+          npm run build
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '11076708'
+          accept-android-sdk-licenses: true
+
+      - name: Instalar SDK platforms
+        run: sdkmanager "platforms;android-35" "platforms;android-34" "build-tools;35.0.0" "platform-tools"
+
+      - name: Adicionar e sincronizar Capacitor Android
+        run: |
+          npm install @capacitor/android@^6.0.0 @capacitor/status-bar@^6.0.0 @capacitor/splash-screen@^6.0.0 @capacitor/share@^6.0.0 @capacitor/filesystem@^6.0.0 @capacitor/local-notifications@^6.0.0 @capacitor/app@^6.0.0
+          npx cap add android || true
+          npx cap sync android
+
+      - name: Atualizar projeto para API 35
+        run: |
+          echo "=== 1) Gradle wrapper → 8.7 ==="
+          sed -i 's|gradle-[0-9.]*-|gradle-8.7-|' android/gradle/wrapper/gradle-wrapper.properties
+          cat android/gradle/wrapper/gradle-wrapper.properties
+
+          echo "=== 2) AGP → 8.3.2 ==="
+          sed -i "s/com.android.tools.build:gradle:[0-9.]*/com.android.tools.build:gradle:8.3.2/" android/build.gradle
+          grep "com.android.tools.build" android/build.gradle
+
+          echo "=== 3) variables.gradle → SDK 35 ==="
+          VARS="android/variables.gradle"
+          if [ -f "$VARS" ]; then
+            sed -i "s/compileSdkVersion = [0-9]*/compileSdkVersion = 35/" "$VARS"
+            sed -i "s/targetSdkVersion = [0-9]*/targetSdkVersion = 35/" "$VARS"
+            cat "$VARS"
+          fi
+
+          echo "=== 4) AndroidManifest permissoes ==="
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "POST_NOTIFICATIONS" "$MANIFEST"; then
+            sed -i '/<manifest/a\    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>' "$MANIFEST"
+          fi
+
+          echo "=== 5) Deep link intent-filter para OAuth ==="
+          if ! grep -q "app.granzo.finance" "$MANIFEST"; then
+            sed -i '/<\/activity>/i\            <intent-filter>\n                <action android:name="android.intent.action.VIEW" />\n                <category android:name="android.intent.category.DEFAULT" />\n                <category android:name="android.intent.category.BROWSABLE" />\n                <data android:scheme="app.granzo.finance" />\n            </intent-filter>' "$MANIFEST"
+          fi
+          head -30 "$MANIFEST"
+
+      - name: Definir versionCode e versionName
+        run: |
+          GRADLE_FILE="android/app/build.gradle"
+          if [ -f "android/app/build.gradle.kts" ]; then GRADLE_FILE="android/app/build.gradle.kts"; fi
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$GRADLE_FILE"
+          sed -i "s/versionName \"[^\"]*\"/versionName \"1.1.${{ github.run_number }}\"/" "$GRADLE_FILE"
+          echo "versionCode=${{ github.run_number }}, versionName=1.1.${{ github.run_number }}"
+
+      - name: Gerar icone do app
+        run: |
+          pip install Pillow -q
+          python3 generate_icons.py
+
+      - name: Gerar icone de notificacao
+        run: python3 generate_notif_icon.py
+
+      - name: Configurar adaptive icon XML
+        run: |
+          mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+          mkdir -p android/app/src/main/res/values
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/ic_launcher_background"/>\n    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n' > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          cp android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#080e1d</color>\n</resources>\n' > android/app/src/main/res/values/ic_launcher_background.xml
+
+      - name: Configurar Gradle
+        run: |
+          echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> android/gradle.properties
+          echo "org.gradle.daemon=false" >> android/gradle.properties
+          echo "org.gradle.parallel=false" >> android/gradle.properties
+          echo "android.useAndroidX=true" >> android/gradle.properties
+          echo "android.enableJetifier=true" >> android/gradle.properties
+
+      - name: Decodificar keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/granzo-release.jks
+
+      - name: Injetar signingConfig no build.gradle
+        run: |
+          python3 - << 'PYEOF'
+          import re, os
+
+          kts_path = "android/app/build.gradle.kts"
+          groovy_path = "android/app/build.gradle"
+
+          if os.path.exists(kts_path):
+              path = kts_path
+              is_kotlin = True
+          else:
+              path = groovy_path
+              is_kotlin = False
+
+          print(f"Usando: {path} (kotlin={is_kotlin})")
+
+          with open(path, "r") as f:
+              src = f.read()
+
+          if "granzo-release.jks" in src:
+              print("signingConfig ja configurado, pulando")
+              exit(0)
+
+          if is_kotlin:
+              signing = '''
+              signingConfigs {
+                  create("release") {
+                      storeFile = file("granzo-release.jks")
+                      storePassword = System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias = System.getenv("KEY_ALIAS")
+                      keyPassword = System.getenv("KEY_PASSWORD")
+                  }
+              }
+          '''
+              src = src.replace("    buildTypes {", signing + "    buildTypes {", 1)
+              src = re.sub(
+                  r'(getByName\("release"\)\s*\{)',
+                  r'\1\n            signingConfig = signingConfigs.getByName("release")',
+                  src, count=1
+              )
+          else:
+              signing = '''
+              signingConfigs {
+                  release {
+                      storeFile file("granzo-release.jks")
+                      storePassword System.getenv("KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("KEY_ALIAS")
+                      keyPassword System.getenv("KEY_PASSWORD")
+                  }
+              }
+          '''
+              src = src.replace("    buildTypes {", signing + "    buildTypes {", 1)
+              src = re.sub(
+                  r'(buildTypes\s*\{[^}]*release\s*\{)',
+                  r'\1\n            signingConfig signingConfigs.release',
+                  src, count=1, flags=re.DOTALL
+              )
+
+          with open(path, "w") as f:
+              f.write(src)
+
+          print("signingConfig injetado com sucesso")
+          PYEOF
+
+      - name: Build APK release assinado
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2 --stacktrace
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Build AAB release assinado (Play Store)
+        run: |
+          cd android
+          ./gradlew bundleRelease --no-daemon --no-parallel --max-workers=2
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: granzo-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+
+      - name: Upload AAB (Play Store)
+        uses: actions/upload-artifact@v4
+        with:
+          name: granzo-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30

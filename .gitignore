@@ -1,0 +1,39 @@
+# Ambiente
+.env
+.env.local
+.env.*.local
+*.env
+
+# Credenciais
+credentials.json
+*.pem
+*.key
+secrets.*
+service_account*.json
+
+# Node / React / Capacitor
+node_modules/
+dist/
+build/
+.next/
+android/
+ios/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+
+# Claude Code
+CLAUDE.md
+.claude/
+
+# Arquivo typo (não usar)
+.gitgnore

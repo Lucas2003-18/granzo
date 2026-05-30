@@ -1,0 +1,22 @@
+{
+  "appId": "app.granzo.finance",
+  "appName": "Granzo",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#080e1d"
+  },
+  "plugins": {
+    "StatusBar": {
+      "backgroundColor": "#080e1d",
+      "style": "DARK",
+      "overlaysWebView": false
+    },
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#080e1d"
+    }
+  }
+}
