@@ -60,7 +60,9 @@ Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-t
     setLoading(true);
     askGemini(sys,"Resumo do período",1200).then(txt=>{
       if(txt) setMsgs([{role:"ai",text:"📊 "+txt}]);
-    }).catch(()=>{}).finally(()=>setLoading(false));
+    }).catch(()=>{
+      setMsgs([{role:"ai",text:"❌ Não foi possível gerar o diagnóstico. Verifique sua chave Gemini ou tente novamente."}]);
+    }).finally(()=>setLoading(false));
   },[]);
 
   return (

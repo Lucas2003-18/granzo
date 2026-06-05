@@ -9,6 +9,7 @@ import GoogleDriveBackup from './GoogleDriveBackup';
 import NotifConfig from './NotifConfig';
 import { categorizar } from '../utils/categorizar';
 import { loadPrecos, savePrecos, loadProdsExtra, saveProdsExtra } from '../utils/mercadoStorage';
+import { testBackend } from '../utils/api';
 
 function ChaveIAConfig() {
   const [chave, setChave] = useState(getGeminiKey);
@@ -74,7 +75,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
     onOk={()=>{confirmModal.onOk();setConfirmModal(null);}}
     onCancel={()=>setConfirmModal(null)}/>;
 
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"drive",l:"☁️ Drive"},{id:"notif",l:"🔔 Notif."},{id:"dados",l:"🗄️ Dados"}];
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"drive",l:"☁️ Drive"},{id:"notif",l:"🔔 Notif."},{id:"integracao",l:"🔗 Integração"},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -382,10 +383,90 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           <div style={{fontSize:11,color:"#374151"}}>Granzo v{APP_VERSION}</div>
         </div>
       </div>}
+
+      {sec==="integracao"&&<IntegracaoConfig showToast={showToast}/>}
     </div>
   );
 }
 
+
+// ── INTEGRAÇÃO ─────────────────────────────────────────────
+function IntegracaoConfig({ showToast }) {
+  const [backendUrl,     setBackendUrl]     = useState(()=>{ try{return localStorage.getItem("mf_backend_url")||"";}catch{return "";} });
+  const [backendKey,     setBackendKey]     = useState(()=>{ try{return localStorage.getItem("mf_backend_key")||"";}catch{return "";} });
+  const [webhookUrl,     setWebhookUrl]     = useState(()=>{ try{return localStorage.getItem("mf_discord_webhook")||"";}catch{return "";} });
+  const [resumoDiario,   setResumoDiario]   = useState(()=>{ try{return localStorage.getItem("mf_resumo_diario")==="1";}catch{return false;} });
+  const [testando,       setTestando]       = useState(false);
+
+  function salvarBackend() {
+    try {
+      localStorage.setItem("mf_backend_url", backendUrl.trim());
+      localStorage.setItem("mf_backend_key", backendKey.trim());
+      showToast("✓ Backend salvo");
+    } catch {}
+  }
+
+  function salvarWebhook() {
+    try { localStorage.setItem("mf_discord_webhook", webhookUrl.trim()); showToast("✓ Webhook salvo"); } catch {}
+  }
+
+  function toggleResumoDiario(v) {
+    setResumoDiario(v);
+    try { localStorage.setItem("mf_resumo_diario", v ? "1" : "0"); } catch {}
+  }
+
+  async function testarConexao() {
+    setTestando(true);
+    const ok = await testBackend();
+    setTestando(false);
+    showToast(ok ? "✓ Backend conectado!" : "❌ Falha na conexão");
+  }
+
+  return (
+    <div>
+      <AlertBox tipo="info" texto="Configure o backend Granzo (/backend) para ativar o bot Discord e sincronização de dados."/>
+
+      {/* Backend */}
+      <div style={CARD}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:12}}>🖥️ Backend Granzo</div>
+        <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>URL do servidor</div>
+        <input style={{...inp(),marginBottom:10}} placeholder="https://seu-servidor.com" value={backendUrl} onChange={e=>setBackendUrl(e.target.value)}/>
+        <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Chave de API (GRANZO_API_KEY)</div>
+        <input style={{...inp({fontFamily:"monospace",fontSize:12}),marginBottom:12}} placeholder="minha-chave-secreta" type="password" value={backendKey} onChange={e=>setBackendKey(e.target.value)}/>
+        <div style={{display:"flex",gap:8}}>
+          <button style={{...btn("linear-gradient(135deg,#4f46e5,#4338ca)",undefined,{flex:1})}} onClick={salvarBackend}>Salvar</button>
+          <button style={{...btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)",flex:1})}} onClick={testarConexao} disabled={testando}>
+            {testando?"Testando…":"Testar conexão"}
+          </button>
+        </div>
+      </div>
+
+      {/* Discord Webhook (fallback) */}
+      <div style={CARD}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🎮 Discord Webhook</div>
+        <div style={{fontSize:12,color:"#64748b",marginBottom:10,lineHeight:1.5}}>
+          Alternativa sem backend — o app envia alertas direto para um canal Discord via webhook.
+        </div>
+        <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>URL do webhook</div>
+        <input style={{...inp({fontSize:12}),marginBottom:10}} placeholder="https://discord.com/api/webhooks/..." value={webhookUrl} onChange={e=>setWebhookUrl(e.target.value)}/>
+        <button style={btn("linear-gradient(135deg,#7c3aed,#6d28d9)")} onClick={salvarWebhook}>Salvar webhook</button>
+      </div>
+
+      {/* Resumo diário */}
+      <div style={{...CARD,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📅 Resumo diário</div>
+          <div style={{fontSize:11,color:"#64748b",marginTop:2}}>Receber resumo financeiro todo dia no Discord</div>
+        </div>
+        <button
+          style={{background:resumoDiario?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.06)",border:resumoDiario?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.12)",color:resumoDiario?"#818cf8":"#475569",borderRadius:20,padding:"6px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}
+          onClick={()=>toggleResumoDiario(!resumoDiario)}>
+          {resumoDiario?"✓ Ativo":"Ativar"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── RESERVAS ───────────────────────────────────────────────
 // reserva: { id, nome, emoji, saldo, meta, movs: [{id,tipo,valor,desc,date}] }
