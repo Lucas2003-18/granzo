@@ -304,7 +304,7 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
               <span style={{fontSize:14,fontWeight:700,color:valColor}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
               <div style={{display:"flex",gap:4}}>
                 <button style={{fontSize:11,color:"#818cf8",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>startEdit(e)}>✏️</button>
-                {e.kind==="exp"&&(!e.payment||e.payment!=="cartao"||e.desc.indexOf("(1/")!==-1===false)&&<button style={{fontSize:11,color:"#a78bfa",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} title="Parcelar" onClick={()=>{setParcelarId(e.id);setParcelarN(2);}}>✂️</button>}
+                {e.kind==="exp"&&e.payment==="cartao"&&!e.desc.includes("(1/")&&<button style={{fontSize:11,color:"#a78bfa",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} title="Parcelar" onClick={()=>{setParcelarId(e.id);setParcelarN(2);}}>✂️</button>}
                 <button style={{fontSize:11,color:"#475569",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>setConfirm(e.id)}>🗑️</button>
               </div>
             </div>

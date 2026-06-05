@@ -3,6 +3,7 @@ import { fmt } from "./utils/format";
 import { MESES, MESES_CURTO, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF } from "./utils/constants";
 import { useAutoBackup } from "./hooks/useAutoBackup";
 import { useNotifCheck } from "./hooks/useNotifications";
+import { syncToBackend } from "./utils/api";
 import Dashboard from "./components/Dashboard";
 import Graficos from "./components/Graficos";
 import Orcamento from "./components/Orcamento";
@@ -10,6 +11,7 @@ import Gastos from "./components/Gastos";
 import Mercado from "./components/Mercado";
 import IAChat from "./components/IAChat";
 import Reservas from "./components/Reservas";
+import Dividas from "./components/Dividas";
 import Onboarding from "./components/Onboarding";
 import Config from "./components/Config";
 
@@ -72,6 +74,7 @@ function AppContent() {
   const [contas,  setContas]  = useState(()=>{ try{const v=localStorage.getItem("mf_contas");return v?JSON.parse(v):CONTAS_DEF}catch{return CONTAS_DEF} });
   const [reservas,setReservas]= useState(()=>{ try{const v=localStorage.getItem("mf_reservas");return v?JSON.parse(v):[]}catch{return []} });
   const [meta,    setMeta]    = useState(()=>{ try{const v=localStorage.getItem("mf_meta");return v?JSON.parse(v):0;}catch{return 0;} });
+  const [dividas, setDividas] = useState(()=>{ try{const v=localStorage.getItem("mf_dividas");return v?JSON.parse(v):[]}catch{return []} });
 
   const toastTimer = useRef(null);
   function showToast(msg){
@@ -124,6 +127,19 @@ function AppContent() {
   const reservasInit=useRef(true);
   useEffect(()=>{ if(reservasInit.current){reservasInit.current=false;return;} try{localStorage.setItem("mf_reservas",JSON.stringify(reservas));showToast("✓ Salvo");}catch{} },[reservas]);
   useEffect(()=>{ try{localStorage.setItem("mf_meta",JSON.stringify(meta));}catch{} },[meta]);
+  const dividasInit=useRef(true);
+  useEffect(()=>{ if(dividasInit.current){dividasInit.current=false;return;} try{localStorage.setItem("mf_dividas",JSON.stringify(dividas));}catch{} },[dividas]);
+
+  // Sync debounced ao backend quando dados financeiros mudam
+  const syncTimer=useRef(null);
+  useEffect(()=>{
+    clearTimeout(syncTimer.current);
+    syncTimer.current=setTimeout(()=>{
+      const[ano,mes]=mesFiltro!=="todos"?mesFiltro.split("-"):[String(new Date().getFullYear()),String(new Date().getMonth()+1).padStart(2,"0")];
+      syncToBackend({exps,cats,reservas,dividas,mesFiltro,meta});
+    },5000);
+    return ()=>clearTimeout(syncTimer.current);
+  },[exps,cats,reservas,dividas,meta]);
 
   const mesesDisp=[...new Set(exps.map(e=>{
     const p=e.date?.split("/");
@@ -157,7 +173,7 @@ function AppContent() {
   const saldo=totalInc-totalExp;
 
   useAutoBackup(exps,cats,markets,fixas,contas,reservas,meta,showToast);
-  useNotifCheck(cats,exps,fixas,mesFiltro);
+  useNotifCheck(cats,exps,fixas,mesFiltro,dividas);
 
   const TABS=[
     {id:"dashboard",emoji:"📊",label:"Início"},
@@ -165,6 +181,7 @@ function AppContent() {
     {id:"orcamento",emoji:"💰",label:"Orçamento"},
     {id:"gastos",   emoji:"💸",label:"Gastos"},
     {id:"reservas", emoji:"🏦",label:"Reservas"},
+    {id:"dividas",  emoji:"🤝",label:"Dívidas"},
     {id:"mercado",  emoji:"🛒",label:"Mercado"},
     {id:"ia",       emoji:"🤖",label:"IA"},
   ];
@@ -230,6 +247,7 @@ function AppContent() {
         {tab==="orcamento"&&<Orcamento exps={expsFiltrados} cats={cats} setCats={setCats} hide={hideVals} mesFiltro={mesFiltro}/>}
         {tab==="gastos"   &&<Gastos    exps={exps} setExps={setExps} cats={cats} contas={contas} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals} mesFiltro={mesFiltro} catFiltro={catModal} onClearCat={()=>setCatModal(null)}/>}
         {tab==="reservas" &&<Reservas  reservas={reservas} setReservas={setReservas} hide={hideVals}/>}
+        {tab==="dividas"  &&<Dividas   dividas={dividas} setDividas={setDividas}/>}
         {tab==="mercado"  &&<Mercado   markets={markets} setMarkets={setMarkets} hide={hideVals}/>}
         {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats} mesFiltro={mesFiltro}/>}
         {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} reservas={reservas} setReservas={setReservas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast} mesFiltro={mesFiltro}/>}

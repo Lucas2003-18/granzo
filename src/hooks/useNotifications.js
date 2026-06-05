@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { fmt } from '../utils/format';
+import { sendAlert } from '../utils/api';
+import { sendWebhook, buildOrcamentoEmbed, buildDividaEmbed } from '../utils/discord';
 
 // ── Config no localStorage ──
 function getNotifConfig(){
@@ -61,7 +63,6 @@ export async function sendNotif(id,title,body){
   if(!ln) return false;
   try{
     await ensureChannel();
-    // Agenda 1s no futuro — Android exige schedule.at pra notificações locais via Capacitor bridge
     const at=new Date(Date.now()+1000).toISOString();
     await ln.schedule({notifications:[{
       id,
@@ -73,7 +74,6 @@ export async function sendNotif(id,title,body){
     }]});
     return true;
   }catch(e){
-    // Fallback: tenta sem schedule (disparo imediato)
     try{
       await ln.schedule({notifications:[{id,title,body,smallIcon:"ic_notif",channelId:"granzo_alerts"}]});
       return true;
@@ -84,8 +84,22 @@ export async function sendNotif(id,title,body){
   }
 }
 
+function parseDateBr(str){
+  if(!str) return null;
+  const [d,m,y]=str.split("/");
+  if(!d||!m||!y) return null;
+  return new Date(+y,+m-1,+d);
+}
+
+function diasAte(vencimento){
+  const dt=parseDateBr(vencimento);
+  if(!dt) return null;
+  const hoje=new Date();hoje.setHours(0,0,0,0);dt.setHours(0,0,0,0);
+  return Math.round((dt-hoje)/86400000);
+}
+
 // ── Hook: dispara notificações ao abrir o app ──
-export function useNotifCheck(cats,exps,fixas,mesFiltro){
+export function useNotifCheck(cats,exps,fixas,mesFiltro,dividas){
   useEffect(()=>{
     const cfg=getNotifConfig();
     if(!cfg.enabled) return;
@@ -113,10 +127,13 @@ export function useNotifCheck(cats,exps,fixas,mesFiltro){
           cats.filter(c=>c.budget>0&&c.id!=="investimento").forEach(cat=>{
             const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
             const pct=(spent/cat.budget)*100;
-            if(pct>=100){
-              sendNotif(notifId++,`${cat.label} estourou!`,`Gastou ${fmt(spent)} de ${fmt(cat.budget)} orçados.`);
-            }else if(pct>=80){
-              sendNotif(notifId++,`${cat.label} em ${pct.toFixed(0)}%`,`${fmt(cat.budget-spent)} restando no orçamento.`);
+            if(pct>=80){
+              sendNotif(notifId++,
+                pct>=100?`${cat.label} estourou!`:`${cat.label} em ${pct.toFixed(0)}%`,
+                pct>=100?`Gastou ${fmt(spent)} de ${fmt(cat.budget)} orçados.`:`${fmt(cat.budget-spent)} restando no orçamento.`
+              );
+              sendAlert("orcamento_excedido",{catLabel:cat.label,gasto:spent,orcamento:cat.budget,pct});
+              sendWebhook(buildOrcamentoEmbed(cat.label,spent,cat.budget,pct));
             }
           });
           localStorage.setItem("mf_notif_last_orc",today);
@@ -129,8 +146,8 @@ export function useNotifCheck(cats,exps,fixas,mesFiltro){
         if(lastFixaCheck!==agora.toISOString().slice(0,7)){
           const pendentes=(fixas||[]).filter(f=>{
             if(!f.ativo||!f.valor) return false;
-            const descMatch=new RegExp(f.desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(" ")[0],"i");
-            return !expsDoMes.some(e=>e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"")));
+            const descMatch=new RegExp(f.desc.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(" ")[0],"i");
+            return !expsDoMes.some(e=>e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[̀-ͯ]/g,"")));
           });
           if(pendentes.length>0){
             sendNotif(2000,
@@ -140,6 +157,26 @@ export function useNotifCheck(cats,exps,fixas,mesFiltro){
             localStorage.setItem("mf_notif_last_fixa",agora.toISOString().slice(0,7));
           }
         }
+      }
+
+      // ── Dívidas vencendo nos próximos 3 dias ──
+      const today=agora.toISOString().slice(0,10);
+      const lastDividaCheck=localStorage.getItem("mf_notif_last_divida")||"";
+      if(lastDividaCheck!==today&&(dividas||[]).length>0){
+        let notifId=3000;
+        (dividas||[]).filter(d=>d.status==="pendente"&&d.vencimento).forEach(d=>{
+          const dias=diasAte(d.vencimento);
+          if(dias!==null&&dias>=0&&dias<=3){
+            const msg=dias===0?"vence hoje":`vence em ${dias} dia${dias>1?"s":""}`;
+            sendNotif(notifId++,
+              `🤝 Dívida: ${d.pessoa}`,
+              `${d.tipo==="emprestei"?"A receber":"A pagar"} ${fmt(d.valor)} — ${msg}.`
+            );
+            sendAlert("divida_vencendo",{pessoa:d.pessoa,valor:d.valor,tipoDivida:d.tipo,dias});
+            sendWebhook(buildDividaEmbed(d.pessoa,d.valor,d.tipo,dias));
+          }
+        });
+        localStorage.setItem("mf_notif_last_divida",today);
       }
     })();
   },[]);
