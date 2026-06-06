@@ -3,7 +3,7 @@ import { fmt } from "./utils/format";
 import { MESES, MESES_CURTO, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF } from "./utils/constants";
 import { useAutoBackup } from "./hooks/useAutoBackup";
 import { useNotifCheck } from "./hooks/useNotifications";
-import { syncToBackend } from "./utils/api";
+import { syncToBackend, sendChange } from "./utils/api";
 import Dashboard from "./components/Dashboard";
 import Graficos from "./components/Graficos";
 import Orcamento from "./components/Orcamento";
@@ -130,12 +130,39 @@ function AppContent() {
   const dividasInit=useRef(true);
   useEffect(()=>{ if(dividasInit.current){dividasInit.current=false;return;} try{localStorage.setItem("mf_dividas",JSON.stringify(dividas));}catch{} },[dividas]);
 
+  // Detecção de mudanças → envia change events ao vault via backend
+  const prevDataRef=useRef({exps:[],dividas:[]});
+  const changeTimer=useRef(null);
+  useEffect(()=>{
+    const prev=prevDataRef.current;
+    const eventos=[];
+
+    function diffEntidade(prevArr,currArr,entidade){
+      const prevMap=new Map(prevArr.map(x=>[String(x.id),x]));
+      const currMap=new Map(currArr.map(x=>[String(x.id),x]));
+      currArr.forEach(x=>{
+        if(!prevMap.has(String(x.id))) eventos.push({acao:"criado",entidade,id:String(x.id),dados:x});
+        else if(JSON.stringify(prevMap.get(String(x.id)))!==JSON.stringify(x)) eventos.push({acao:"editado",entidade,id:String(x.id),dados:x});
+      });
+      prevArr.forEach(x=>{ if(!currMap.has(String(x.id))) eventos.push({acao:"removido",entidade,id:String(x.id),dados:x}); });
+    }
+
+    diffEntidade(prev.exps,exps,"gasto");
+    diffEntidade(prev.dividas,dividas,"divida");
+    prevDataRef.current={exps,dividas};
+
+    if(eventos.length>0){
+      clearTimeout(changeTimer.current);
+      changeTimer.current=setTimeout(()=>sendChange(eventos),2000);
+    }
+    return ()=>clearTimeout(changeTimer.current);
+  },[exps,dividas]);
+
   // Sync debounced ao backend quando dados financeiros mudam
   const syncTimer=useRef(null);
   useEffect(()=>{
     clearTimeout(syncTimer.current);
     syncTimer.current=setTimeout(()=>{
-      const[ano,mes]=mesFiltro!=="todos"?mesFiltro.split("-"):[String(new Date().getFullYear()),String(new Date().getMonth()+1).padStart(2,"0")];
       syncToBackend({exps,cats,reservas,dividas,mesFiltro,meta});
     },5000);
     return ()=>clearTimeout(syncTimer.current);

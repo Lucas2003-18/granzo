@@ -452,6 +452,21 @@ function IntegracaoConfig({ showToast }) {
         <button style={btn("linear-gradient(135deg,#7c3aed,#6d28d9)")} onClick={salvarWebhook}>Salvar webhook</button>
       </div>
 
+      {/* Vault (backend pessoal) */}
+      <div style={CARD}>
+        <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0",marginBottom:4}}>🔐 Vault (seu backend)</div>
+        <div style={{fontSize:12,color:"#64748b",marginBottom:10,lineHeight:1.5}}>
+          Cada criação, edição e remoção de gastos e dívidas é enviada ao seu backend pessoal em tempo real.
+        </div>
+        <AlertBox tipo="info" texto="Configure VAULT_URL e VAULT_KEY no arquivo .env do backend Granzo para ativar o encaminhamento."/>
+        <div style={{fontSize:11,color:"#4ade80",padding:"8px 12px",background:"rgba(74,222,128,0.06)",borderRadius:8,border:"1px solid rgba(74,222,128,0.2)"}}>
+          Formato enviado ao vault:<br/>
+          <span style={{fontFamily:"monospace",fontSize:10,color:"#94a3b8"}}>
+            {"{ source: \"granzo\", timestamp, eventos: [{ acao, entidade, id, dados }] }"}
+          </span>
+        </div>
+      </div>
+
       {/* Resumo diário */}
       <div style={{...CARD,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
         <div>

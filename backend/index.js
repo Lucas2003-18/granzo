@@ -17,6 +17,7 @@ function auth(req, res, next) {
 // ── Routes ──────────────────────────────────────────────────
 app.use("/api/sync",   auth, require("./routes/sync"));
 app.use("/api/alert",  auth, require("./routes/alert"));
+app.use("/api/change", auth, require("./routes/change"));
 
 app.get("/api/health", auth, (req, res) => res.json({ ok: true }));
 

@@ -27,6 +27,19 @@ export async function sendAlert(tipo, payload) {
   } catch {}
 }
 
+export async function sendChange(eventos) {
+  const base = getBase();
+  const key  = getKey();
+  if (!base || !key || !eventos.length) return;
+  try {
+    await fetch(`${base}/api/change`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+      body: JSON.stringify({ eventos }),
+    });
+  } catch {}
+}
+
 export async function testBackend() {
   const base = getBase();
   const key  = getKey();
