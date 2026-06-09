@@ -75,7 +75,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
     onOk={()=>{confirmModal.onOk();setConfirmModal(null);}}
     onCancel={()=>setConfirmModal(null)}/>;
 
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"drive",l:"☁️ Drive"},{id:"notif",l:"🔔 Notif."},{id:"integracao",l:"🔗 Integração"},{id:"dados",l:"🗄️ Dados"}];
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"notif",l:"🔔 Notif."},{id:"integracao",l:"🔗 Integração"},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -306,6 +306,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
                 url:written.uri,
                 dialogTitle:"Compartilhar backup"
               });
+              try{ localStorage.setItem("mf_last_export", new Date().toISOString()); }catch{}
               showToast("✓ Backup exportado!");
               return;
             }catch(e){
@@ -318,6 +319,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
             try{
               const file=new File([blob],filename,{type:"application/json"});
               await navigator.share({files:[file],title:"Backup Granzo"});
+              try{ localStorage.setItem("mf_last_export", new Date().toISOString()); }catch{}
               showToast("✓ Backup exportado!");
               return;
             }catch(e){
@@ -333,6 +335,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           });
           const a=document.createElement("a");
           a.href=base64;a.download=filename;a.click();
+          try{ localStorage.setItem("mf_last_export", new Date().toISOString()); }catch{}
           showToast("✓ Backup baixado!");
         }}>📤 Exportar backup JSON</button>
         <label style={{display:"block",width:"100%",background:"rgba(99,102,241,0.12)",border:"1px solid rgba(99,102,241,0.3)",color:"#818cf8",borderRadius:12,padding:"11px 0",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"center",fontFamily:"inherit",marginBottom:10,boxSizing:"border-box"}}>

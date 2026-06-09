@@ -83,6 +83,17 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         if(pendentes.length===0) return null;
         return <AlertBox tipo="warn" texto={`⏰ ${pendentes.length} despesa${pendentes.length>1?"s":""} fixa${pendentes.length>1?"s":""} pendente${pendentes.length>1?"s":""} este mês: ${pendentes.map(f=>f.desc).join(", ")}`}/>;
       })()}
+      {/* Nudge de backup */}
+      {exps.length>0&&(()=>{
+        let last=null;
+        try{ last=localStorage.getItem("mf_last_export"); }catch{}
+        const dias=last?Math.floor((Date.now()-new Date(last).getTime())/86400000):null;
+        if(dias!==null&&dias<7) return null;
+        const txt=dias===null
+          ?"⚠️ Você ainda não fez backup. Vá em ⚙️ Config → Dados → Exportar backup JSON e guarde o arquivo."
+          :`⚠️ Último backup há ${dias} dias. Faça um novo em ⚙️ Config → Dados → Exportar.`;
+        return <AlertBox tipo="warn" texto={txt}/>;
+      })()}
 
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
