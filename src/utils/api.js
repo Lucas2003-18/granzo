@@ -14,19 +14,6 @@ export async function syncToBackend(snapshot) {
   } catch {}
 }
 
-export async function sendAlert(tipo, payload) {
-  const base = getBase();
-  const key  = getKey();
-  if (!base || !key) return;
-  try {
-    await fetch(`${base}/api/alert`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({ tipo, payload }),
-    });
-  } catch {}
-}
-
 export async function testBackend() {
   const base = getBase();
   const key  = getKey();

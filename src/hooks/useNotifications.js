@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { fmt } from '../utils/format';
-import { sendAlert } from '../utils/api';
 import { sendWebhook, buildOrcamentoEmbed, buildDividaEmbed } from '../utils/discord';
 
 // ── Config no localStorage ──
@@ -132,7 +131,6 @@ export function useNotifCheck(cats,exps,fixas,mesFiltro,dividas){
                 pct>=100?`${cat.label} estourou!`:`${cat.label} em ${pct.toFixed(0)}%`,
                 pct>=100?`Gastou ${fmt(spent)} de ${fmt(cat.budget)} orçados.`:`${fmt(cat.budget-spent)} restando no orçamento.`
               );
-              sendAlert("orcamento_excedido",{catLabel:cat.label,gasto:spent,orcamento:cat.budget,pct});
               sendWebhook(buildOrcamentoEmbed(cat.label,spent,cat.budget,pct));
             }
           });
@@ -172,7 +170,6 @@ export function useNotifCheck(cats,exps,fixas,mesFiltro,dividas){
               `🤝 Dívida: ${d.pessoa}`,
               `${d.tipo==="emprestei"?"A receber":"A pagar"} ${fmt(d.valor)} — ${msg}.`
             );
-            sendAlert("divida_vencendo",{pessoa:d.pessoa,valor:d.valor,tipoDivida:d.tipo,dias});
             sendWebhook(buildDividaEmbed(d.pessoa,d.valor,d.tipo,dias));
           }
         });
