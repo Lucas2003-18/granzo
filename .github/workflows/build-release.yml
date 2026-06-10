@@ -102,22 +102,40 @@ jobs:
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
 
-      - name: Restaurar keystore debug (assinatura consistente entre builds)
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: debug-keystore-v1
-
-      - name: Build APK release assinado
+      - name: Build APK release (unsigned)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --no-parallel --max-workers=2 --stacktrace
+          ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2 --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
 
-      - name: Renomear APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk granzo.apk
+      - name: Setup build tools path
+        run: |
+          echo "ANDROID_BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/* | tail -1)" >> $GITHUB_ENV
+
+      - name: Restore keystore
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > granzo-release.jks
+
+      - name: Align APK
+        run: |
+          $ANDROID_BUILD_TOOLS/zipalign -v 4 \
+            android/app/build/outputs/apk/release/app-release-unsigned.apk \
+            granzo-aligned.apk
+
+      - name: Sign APK
+        run: |
+          $ANDROID_BUILD_TOOLS/apksigner sign \
+            --ks granzo-release.jks \
+            --ks-key-alias "${{ secrets.RELEASE_KEY_ALIAS }}" \
+            --ks-pass pass:"${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" \
+            --key-pass pass:"${{ secrets.RELEASE_KEY_PASSWORD }}" \
+            --out granzo.apk \
+            granzo-aligned.apk
+
+      - name: Verify signature
+        run: $ANDROID_BUILD_TOOLS/apksigner verify --verbose granzo.apk
 
       - name: Obter versao
         id: version
