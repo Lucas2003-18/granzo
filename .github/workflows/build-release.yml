@@ -86,7 +86,9 @@ jobs:
           echo "versionCode=${{ github.run_number }}, versionName=1.1.${{ github.run_number }}"
 
       - name: Gerar icone de notificacao
-        run: python3 generate_notif_icon.py
+        run: |
+          pip install Pillow -q
+          python3 generate_notif_icon.py
 
       - name: Configurar Gradle
         run: |
