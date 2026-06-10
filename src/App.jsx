@@ -215,10 +215,10 @@ function AppContent() {
           {carteiraView==="dividas" &&<Dividas  dividas={dividas} setDividas={setDividas}/>}
         </>}
         {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats} mesFiltro={mesFiltro}/>}
-        {tab==="config"   &&<Config    cats={cats} setCats={setCats} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} reservas={reservas} setReservas={setReservas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast} mesFiltro={mesFiltro}/>}
+        {tab==="config"   &&<Config    cats={cats} setCats={setCats} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} reservas={reservas} setReservas={setReservas} dividas={dividas} setDividas={setDividas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast} mesFiltro={mesFiltro}/>}
       </div>
 
-      {tab!=="ia"&&tab!=="config"&&(
+      {tab!=="ia"&&tab!=="config"&&!(tab==="carteira"&&carteiraView==="dividas")&&(
         <button style={{position:"fixed",bottom:76,right:16,width:52,height:52,borderRadius:"50%",background:"#3DBA6F",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 20px rgba(61,186,111,0.4)",zIndex:49}}
           onClick={()=>{setOpenWith("expense");setTab("gastos");}}><Plus size={24} strokeWidth={2.5} color="#0A0F0D"/></button>
       )}
