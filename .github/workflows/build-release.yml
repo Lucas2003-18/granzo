@@ -1,4 +1,4 @@
-name: Build Granzo APK + AAB
+name: Build Granzo APK + Release
 
 on:
   push:
@@ -84,11 +84,6 @@ jobs:
           sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/" "$GRADLE_FILE"
           sed -i "s/versionName \"[^\"]*\"/versionName \"1.1.${{ github.run_number }}\"/" "$GRADLE_FILE"
           echo "versionCode=${{ github.run_number }}, versionName=1.1.${{ github.run_number }}"
-
-      - name: Gerar icone do app
-        run: |
-          pip install Pillow -q
-          python3 generate_icons.py
 
       - name: Gerar icone de notificacao
         run: python3 generate_notif_icon.py
@@ -181,26 +176,35 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Build AAB release assinado (Play Store)
+      - name: Renomear APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk granzo.apk
+
+      - name: Obter versao
+        id: version
         run: |
-          cd android
-          ./gradlew bundleRelease --no-daemon --no-parallel --max-workers=2
+          VERSION="1.1.${{ github.run_number }}"
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Criar GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "Granzo ${{ steps.version.outputs.version }} (${{ steps.version.outputs.short_sha }})"
+          body: |
+            ## Como instalar
+
+            1. Baixe o arquivo `granzo.apk` abaixo
+            2. No Android, vá em **Configurações → Segurança** e ative "Fontes desconhecidas" para o seu navegador/gerenciador de arquivos
+            3. Abra o arquivo baixado e confirme a instalação
+
+            > **Atualização?** Basta instalar por cima — seus dados não são apagados.
+
+            ---
+            Commit: `${{ github.sha }}`
+          files: granzo.apk
+          make_latest: true
         env:
-          GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: granzo-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 30
-
-      - name: Upload AAB (Play Store)
-        uses: actions/upload-artifact@v4
-        with:
-          name: granzo-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
-          retention-days: 30
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
