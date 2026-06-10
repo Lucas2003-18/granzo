@@ -21,8 +21,8 @@ function diasAteVencer(vencimento) {
 
 function urgencyColor(dias) {
   if (dias === null) return null;
-  if (dias < 0)  return "#f87171";
-  if (dias <= 3) return "#f59e0b";
+  if (dias < 0)  return "#E05252";
+  if (dias <= 3) return "#E8A832";
   return null;
 }
 
@@ -68,20 +68,20 @@ export default function Dividas({ dividas, setDividas }) {
 
       {/* Banner resumo */}
       {pendentes.length > 0 && (
-        <div style={{...CARD, background:"linear-gradient(135deg,rgba(99,102,241,0.15),rgba(99,102,241,0.05))", border:"1px solid rgba(99,102,241,0.25)", marginBottom:16}}>
+        <div style={{...CARD, background:"rgba(61,186,111,0.1)", border:"1px solid rgba(61,186,111,0.12)", marginBottom:16}}>
           <div style={{display:"flex", justifyContent:"space-between", marginBottom:8}}>
             <div>
-              <div style={{fontSize:11, color:"#64748b", marginBottom:2}}>A receber</div>
-              <div style={{fontSize:18, fontWeight:800, color:"#4ade80"}}>{fmt(totalEmprestei)}</div>
+              <div style={{fontSize:11, color:"#536057", marginBottom:2}}>A receber</div>
+              <div style={{fontSize:18, fontWeight:800, color:"#3DBA6F"}}>{fmt(totalEmprestei)}</div>
             </div>
             <div style={{textAlign:"right"}}>
-              <div style={{fontSize:11, color:"#64748b", marginBottom:2}}>A pagar</div>
-              <div style={{fontSize:18, fontWeight:800, color:"#f87171"}}>{fmt(totalDevo)}</div>
+              <div style={{fontSize:11, color:"#536057", marginBottom:2}}>A pagar</div>
+              <div style={{fontSize:18, fontWeight:800, color:"#E05252"}}>{fmt(totalDevo)}</div>
             </div>
           </div>
-          <div style={{borderTop:"1px solid rgba(255,255,255,0.07)", paddingTop:8, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-            <span style={{fontSize:12, color:"#64748b"}}>Saldo pendente</span>
-            <span style={{fontSize:15, fontWeight:800, color: saldoPendente >= 0 ? "#4ade80" : "#f87171"}}>
+          <div style={{borderTop:"1px solid #232B24", paddingTop:8, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+            <span style={{fontSize:12, color:"#536057"}}>Saldo pendente</span>
+            <span style={{fontSize:15, fontWeight:800, color: saldoPendente >= 0 ? "#3DBA6F" : "#E05252"}}>
               {saldoPendente >= 0 ? "+" : "-"}{fmt(Math.abs(saldoPendente))}
             </span>
           </div>
@@ -90,9 +90,9 @@ export default function Dividas({ dividas, setDividas }) {
 
       {/* Lista pendentes */}
       {pendentes.length === 0 ? (
-        <div style={{textAlign:"center", padding:"52px 0", color:"#475569"}}>
+        <div style={{textAlign:"center", padding:"52px 0", color:"#536057"}}>
           <div style={{fontSize:44, marginBottom:12}}>🤝</div>
-          <div style={{fontSize:15, fontWeight:700, color:"#64748b", marginBottom:4}}>Nenhuma dívida pendente</div>
+          <div style={{fontSize:15, fontWeight:700, color:"#536057", marginBottom:4}}>Nenhuma dívida pendente</div>
           <div style={{fontSize:13}}>Toque em + para registrar</div>
         </div>
       ) : pendentes.map(d => (
@@ -107,7 +107,7 @@ export default function Dividas({ dividas, setDividas }) {
       {/* Dívidas pagas */}
       {pagas.length > 0 && (
         <>
-          <button style={{...btn("rgba(255,255,255,0.04)","#475569",{border:"1px solid rgba(255,255,255,0.08)", fontSize:12, marginTop:4, marginBottom:8})}}
+          <button style={{...btn("#181E19","#536057",{border:"1px solid #232B24", fontSize:12, marginTop:4, marginBottom:8})}}
             onClick={() => setShowPagas(v => !v)}>
             {showPagas ? "▲" : "▼"} {pagas.length} dívida{pagas.length > 1 ? "s" : ""} paga{pagas.length > 1 ? "s" : ""}
           </button>
@@ -124,7 +124,7 @@ export default function Dividas({ dividas, setDividas }) {
 
       {/* FAB */}
       <button
-        style={{position:"fixed", bottom:84, right:16, width:52, height:52, borderRadius:"50%", background:"linear-gradient(135deg,#818cf8,#6366f1)", border:"none", color:"white", fontSize:26, cursor:"pointer", boxShadow:"0 4px 20px rgba(99,102,241,0.5)", zIndex:49, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700}}
+        style={{position:"fixed", bottom:84, right:16, width:52, height:52, borderRadius:"50%", background:"#3DBA6F", border:"none", color:"#0A0F0D", fontSize:26, cursor:"pointer", boxShadow:"0 4px 20px rgba(61,186,111,0.35)", zIndex:49, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700}}
         onClick={openAdd}>+</button>
 
       {confirm && (
@@ -159,36 +159,36 @@ function DividaCard({ d, onEdit, onDelete, onPago, activeSwipe, setActiveSwipe }
         onClick={() => onEdit(d)}>
 
         {/* Avatar */}
-        <div style={{width:40, height:40, borderRadius:"50%", background: d.tipo === "emprestei" ? "rgba(74,222,128,0.15)" : "rgba(248,113,113,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:800, color: d.tipo === "emprestei" ? "#4ade80" : "#f87171", flexShrink:0}}>
+        <div style={{width:40, height:40, borderRadius:"50%", background: d.tipo === "emprestei" ? "rgba(61,186,111,0.15)" : "rgba(224,82,82,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:800, color: d.tipo === "emprestei" ? "#3DBA6F" : "#E05252", flexShrink:0}}>
           {d.pessoa.charAt(0).toUpperCase()}
         </div>
 
         {/* Info */}
         <div style={{flex:1, minWidth:0}}>
-          <div style={{fontSize:13, fontWeight:700, color:"#e2e8f0", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{d.pessoa}</div>
-          <div style={{fontSize:11, color:"#475569", display:"flex", gap:5, alignItems:"center", flexWrap:"wrap"}}>
+          <div style={{fontSize:13, fontWeight:700, color:"#DDE8DF", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{d.pessoa}</div>
+          <div style={{fontSize:11, color:"#536057", display:"flex", gap:5, alignItems:"center", flexWrap:"wrap"}}>
             <span>{d.tipo === "emprestei" ? "Emprestei" : "Devo"} · {d.data}</span>
             {d.vencimento && (
-              <span style={{color: urgColor || "#475569"}}>
+              <span style={{color: urgColor || "#536057"}}>
                 · vence {d.vencimento}
                 {dias !== null && isPendente && (dias < 0 ? " ⚠️" : dias <= 3 ? ` (${dias}d)` : "")}
               </span>
             )}
           </div>
-          {d.obs ? <div style={{fontSize:11, color:"#334155", marginTop:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{d.obs}</div> : null}
+          {d.obs ? <div style={{fontSize:11, color:"#536057", marginTop:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{d.obs}</div> : null}
         </div>
 
         {/* Valor + ação */}
         <div style={{textAlign:"right", flexShrink:0}}>
-          <div style={{fontSize:14, fontWeight:700, color: d.tipo === "emprestei" ? "#4ade80" : "#f87171"}}>
+          <div style={{fontSize:14, fontWeight:700, color: d.tipo === "emprestei" ? "#3DBA6F" : "#E05252"}}>
             {d.tipo === "emprestei" ? "+" : "-"}{fmt(d.valor)}
           </div>
           {isPendente ? (
             <button
-              style={{fontSize:10, background:"rgba(74,222,128,0.1)", border:"1px solid rgba(74,222,128,0.2)", color:"#4ade80", borderRadius:6, padding:"2px 7px", cursor:"pointer", marginTop:4, fontFamily:"inherit"}}
+              style={{fontSize:10, background:"rgba(61,186,111,0.1)", border:"1px solid rgba(61,186,111,0.2)", color:"#3DBA6F", borderRadius:6, padding:"2px 7px", cursor:"pointer", marginTop:4, fontFamily:"inherit"}}
               onClick={e => { e.stopPropagation(); onPago(d.id); }}>✓ Recebido</button>
           ) : (
-            <span style={{fontSize:10, color:"#4ade80", background:"rgba(74,222,128,0.08)", borderRadius:6, padding:"2px 7px"}}>✓ Pago</span>
+            <span style={{fontSize:10, color:"#3DBA6F", background:"rgba(61,186,111,0.08)", borderRadius:6, padding:"2px 7px"}}>✓ Pago</span>
           )}
         </div>
       </div>
@@ -217,44 +217,44 @@ function DividaModal({ form, setForm, onSalvar, onClose, isEdit }) {
       style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:200, display:"flex", alignItems:"flex-end", justifyContent:"center"}}
       onClick={onClose}>
       <div
-        style={{background:"#0f172a", borderRadius:"18px 18px 0 0", padding:"24px 20px 44px", width:"100%", maxWidth:520, border:"1px solid rgba(255,255,255,0.1)", maxHeight:"90vh", overflowY:"auto"}}
+        style={{background:"#111713", borderRadius:"18px 18px 0 0", padding:"24px 20px 44px", width:"100%", maxWidth:520, border:"1px solid #2E3A2F", maxHeight:"90vh", overflowY:"auto"}}
         onClick={e => e.stopPropagation()}>
 
-        <div style={{fontSize:16, fontWeight:800, color:"#e2e8f0", marginBottom:20, textAlign:"center"}}>
+        <div style={{fontSize:16, fontWeight:800, color:"#DDE8DF", marginBottom:20, textAlign:"center"}}>
           {isEdit ? "✏️ Editar dívida" : "🤝 Nova dívida"}
         </div>
 
         {/* Tipo */}
         <div style={{display:"flex", gap:8, marginBottom:14}}>
-          {[["emprestei","💚 Emprestei","#4ade80"],["devo","❤️ Devo","#f87171"]].map(([v,l,c]) => (
-            <button key={v} style={{flex:1, borderRadius:10, padding:"10px 0", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", background:form.tipo===v?`${c}22`:"rgba(255,255,255,0.05)", border:form.tipo===v?`1px solid ${c}55`:"1px solid rgba(255,255,255,0.1)", color:form.tipo===v?c:"#94a3b8"}}
+          {[["emprestei","💚 Emprestei","#3DBA6F"],["devo","❤️ Devo","#E05252"]].map(([v,l,c]) => (
+            <button key={v} style={{flex:1, borderRadius:10, padding:"10px 0", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", background:form.tipo===v?`${c}22`:"#181E19", border:form.tipo===v?`1px solid ${c}55`:"1px solid #2E3A2F", color:form.tipo===v?c:"#8FA893"}}
               onClick={() => f("tipo", v)}>{l}</button>
           ))}
         </div>
 
-        <div style={{fontSize:11, color:"#64748b", marginBottom:4}}>Pessoa</div>
+        <div style={{fontSize:11, color:"#536057", marginBottom:4}}>Pessoa</div>
         <input style={{...inp(), marginBottom:12}} placeholder="Nome de quem deve / a quem devo" value={form.pessoa} onChange={e => f("pessoa", e.target.value)}/>
 
-        <div style={{fontSize:11, color:"#64748b", marginBottom:4}}>Valor (R$)</div>
+        <div style={{fontSize:11, color:"#536057", marginBottom:4}}>Valor (R$)</div>
         <input style={{...inp(), marginBottom:12}} type="number" min="0" step="0.01" placeholder="0,00" value={form.valor} onChange={e => f("valor", e.target.value)}/>
 
         <div style={{display:"flex", gap:8, marginBottom:12}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:11, color:"#64748b", marginBottom:4}}>Data</div>
+            <div style={{fontSize:11, color:"#536057", marginBottom:4}}>Data</div>
             <input style={inp()} type="date" value={brParaIso(form.data)} onChange={e => f("data", isoParaBr(e.target.value))}/>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontSize:11, color:"#64748b", marginBottom:4}}>Vencimento</div>
+            <div style={{fontSize:11, color:"#536057", marginBottom:4}}>Vencimento</div>
             <input style={inp()} type="date" value={brParaIso(form.vencimento)} onChange={e => f("vencimento", isoParaBr(e.target.value))}/>
           </div>
         </div>
 
-        <div style={{fontSize:11, color:"#64748b", marginBottom:4}}>Observação (opcional)</div>
+        <div style={{fontSize:11, color:"#536057", marginBottom:4}}>Observação (opcional)</div>
         <input style={{...inp(), marginBottom:20}} placeholder="Ex: reforma da casa" value={form.obs} onChange={e => f("obs", e.target.value)}/>
 
         <div style={{display:"flex", gap:10}}>
-          <button style={{...btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)", flex:1})}} onClick={onClose}>Cancelar</button>
-          <button style={{...btn("linear-gradient(135deg,#818cf8,#6366f1)",undefined,{flex:1})}} onClick={onSalvar}>
+          <button style={{...btn("#232B24","#8FA893",{border:"1px solid #2E3A2F", flex:1})}} onClick={onClose}>Cancelar</button>
+          <button style={{...btn("#3DBA6F","#0A0F0D",{flex:1})}} onClick={onSalvar}>
             {isEdit ? "Salvar" : "Adicionar"}
           </button>
         </div>

@@ -49,24 +49,24 @@ function Graficos({ exps, cats, hide, allExps, mesFiltro }) {
           <div style={{overflowX:"auto"}}>
             <svg width={Math.max(evolucao.length*64,280)} height={chartH+36} style={{display:"block",overflow:"visible"}}>
               {[0.25,0.5,0.75,1].map(f=>(
-                <line key={f} x1={0} y1={chartH*(1-f)} x2={evolucao.length*64} y2={chartH*(1-f)} stroke="rgba(255,255,255,0.05)" strokeWidth={1}/>
+                <line key={f} x1={0} y1={chartH*(1-f)} x2={evolucao.length*64} y2={chartH*(1-f)} stroke="#181E19" strokeWidth={1}/>
               ))}
               {evolucao.map((e,i)=>{
                 const x=i*64+6,hInc=(e.inc/maxEv)*chartH,hExp=(e.exp/maxEv)*chartH,hTransf=((e.inc+e.transf)/maxEv)*chartH;
                 return <g key={i}>
-                  {e.transf>0&&<rect x={x} y={chartH-hTransf} width={barW} height={hTransf-hInc} rx={0} fill="rgba(148,163,184,0.35)"/>}
-                  <rect x={x} y={chartH-hInc} width={barW} height={hInc} rx={3} fill="rgba(74,222,128,0.7)"/>
-                  <rect x={x+barW+3} y={chartH-hExp} width={barW} height={hExp} rx={3} fill={e.exp>e.inc?"rgba(248,113,113,0.85)":"rgba(248,113,113,0.5)"}/>
-                  <text x={x+barW+1} y={chartH+14} textAnchor="middle" fill="#64748b" fontSize="11" fontFamily="Outfit,sans-serif">{e.label}</text>
+                  {e.transf>0&&<rect x={x} y={chartH-hTransf} width={barW} height={hTransf-hInc} rx={0} fill="rgba(143,168,147,0.35)"/>}
+                  <rect x={x} y={chartH-hInc} width={barW} height={hInc} rx={3} fill="rgba(61,186,111,0.7)"/>
+                  <rect x={x+barW+3} y={chartH-hExp} width={barW} height={hExp} rx={3} fill={e.exp>e.inc?"rgba(224,82,82,0.85)":"rgba(224,82,82,0.5)"}/>
+                  <text x={x+barW+1} y={chartH+14} textAnchor="middle" fill="#536057" fontSize="11" fontFamily="Outfit,sans-serif">{e.label}</text>
                   {e.inv>0&&<text x={x+barW+1} y={chartH-hExp-8} textAnchor="middle" fill="#34d399" fontSize="9">💹</text>}
                 </g>;
               })}
             </svg>
           </div>
           <div style={{display:"flex",gap:14,marginTop:10,flexWrap:"wrap"}}>
-            {[["rgba(74,222,128,0.7)","Salário/Renda"],["rgba(148,163,184,0.5)","Transferências"],["rgba(248,113,113,0.7)","Gastos"],["#34d399","Investimento"]].map(([c,l])=>(
+            {[["rgba(61,186,111,0.7)","Salário/Renda"],["rgba(143,168,147,0.5)","Transferências"],["rgba(224,82,82,0.7)","Gastos"],["#34d399","Investimento"]].map(([c,l])=>(
               <div key={l} style={{display:"flex",alignItems:"center",gap:5}}>
-                <div style={{width:10,height:10,borderRadius:2,background:c}}/><span style={{fontSize:11,color:"#94a3b8"}}>{l}</span>
+                <div style={{width:10,height:10,borderRadius:2,background:c}}/><span style={{fontSize:11,color:"#8FA893"}}>{l}</span>
               </div>
             ))}
           </div>
@@ -80,24 +80,24 @@ function Graficos({ exps, cats, hide, allExps, mesFiltro }) {
           <div style={{overflowX:"auto"}}>
             <svg width={lineW} height={lineH+28} style={{display:"block",overflow:"visible"}}>
               {/* Linha zero */}
-              {minSaldo<0&&<line x1={0} y1={saldoY(0)} x2={lineW} y2={saldoY(0)} stroke="rgba(255,255,255,0.1)" strokeWidth={1} strokeDasharray="4,3"/>}
+              {minSaldo<0&&<line x1={0} y1={saldoY(0)} x2={lineW} y2={saldoY(0)} stroke="#2E3A2F" strokeWidth={1} strokeDasharray="4,3"/>}
               {/* Área preenchida */}
               <defs>
                 <linearGradient id="saldoGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#4ade80":"#f87171"} stopOpacity="0.25"/>
-                  <stop offset="100%" stopColor={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#4ade80":"#f87171"} stopOpacity="0.02"/>
+                  <stop offset="0%" stopColor={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#3DBA6F":"#E05252"} stopOpacity="0.25"/>
+                  <stop offset="100%" stopColor={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#3DBA6F":"#E05252"} stopOpacity="0.02"/>
                 </linearGradient>
               </defs>
               <polygon points={saldoAcum.map((e,i)=>(i*64+16)+","+saldoY(e.saldo)).join(" ")+" "+((saldoAcum.length-1)*64+16)+","+lineH+" 16,"+lineH} fill="url(#saldoGrad)"/>
               {/* Linha principal */}
-              <polyline points={pts} fill="none" stroke={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#4ade80":"#f87171"} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+              <polyline points={pts} fill="none" stroke={saldoAcum[saldoAcum.length-1]?.saldo>=0?"#3DBA6F":"#E05252"} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
               {/* Pontos e labels */}
               {saldoAcum.map((e,i)=>{
                 const x=i*64+16,y=saldoY(e.saldo),pos=e.saldo>=0;
                 return <g key={i}>
-                  <circle cx={x} cy={y} r={4} fill={pos?"#4ade80":"#f87171"} stroke="#080e1d" strokeWidth={2}/>
-                  <text x={x} y={y-(pos?10:-3)} textAnchor="middle" fill={pos?"#4ade80":"#f87171"} fontSize="9" fontFamily="Outfit,sans-serif" fontWeight="700">{hide?"••":fmt(e.saldo).replace("R$","").trim()}</text>
-                  <text x={x} y={lineH+16} textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="Outfit,sans-serif">{e.label}</text>
+                  <circle cx={x} cy={y} r={4} fill={pos?"#3DBA6F":"#E05252"} stroke="#0A0F0D" strokeWidth={2}/>
+                  <text x={x} y={y-(pos?10:-3)} textAnchor="middle" fill={pos?"#3DBA6F":"#E05252"} fontSize="9" fontFamily="Outfit,sans-serif" fontWeight="700">{hide?"••":fmt(e.saldo).replace("R$","").trim()}</text>
+                  <text x={x} y={lineH+16} textAnchor="middle" fill="#536057" fontSize="10" fontFamily="Outfit,sans-serif">{e.label}</text>
                 </g>;
               })}
             </svg>
@@ -111,21 +111,21 @@ function Graficos({ exps, cats, hide, allExps, mesFiltro }) {
         {pieTotal>0?<>
           <div style={{display:"flex",justifyContent:"center",marginBottom:12}}>
             <svg width={sz} height={sz} viewBox={`0 0 ${sz} ${sz}`}>
-              {slices.map((s,i)=><path key={i} d={arc(s.sa,s.ea)} fill={s.color} opacity={.85} stroke="#080e1d" strokeWidth={2}/>)}
-              <circle cx={cx} cy={cy} r={ir} fill="#0f172a"/>
-              <text x={cx} y={cy-3} textAnchor="middle" fill="#64748b" fontSize="8" fontFamily="Outfit,sans-serif">TOTAL</text>
-              <text x={cx} y={cy+9} textAnchor="middle" fill="#4ade80" fontSize="9" fontWeight="800" fontFamily="Outfit,sans-serif">{hide?"••••":fmt(pieTotal)}</text>
+              {slices.map((s,i)=><path key={i} d={arc(s.sa,s.ea)} fill={s.color} opacity={.85} stroke="#0A0F0D" strokeWidth={2}/>)}
+              <circle cx={cx} cy={cy} r={ir} fill="#111713"/>
+              <text x={cx} y={cy-3} textAnchor="middle" fill="#536057" fontSize="8" fontFamily="Outfit,sans-serif">TOTAL</text>
+              <text x={cx} y={cy+9} textAnchor="middle" fill="#3DBA6F" fontSize="9" fontWeight="800" fontFamily="Outfit,sans-serif">{hide?"••••":fmt(pieTotal)}</text>
             </svg>
           </div>
           {[...pieData].sort((a,b)=>b.spent-a.spent).map(c=>(
-            <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+            <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0",borderBottom:"1px solid #181E19"}}>
               <div style={{width:10,height:10,borderRadius:2,background:c.color,flexShrink:0}}/>
-              <span style={{flex:1,fontSize:13,color:"#cbd5e1"}}>{c.emoji} {c.label}</span>
+              <span style={{flex:1,fontSize:13,color:"#DDE8DF"}}>{c.emoji} {c.label}</span>
               <span style={{fontSize:13,fontWeight:700,color:c.color}}>{hide?"••••":fmt(c.spent)}</span>
-              <span style={{fontSize:11,color:"#64748b",width:34,textAlign:"right"}}>{((c.spent/pieTotal)*100).toFixed(0)}%</span>
+              <span style={{fontSize:11,color:"#536057",width:34,textAlign:"right"}}>{((c.spent/pieTotal)*100).toFixed(0)}%</span>
             </div>
           ))}
-        </>:<div style={{textAlign:"center",padding:"20px 0",color:"#475569",fontSize:13}}>Nenhum gasto registrado</div>}
+        </>:<div style={{textAlign:"center",padding:"20px 0",color:"#536057",fontSize:13}}>Nenhum gasto registrado</div>}
       </div>
 
       {/* Orçado vs Realizado */}
@@ -137,17 +137,17 @@ function Graficos({ exps, cats, hide, allExps, mesFiltro }) {
               const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
               const bH=(cat.budget/mx)*100,sH=(spent/mx)*100,x=i*56+6;
               return <g key={cat.id}>
-                <text x={x+22} y={115-Math.max(bH,sH)-4} textAnchor="middle" fill={spent>cat.budget?"#f87171":"#94a3b8"} fontSize="9" fontFamily="Outfit,sans-serif">{cat.budget>0?Math.round((spent/cat.budget)*100)+"%":""}</text>
-                <rect x={x} y={115-bH} width={20} height={bH} rx={3} fill="rgba(99,102,241,0.55)"/>
-                <rect x={x+22} y={115-sH} width={20} height={sH} rx={3} fill={spent>cat.budget?"#f87171":"#f59e0b"}/>
-                <text x={x+20} y={130} textAnchor="middle" fill="#64748b" fontSize="14" fontFamily="Outfit,sans-serif">{cat.emoji}</text>
+                <text x={x+22} y={115-Math.max(bH,sH)-4} textAnchor="middle" fill={spent>cat.budget?"#E05252":"#8FA893"} fontSize="9" fontFamily="Outfit,sans-serif">{cat.budget>0?Math.round((spent/cat.budget)*100)+"%":""}</text>
+                <rect x={x} y={115-bH} width={20} height={bH} rx={3} fill="rgba(61,186,111,0.55)"/>
+                <rect x={x+22} y={115-sH} width={20} height={sH} rx={3} fill={spent>cat.budget?"#E05252":"#E8A832"}/>
+                <text x={x+20} y={130} textAnchor="middle" fill="#536057" fontSize="14" fontFamily="Outfit,sans-serif">{cat.emoji}</text>
               </g>;
             })})()}
           </svg>
         </div>
         <div style={{display:"flex",gap:14,marginTop:8}}>
-          {[["rgba(99,102,241,0.7)","Orçado"],["#f59e0b","Realizado"]].map(([c,l])=>(
-            <div key={l} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:12,borderRadius:2,background:c}}/><span style={{fontSize:11,color:"#94a3b8"}}>{l}</span></div>
+          {[["rgba(61,186,111,0.7)","Orçado"],["#E8A832","Realizado"]].map(([c,l])=>(
+            <div key={l} style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:12,height:12,borderRadius:2,background:c}}/><span style={{fontSize:11,color:"#8FA893"}}>{l}</span></div>
           ))}
         </div>
       </div>

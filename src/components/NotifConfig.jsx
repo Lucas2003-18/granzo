@@ -51,19 +51,19 @@ export default function NotifConfig({ showToast }){
     {permStatus==="unsupported"&&<AlertBox tipo="warn" texto="⚠️ Notificações nativas não disponíveis neste dispositivo. Funciona apenas no APK instalado."/>}
     {permStatus==="denied"&&<AlertBox tipo="err" texto="❌ Permissão negada. Vá em Configurações → Apps → Granzo → Notificações para ativar."/>}
 
-    <div style={{...CARD,borderLeft:`3px solid ${isEnabled?"#4ade80":"#f59e0b"}`}}>
+    <div style={{...CARD,borderLeft:`3px solid ${isEnabled?"#3DBA6F":"#E8A832"}`}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
         <div>
-          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>🔔 Notificações</div>
-          <div style={{fontSize:11,color:isEnabled?"#4ade80":"#64748b"}}>{isEnabled?"Ativas":"Desativadas"}</div>
+          <div style={{fontSize:13,fontWeight:700,color:"#DDE8DF"}}>🔔 Notificações</div>
+          <div style={{fontSize:11,color:isEnabled?"#3DBA6F":"#536057"}}>{isEnabled?"Ativas":"Desativadas"}</div>
         </div>
         {permStatus!=="unsupported"&&permStatus!=="loading"&&(
           isEnabled
-            ?<button style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",color:"#f87171",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}} onClick={()=>update("enabled",false)}>Desativar</button>
-            :<button style={{background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:"white",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}} onClick={ativar}>Ativar</button>
+            ?<button style={{background:"rgba(224,82,82,0.1)",border:"1px solid rgba(224,82,82,0.2)",color:"#E05252",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}} onClick={()=>update("enabled",false)}>Desativar</button>
+            :<button style={{background:"#3DBA6F",border:"none",color:"#0A0F0D",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}} onClick={ativar}>Ativar</button>
         )}
       </div>
-      {isEnabled&&<button style={{...btn("rgba(99,102,241,0.1)","#818cf8",{border:"1px solid rgba(99,102,241,0.25)",fontSize:12,padding:"8px 0"}),opacity:testando?0.6:1}} onClick={testar}>🔔 Testar notificação</button>}
+      {isEnabled&&<button style={{...btn("rgba(61,186,111,0.1)","#3DBA6F",{border:"1px solid rgba(61,186,111,0.12)",fontSize:12,padding:"8px 0"}),opacity:testando?0.6:1}} onClick={testar}>🔔 Testar notificação</button>}
     </div>
 
     {isEnabled&&<>
@@ -74,17 +74,17 @@ export default function NotifConfig({ showToast }){
       ].map(item=>(
         <div key={item.key} style={{...ROW,justifyContent:"space-between"}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{item.label}</div>
-            <div style={{fontSize:11,color:"#475569"}}>{item.sub}</div>
+            <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF"}}>{item.label}</div>
+            <div style={{fontSize:11,color:"#536057"}}>{item.sub}</div>
           </div>
-          <button style={{background:cfg[item.key]?"rgba(74,222,128,0.15)":"rgba(255,255,255,0.06)",border:cfg[item.key]?"1px solid rgba(74,222,128,0.3)":"1px solid rgba(255,255,255,0.1)",color:cfg[item.key]?"#4ade80":"#64748b",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}
+          <button style={{background:cfg[item.key]?"rgba(61,186,111,0.15)":"#232B24",border:cfg[item.key]?"1px solid rgba(61,186,111,0.3)":"1px solid #2E3A2F",color:cfg[item.key]?"#3DBA6F":"#536057",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}
             onClick={()=>update(item.key,!cfg[item.key])}>
             {cfg[item.key]?"✓ On":"Off"}
           </button>
         </div>
       ))}
-      <div style={{...CARD,background:"rgba(99,102,241,0.04)",border:"1px solid rgba(99,102,241,0.1)",marginTop:8}}>
-        <div style={{fontSize:11,color:"#64748b",lineHeight:1.7}}>
+      <div style={{...CARD,background:"rgba(61,186,111,0.04)",border:"1px solid rgba(61,186,111,0.1)",marginTop:8}}>
+        <div style={{fontSize:11,color:"#536057",lineHeight:1.7}}>
           💡 As notificações são verificadas sempre que você abre o app. Alertas de orçamento disparam 1x por dia quando uma categoria passa de 80%.
         </div>
       </div>

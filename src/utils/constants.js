@@ -20,7 +20,7 @@ export const CATS_DEF = [
   { id:"vestuario",    label:"Vestuário",    emoji:"👕", budget:200,  color:"#38bdf8" },
   { id:"pet",          label:"Pet",           emoji:"🐶", budget:300,  color:"#f97316" },
   { id:"investimento", label:"Investimento", emoji:"📈", budget:0,    color:"#34d399" },
-  { id:"outros",       label:"Outros",       emoji:"📦", budget:200,  color:"#94a3b8" },
+  { id:"outros",       label:"Outros",       emoji:"📦", budget:200,  color:"#8FA893" },
 ];
 
 export const FIXAS_DEF = [
@@ -37,10 +37,10 @@ export const MKTS_DEF = [
 
 export const GROCERY = ["Frango (kg)","Carne moída (kg)","Leite integral (L)","Arroz 5kg","Feijão 1kg","Óleo de soja","Macarrão 500g","Pão de forma","Ovos (dz)","Manteiga 200g","Sabão em pó","Detergente 500ml"];
 
-export const PRESETS = ["#60a5fa","#4ade80","#f59e0b","#f472b6","#a78bfa","#fb923c","#34d399","#94a3b8","#f87171","#38bdf8"];
+export const PRESETS = ["#60a5fa","#4ade80","#f59e0b","#f472b6","#a78bfa","#fb923c","#34d399","#8FA893","#f87171","#38bdf8"];
 
 export const CONTAS_DEF = [
-  { id:"geral", label:"Geral", emoji:"🏦", color:"#94a3b8" },
+  { id:"geral", label:"Geral", emoji:"🏦", color:"#8FA893" },
 ];
 
 export const APP_VERSION = "1.1";

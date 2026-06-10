@@ -20,15 +20,15 @@ class ErrorBoundary extends Component{
   static getDerivedStateFromError(error){return{hasError:true,error};}
   render(){
     if(this.state.hasError) return (
-      <div style={{background:"#080e1d",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Outfit',sans-serif"}}>
-        <div style={{background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:18,padding:"32px 24px",maxWidth:360,textAlign:"center"}}>
+      <div style={{background:"#0A0F0D",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Bricolage Grotesque','Outfit',sans-serif"}}>
+        <div style={{background:"rgba(224,82,82,0.08)",border:"1px solid rgba(224,82,82,0.25)",borderRadius:18,padding:"32px 24px",maxWidth:360,textAlign:"center"}}>
           <div style={{fontSize:40,marginBottom:12}}>⚠️</div>
-          <div style={{fontSize:16,fontWeight:700,color:"#f87171",marginBottom:8}}>Algo deu errado</div>
-          <div style={{fontSize:13,color:"#94a3b8",marginBottom:20,lineHeight:1.6}}>{this.state.error?.message||"Erro inesperado no app"}</div>
-          <button style={{background:"linear-gradient(135deg,#4f46e5,#4338ca)",border:"none",color:"white",borderRadius:12,padding:"12px 24px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
+          <div style={{fontSize:16,fontWeight:700,color:"#E05252",marginBottom:8}}>Algo deu errado</div>
+          <div style={{fontSize:13,color:"#8FA893",marginBottom:20,lineHeight:1.6}}>{this.state.error?.message||"Erro inesperado no app"}</div>
+          <button style={{background:"#3DBA6F",border:"none",color:"#0A0F0D",borderRadius:12,padding:"12px 24px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
             onClick={()=>{this.setState({hasError:false,error:null});}}>Tentar novamente</button>
           <div style={{marginTop:12}}>
-            <button style={{background:"none",border:"none",color:"#64748b",fontSize:12,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}
+            <button style={{background:"none",border:"none",color:"#536057",fontSize:12,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}
               onClick={()=>{try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos","mf_onboarding_done"].forEach(k=>localStorage.removeItem(k));}catch{}window.location.reload();}}>Limpar dados e reiniciar</button>
           </div>
         </div>
@@ -52,7 +52,7 @@ function AppContent() {
     if(!cap?.isNativePlatform?.()) return;
     const plugins=cap.Plugins||{};
     try{
-      plugins.StatusBar?.setBackgroundColor?.({color:"#080e1d"});
+      plugins.StatusBar?.setBackgroundColor?.({color:"#0A0F0D"});
       plugins.StatusBar?.setStyle?.({style:"DARK"});
     }catch{}
     try{ plugins.SplashScreen?.hide?.(); }catch{}
@@ -188,51 +188,51 @@ function AppContent() {
   return (
     <>
     {showOnboarding&&<Onboarding onDone={finishOnboarding} setTab={t=>{finishOnboarding();setTab(t);}}/>}
-    <div style={{fontFamily:"'Outfit',sans-serif",background:"#080e1d",minHeight:"100vh",color:"#e2e8f0",display:"flex",flexDirection:"column",maxWidth:"min(600px,100vw)",margin:"0 auto"}}>
+    <div style={{fontFamily:"'Bricolage Grotesque','Outfit',sans-serif",background:"#0A0F0D",minHeight:"100vh",color:"#DDE8DF",display:"flex",flexDirection:"column",maxWidth:"min(600px,100vw)",margin:"0 auto"}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Outfit:wght@400;600;700;800&display=swap');
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-        body{margin:0;background:#080e1d;}
+        body{margin:0;background:#0A0F0D;}
         input,button,select{font-family:'Outfit',sans-serif;}
-        select option{background:#1e293b;color:#e2e8f0;}
-        .dot{display:inline-block;width:7px;height:7px;background:#64748b;border-radius:50%;animation:bounce 1.2s ease-in-out infinite;}
+        select option{background:#181E19;color:#DDE8DF;}
+        .dot{display:inline-block;width:7px;height:7px;background:#536057;border-radius:50%;animation:bounce 1.2s ease-in-out infinite;}
         .dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
         @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
-        ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:99px;}
+        ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-thumb{background:#2E3A2F;border-radius:99px;}
       `}</style>
 
       {toast&&(
-        <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(74,222,128,0.15)",border:"1px solid rgba(74,222,128,0.35)",backdropFilter:"blur(12px)",borderRadius:99,padding:"6px 18px",fontSize:12,fontWeight:700,color:"#4ade80",zIndex:999,whiteSpace:"nowrap",pointerEvents:"none",transition:"opacity 0.3s"}}>
+        <div style={{position:"fixed",top:12,left:"50%",transform:"translateX(-50%)",background:"rgba(61,186,111,0.15)",border:"1px solid rgba(61,186,111,0.35)",backdropFilter:"blur(12px)",borderRadius:99,padding:"6px 18px",fontSize:12,fontWeight:700,color:"#3DBA6F",zIndex:999,whiteSpace:"nowrap",pointerEvents:"none",transition:"opacity 0.3s"}}>
           {toast}
         </div>
       )}
 
-      <div style={{background:"linear-gradient(135deg,#0d1b3e,#162547)",borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0}}>
+      <div style={{background:"#111713",borderBottom:"1px solid #232B24",flexShrink:0}}>
         <div style={{padding:"14px 20px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{fontSize:10,color:"#475569",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Granzo</div>
-            <div style={{fontSize:20,fontWeight:800,color:"#f1f5f9"}}>
+            <div style={{fontSize:10,color:"#536057",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:2}}>Granzo</div>
+            <div style={{fontSize:20,fontWeight:800,color:"#DDE8DF",letterSpacing:"-0.02em"}}>
               {mesFiltro==="todos"?"Todos os meses":(()=>{const[ano,mes]=mesFiltro.split("-");return MESES[+mes]+" "+ano;})()}
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <div style={{textAlign:"right"}}>
-              <div style={{fontSize:10,color:"#475569",marginBottom:1}}>Saldo {mesFiltro!=="todos"?"do mês":"total"}</div>
-              <div style={{fontSize:17,fontWeight:800,color:saldo>=0?"#4ade80":"#f87171"}}>{hideVals?"R$ ••••":fmt(saldo)}</div>
+              <div style={{fontSize:10,color:"#536057",marginBottom:1}}>Saldo {mesFiltro!=="todos"?"do mês":"total"}</div>
+              <div style={{fontSize:17,fontWeight:500,fontFamily:"'DM Mono',monospace",color:saldo>=0?"#3DBA6F":"#E05252"}}>{hideVals?"R$ ••••":fmt(saldo)}</div>
             </div>
-            <button style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#94a3b8",fontSize:18,padding:"6px 8px",cursor:"pointer"}} onClick={()=>setHideVals(v=>!v)}>{hideVals?"🙈":"👁️"}</button>
-            <button style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,color:"#94a3b8",fontSize:18,padding:"6px 8px",cursor:"pointer"}} onClick={()=>setTab("config")}>⚙️</button>
+            <button style={{background:"#181E19",border:"1px solid #2E3A2F",borderRadius:10,color:"#8FA893",fontSize:18,padding:"6px 8px",cursor:"pointer"}} onClick={()=>setHideVals(v=>!v)}>{hideVals?"🙈":"👁️"}</button>
+            <button style={{background:"#181E19",border:"1px solid #2E3A2F",borderRadius:10,color:"#8FA893",fontSize:18,padding:"6px 8px",cursor:"pointer"}} onClick={()=>setTab("config")}>⚙️</button>
           </div>
         </div>
         {mesesDisp.length>0&&(
           <div style={{display:"flex",gap:6,overflowX:"auto",padding:"0 16px 10px",scrollbarWidth:"none"}}>
-            <button style={{background:mesFiltro==="todos"?"rgba(99,102,241,0.3)":"rgba(255,255,255,0.05)",border:mesFiltro==="todos"?"1px solid rgba(99,102,241,0.6)":"1px solid rgba(255,255,255,0.1)",color:mesFiltro==="todos"?"#818cf8":"#64748b",borderRadius:99,padding:"4px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",fontWeight:mesFiltro==="todos"?700:400}}
+            <button style={{background:mesFiltro==="todos"?"rgba(61,186,111,0.12)":"#181E19",border:mesFiltro==="todos"?"1px solid rgba(61,186,111,0.35)":"1px solid #232B24",color:mesFiltro==="todos"?"#3DBA6F":"#536057",borderRadius:99,padding:"4px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",fontWeight:mesFiltro==="todos"?700:400}}
               onClick={()=>setMesFiltro("todos")}>Todos</button>
             {mesesDisp.map(m=>{
               const[ano,mes]=m.split("-");
               const multiAno=mesesDisp.some(x=>x.split("-")[0]!==ano);
               const label=MESES_CURTO[+mes]+(multiAno?" '"+ano.slice(2):"");
-              return <button key={m} style={{background:mesFiltro===m?"rgba(99,102,241,0.3)":"rgba(255,255,255,0.05)",border:mesFiltro===m?"1px solid rgba(99,102,241,0.6)":"1px solid rgba(255,255,255,0.1)",color:mesFiltro===m?"#818cf8":"#64748b",borderRadius:99,padding:"4px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",fontWeight:mesFiltro===m?700:400}}
+              return <button key={m} style={{background:mesFiltro===m?"rgba(61,186,111,0.12)":"#181E19",border:mesFiltro===m?"1px solid rgba(61,186,111,0.35)":"1px solid #232B24",color:mesFiltro===m?"#3DBA6F":"#536057",borderRadius:99,padding:"4px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit",fontWeight:mesFiltro===m?700:400}}
                 onClick={()=>setMesFiltro(m)}>{label}</button>;
             })}
           </div>
@@ -254,16 +254,16 @@ function AppContent() {
 
       {tab!=="ia"&&tab!=="config"&&(
         <div style={{position:"fixed",bottom:76,right:16,display:"flex",flexDirection:"column",gap:8,zIndex:49}}>
-          <button style={{width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,#22c55e,#16a34a)",border:"none",color:"white",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(34,197,94,0.4)",fontWeight:700}} onClick={()=>{setOpenWith("income");setTab("gastos");}}>+💰</button>
-          <button style={{width:46,height:46,borderRadius:"50%",background:"linear-gradient(135deg,#ef4444,#dc2626)",border:"none",color:"white",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(239,68,68,0.4)",fontWeight:700}} onClick={()=>{setOpenWith("expense");setTab("gastos");}}>+💸</button>
+          <button style={{width:46,height:46,borderRadius:"50%",background:"#3DBA6F",border:"none",color:"#0A0F0D",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(61,186,111,0.4)",fontWeight:700}} onClick={()=>{setOpenWith("income");setTab("gastos");}}>+💰</button>
+          <button style={{width:46,height:46,borderRadius:"50%",background:"#E05252",border:"none",color:"#0A0F0D",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(224,82,82,0.4)",fontWeight:700}} onClick={()=>{setOpenWith("expense");setTab("gastos");}}>+💸</button>
         </div>
       )}
 
-      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"min(600px,100vw)",background:"rgba(8,14,29,0.97)",borderTop:"1px solid rgba(255,255,255,0.07)",display:"flex",overflowX:"auto",padding:"6px 2px 10px",backdropFilter:"blur(20px)",zIndex:50}}>
+      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"min(600px,100vw)",background:"rgba(10,15,13,0.97)",borderTop:"1px solid #232B24",display:"flex",overflowX:"auto",padding:"6px 2px 10px",backdropFilter:"blur(20px)",zIndex:50}}>
         {TABS.map(t=>(
-          <button key={t.id} style={{flex:"0 0 auto",minWidth:60,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 2px",opacity:tab===t.id?1:0.38,transition:"opacity 0.15s"}} onClick={()=>setTab(t.id)}>
-            <span style={{fontSize:18}}>{t.emoji}</span>
-            <span style={{fontSize:9,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.03em"}}>{t.label}</span>
+          <button key={t.id} style={{flex:"0 0 auto",minWidth:60,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 2px",opacity:tab===t.id?1:0.6,transition:"opacity 0.15s"}} onClick={()=>setTab(t.id)}>
+            <span style={{fontSize:18,opacity:tab===t.id?1:0.45}}>{t.emoji}</span>
+            <span style={{fontSize:9,color:tab===t.id?"#3DBA6F":"#536057",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.03em",fontFamily:"'DM Mono',monospace"}}>{t.label}</span>
           </button>
         ))}
       </nav>

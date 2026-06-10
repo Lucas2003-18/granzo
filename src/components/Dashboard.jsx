@@ -98,13 +98,13 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
         {[
-          ["Salário/Renda",fmt(totalInc),"#4ade80"],
-          ["Gastos",fmt(totalExp),"#f87171"],
-          ["Saldo",fmt(totalInc-totalExp),(totalInc-totalExp)>=0?"#60a5fa":"#f87171"],
-          ["Poupança",txPoup.toFixed(0)+"%",txPoup>=20?"#4ade80":txPoup>=10?"#f59e0b":"#f87171"],
+          ["Salário/Renda",fmt(totalInc),"#3DBA6F"],
+          ["Gastos",fmt(totalExp),"#E05252"],
+          ["Saldo",fmt(totalInc-totalExp),(totalInc-totalExp)>=0?"#3DBA6F":"#E05252"],
+          ["Poupança",txPoup.toFixed(0)+"%",txPoup>=20?"#3DBA6F":txPoup>=10?"#E8A832":"#E05252"],
         ].map(([l,v,c])=>(
-          <div key={l} style={{background:"rgba(255,255,255,0.04)",borderRadius:12,padding:"12px 10px",border:`1px solid ${c}33`,textAlign:"center"}}>
-            <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:3}}>{l}</div>
+          <div key={l} style={{background:"#181E19",borderRadius:12,padding:"12px 10px",border:`1px solid ${c}33`,textAlign:"center"}}>
+            <div style={{fontSize:9,color:"#536057",textTransform:"uppercase",marginBottom:3}}>{l}</div>
             <div style={{fontSize:15,fontWeight:800,color:c}}>{hide?"••••":v}</div>
           </div>
         ))}
@@ -114,16 +114,16 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
       {!hide&&(totalInv>0||totalTransf>0||diffPct!==null)&&(
         <div style={{display:"flex",gap:8,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
           {totalInv>0&&<div style={{background:"rgba(52,211,153,0.08)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:10,padding:"8px 12px",flexShrink:0}}>
-            <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Investido</div>
+            <div style={{fontSize:9,color:"#536057",textTransform:"uppercase"}}>Investido</div>
             <div style={{fontSize:13,fontWeight:700,color:"#34d399"}}>{fmt(totalInv)}</div>
           </div>}
-          {totalTransf>0&&<div style={{background:"rgba(148,163,184,0.08)",border:"1px solid rgba(148,163,184,0.2)",borderRadius:10,padding:"8px 12px",flexShrink:0}}>
-            <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Transferências</div>
-            <div style={{fontSize:13,fontWeight:700,color:"#94a3b8"}}>{fmt(totalTransf)}</div>
+          {totalTransf>0&&<div style={{background:"rgba(143,168,147,0.08)",border:"1px solid rgba(143,168,147,0.2)",borderRadius:10,padding:"8px 12px",flexShrink:0}}>
+            <div style={{fontSize:9,color:"#536057",textTransform:"uppercase"}}>Transferências</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#8FA893"}}>{fmt(totalTransf)}</div>
           </div>}
-          {diffPct!==null&&<div style={{background:diffPct>0?"rgba(248,113,113,0.08)":"rgba(74,222,128,0.08)",border:`1px solid ${diffPct>0?"rgba(248,113,113,0.2)":"rgba(74,222,128,0.2)"}`,borderRadius:10,padding:"8px 12px",flexShrink:0}}>
-            <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase"}}>Vs {mesAnterior}</div>
-            <div style={{fontSize:13,fontWeight:700,color:diffPct>0?"#f87171":"#4ade80"}}>{fmtPct(diffPct)}</div>
+          {diffPct!==null&&<div style={{background:diffPct>0?"rgba(224,82,82,0.08)":"rgba(61,186,111,0.08)",border:`1px solid ${diffPct>0?"rgba(224,82,82,0.2)":"rgba(61,186,111,0.2)"}`,borderRadius:10,padding:"8px 12px",flexShrink:0}}>
+            <div style={{fontSize:9,color:"#536057",textTransform:"uppercase"}}>Vs {mesAnterior}</div>
+            <div style={{fontSize:13,fontWeight:700,color:diffPct>0?"#E05252":"#3DBA6F"}}>{fmtPct(diffPct)}</div>
           </div>}
         </div>
       )}
@@ -140,56 +140,56 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         const limiteDiario=saldoAtual>0&&diasRestantes>0?saldoAtual/diasRestantes:null;
         // Semáforo: verde <70% renda, amarelo 70-90%, vermelho >90%
         const pctProjecao=totalInc>0?(projecao/totalInc)*100:0;
-        const semaforo=pctProjecao<=70?"#4ade80":pctProjecao<=90?"#f59e0b":"#f87171";
-        return <div style={{background:"rgba(99,102,241,0.07)",border:`1px solid ${semaforo}33`,borderLeft:`3px solid ${semaforo}`,borderRadius:14,padding:"14px 16px",marginBottom:14}}>
+        const semaforo=pctProjecao<=70?"#3DBA6F":pctProjecao<=90?"#E8A832":"#E05252";
+        return <div style={{background:"rgba(61,186,111,0.07)",border:`1px solid ${semaforo}33`,borderLeft:`3px solid ${semaforo}`,borderRadius:14,padding:"14px 16px",marginBottom:14}}>
           {/* Header */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📅 Projeção do mês</div>
-            <div style={{fontSize:11,color:"#64748b"}}>{diasRestantes}d restantes</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#DDE8DF"}}>📅 Projeção do mês</div>
+            <div style={{fontSize:11,color:"#536057"}}>{diasRestantes}d restantes</div>
           </div>
           {/* Barra de progresso do mês */}
           <div style={{marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-              <span style={{fontSize:10,color:"#64748b"}}>Mês: dia {hoje} de {diasMes}</span>
-              <span style={{fontSize:10,color:"#64748b"}}>{pctMes}% decorrido</span>
+              <span style={{fontSize:10,color:"#536057"}}>Mês: dia {hoje} de {diasMes}</span>
+              <span style={{fontSize:10,color:"#536057"}}>{pctMes}% decorrido</span>
             </div>
-            <div style={{background:"rgba(255,255,255,0.06)",borderRadius:99,height:4,overflow:"hidden"}}>
-              <div style={{width:`${pctMes}%`,height:"100%",background:"#475569",borderRadius:99}}/>
+            <div style={{background:"#232B24",borderRadius:99,height:4,overflow:"hidden"}}>
+              <div style={{width:`${pctMes}%`,height:"100%",background:"#536057",borderRadius:99}}/>
             </div>
           </div>
           {/* Métricas principais */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-            <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 12px"}}>
-              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Gasto até agora</div>
-              <div style={{fontSize:15,fontWeight:800,color:"#f87171"}}>{fmt(totalExp)}</div>
-              <div style={{fontSize:10,color:"#64748b",marginTop:2}}>{fmt(mediadiaria)}/dia em média</div>
+            <div style={{background:"#181E19",borderRadius:10,padding:"10px 12px"}}>
+              <div style={{fontSize:9,color:"#536057",textTransform:"uppercase",marginBottom:4}}>Gasto até agora</div>
+              <div style={{fontSize:15,fontWeight:800,color:"#E05252"}}>{fmt(totalExp)}</div>
+              <div style={{fontSize:10,color:"#536057",marginTop:2}}>{fmt(mediadiaria)}/dia em média</div>
             </div>
-            <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:"10px 12px"}}>
-              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Se continuar assim</div>
+            <div style={{background:"#181E19",borderRadius:10,padding:"10px 12px"}}>
+              <div style={{fontSize:9,color:"#536057",textTransform:"uppercase",marginBottom:4}}>Se continuar assim</div>
               <div style={{fontSize:15,fontWeight:800,color:semaforo}}>{fmt(projecao)}</div>
-              <div style={{fontSize:10,color:"#64748b",marginTop:2}}>no fim do mês</div>
+              <div style={{fontSize:10,color:"#536057",marginTop:2}}>no fim do mês</div>
             </div>
           </div>
           {/* Limite diário restante */}
-          {limiteDiario!==null&&limiteDiario>0&&<div style={{background:"rgba(74,222,128,0.06)",border:"1px solid rgba(74,222,128,0.15)",borderRadius:10,padding:"9px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+          {limiteDiario!==null&&limiteDiario>0&&<div style={{background:"rgba(61,186,111,0.06)",border:"1px solid rgba(61,186,111,0.15)",borderRadius:10,padding:"9px 12px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:18}}>💡</span>
             <div>
-              <div style={{fontSize:12,fontWeight:700,color:"#4ade80"}}>Gaste até {fmt(limiteDiario)}/dia</div>
-              <div style={{fontSize:10,color:"#64748b"}}>para fechar o mês no zero com sua renda atual</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#3DBA6F"}}>Gaste até {fmt(limiteDiario)}/dia</div>
+              <div style={{fontSize:10,color:"#536057"}}>para fechar o mês no zero com sua renda atual</div>
             </div>
           </div>}
-          {!ok&&<div style={{background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
+          {!ok&&<div style={{background:"rgba(224,82,82,0.07)",border:"1px solid rgba(224,82,82,0.2)",borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:18}}>⚠️</span>
             <div>
-              <div style={{fontSize:12,fontWeight:700,color:"#f87171"}}>Renda insuficiente no ritmo atual</div>
-              <div style={{fontSize:10,color:"#64748b"}}>Reduza {fmt(Math.abs(mediadiaria-(totalInc/diasMes)))}/dia para equilibrar</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#E05252"}}>Renda insuficiente no ritmo atual</div>
+              <div style={{fontSize:10,color:"#536057"}}>Reduza {fmt(Math.abs(mediadiaria-(totalInc/diasMes)))}/dia para equilibrar</div>
             </div>
           </div>}
-          {ok&&projecaoEconomia>0&&<div style={{background:"rgba(74,222,128,0.06)",border:"1px solid rgba(74,222,128,0.15)",borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
+          {ok&&projecaoEconomia>0&&<div style={{background:"rgba(61,186,111,0.06)",border:"1px solid rgba(61,186,111,0.15)",borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:18}}>✅</span>
             <div>
-              <div style={{fontSize:12,fontWeight:700,color:"#4ade80"}}>Projeção de sobra: {fmt(projecaoEconomia)}</div>
-              <div style={{fontSize:10,color:"#64748b"}}>mantendo o ritmo de {fmt(mediadiaria)}/dia</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#3DBA6F"}}>Projeção de sobra: {fmt(projecaoEconomia)}</div>
+              <div style={{fontSize:10,color:"#536057"}}>mantendo o ritmo de {fmt(mediadiaria)}/dia</div>
             </div>
           </div>}
         </div>;
@@ -202,7 +202,7 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         if(contasComDados.length===0) return null;
         return <>
           <div style={{margin:"14px 0 8px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.1em"}}>Por conta</div>
+            <div style={{fontSize:11,fontWeight:700,color:"#536057",textTransform:"uppercase",letterSpacing:"0.1em"}}>Por conta</div>
           </div>
           <div style={{display:"flex",gap:8,marginBottom:14}}>
             {contasDef.filter(c=>c.id!=="geral").map(c=>{
@@ -218,10 +218,10 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
                   <span style={{fontSize:14}}>{c.emoji}</span>
                   <span style={{fontSize:12,fontWeight:700,color:c.color}}>{c.label}</span>
                 </div>
-                {cInc>0&&<div style={{fontSize:10,color:"#64748b"}}>💼 <span style={{color:"#4ade80"}}>{hide?"••••":fmt(cInc)}</span></div>}
-                {cExp>0&&<div style={{fontSize:10,color:"#64748b"}}>💸 <span style={{color:"#f87171"}}>{hide?"••••":fmt(cExp)}</span></div>}
-                {cTransfRec>0&&<div style={{fontSize:10,color:"#64748b"}}>↔️ <span style={{color:"#94a3b8"}}>{hide?"••••":fmt(cTransfRec)}</span></div>}
-                <div style={{marginTop:6,paddingTop:6,borderTop:`1px solid ${c.color}22`,fontSize:11,fontWeight:800,color:saldo>=0?"#4ade80":"#f87171"}}>{hide?"••••":fmt(saldo)}</div>
+                {cInc>0&&<div style={{fontSize:10,color:"#536057"}}>💼 <span style={{color:"#3DBA6F"}}>{hide?"••••":fmt(cInc)}</span></div>}
+                {cExp>0&&<div style={{fontSize:10,color:"#536057"}}>💸 <span style={{color:"#E05252"}}>{hide?"••••":fmt(cExp)}</span></div>}
+                {cTransfRec>0&&<div style={{fontSize:10,color:"#536057"}}>↔️ <span style={{color:"#8FA893"}}>{hide?"••••":fmt(cTransfRec)}</span></div>}
+                <div style={{marginTop:6,paddingTop:6,borderTop:`1px solid ${c.color}22`,fontSize:11,fontWeight:800,color:saldo>=0?"#3DBA6F":"#E05252"}}>{hide?"••••":fmt(saldo)}</div>
               </div>;
             })}
           </div>
@@ -233,26 +233,26 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         const totalRes=reservas.reduce((s,r)=>s+r.saldo,0);
         return <>
           <div style={{margin:"14px 0 8px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.1em"}}>Reservas / Caixinhas</div>
+            <div style={{fontSize:11,fontWeight:700,color:"#536057",textTransform:"uppercase",letterSpacing:"0.1em"}}>Reservas / Caixinhas</div>
           </div>
           <div style={{display:"flex",gap:8,marginBottom:14,overflowX:"auto",paddingBottom:2}}>
             {reservas.map(r=>{
               const pct=r.meta>0?Math.min(100,(r.saldo/r.meta)*100):null;
-              return <div key={r.id} style={{flexShrink:0,minWidth:120,background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:12,padding:"10px 12px"}}>
+              return <div key={r.id} style={{flexShrink:0,minWidth:120,background:"rgba(61,186,111,0.07)",border:"1px solid rgba(61,186,111,0.2)",borderRadius:12,padding:"10px 12px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:6}}>
                   <span style={{fontSize:16}}>{r.emoji}</span>
-                  <span style={{fontSize:12,fontWeight:700,color:"#818cf8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.nome}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"#3DBA6F",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.nome}</span>
                 </div>
-                <div style={{fontSize:15,fontWeight:800,color:"#e2e8f0"}}>{hide?"••••":fmt(r.saldo)}</div>
+                <div style={{fontSize:15,fontWeight:800,color:"#DDE8DF"}}>{hide?"••••":fmt(r.saldo)}</div>
                 {r.meta>0&&<>
-                  <Bar pct={pct} color={pct>=100?"#4ade80":"#818cf8"}/>
-                  <div style={{fontSize:9,color:"#64748b"}}>{pct.toFixed(0)}% de {hide?"••••":fmt(r.meta)}</div>
+                  <Bar pct={pct} color="#3DBA6F"/>
+                  <div style={{fontSize:9,color:"#536057"}}>{pct.toFixed(0)}% de {hide?"••••":fmt(r.meta)}</div>
                 </>}
               </div>;
             })}
-            <div style={{flexShrink:0,minWidth:100,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"10px 12px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}>
-              <div style={{fontSize:9,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Total</div>
-              <div style={{fontSize:14,fontWeight:800,color:"#818cf8"}}>{hide?"••••":fmt(totalRes)}</div>
+            <div style={{flexShrink:0,minWidth:100,background:"#181E19",border:"1px solid #232B24",borderRadius:12,padding:"10px 12px",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center"}}>
+              <div style={{fontSize:9,color:"#536057",textTransform:"uppercase",marginBottom:4}}>Total</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#3DBA6F"}}>{hide?"••••":fmt(totalRes)}</div>
             </div>
           </div>
         </>;
@@ -267,17 +267,17 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         const pct=Math.max(0,Math.min(100,(poupadoReal/meta)*100));
         const ok=poupado>=meta;
         const faltam=Math.max(0,meta-poupadoReal);
-        return <div style={{...CARD,marginBottom:14,borderLeft:`3px solid ${ok?"#4ade80":pct>60?"#f59e0b":"#f87171"}`}}>
+        return <div style={{...CARD,marginBottom:14,borderLeft:`3px solid ${ok?"#3DBA6F":pct>60?"#E8A832":"#E05252"}`}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:6}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>🎯 Meta de economia</div>
-            <div style={{fontSize:12,color:ok?"#4ade80":pct>60?"#f59e0b":"#f87171",fontWeight:700}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#DDE8DF"}}>🎯 Meta de economia</div>
+            <div style={{fontSize:12,color:ok?"#3DBA6F":pct>60?"#E8A832":"#E05252",fontWeight:700}}>
               {ok?"✓ Atingida!":pct.toFixed(0)+"%"}
             </div>
           </div>
-          <Bar pct={pct} color={ok?"#4ade80":pct>60?"#f59e0b":"#f87171"}/>
-          <div style={{fontSize:11,color:"#64748b",marginTop:4}}>
+          <Bar pct={pct} color={ok?"#3DBA6F":pct>60?"#E8A832":"#E05252"}/>
+          <div style={{fontSize:11,color:"#536057",marginTop:4}}>
             {hide?"••••":fmt(poupadoReal)} poupado de {hide?"••••":fmt(meta)} planejados
-            {!ok&&<span style={{color:"#f87171"}}> · faltam {hide?"••••":fmt(faltam)}</span>}
+            {!ok&&<span style={{color:"#E05252"}}> · faltam {hide?"••••":fmt(faltam)}</span>}
           </div>
         </div>;}catch{return null;}
       })()}
@@ -313,12 +313,12 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
           <div style={{width:38,height:38,borderRadius:10,background:`${cat.color}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{cat.emoji}</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-              <span style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{cat.label}</span>
-              <span style={{fontSize:12,color:spent>cat.budget&&cat.budget>0?"#f87171":"#64748b"}}>{hide?"••••":fmt(spent)+(cat.budget>0?"/"+fmt(cat.budget):"")}</span>
+              <span style={{fontSize:13,fontWeight:600,color:"#DDE8DF"}}>{cat.label}</span>
+              <span style={{fontSize:12,color:spent>cat.budget&&cat.budget>0?"#E05252":"#536057"}}>{hide?"••••":fmt(spent)+(cat.budget>0?"/"+fmt(cat.budget):"")}</span>
             </div>
-            {cat.budget>0&&<Bar pct={pct} color={spent>cat.budget?"#f87171":pct>75?"#f59e0b":cat.color}/>}
+            {cat.budget>0&&<Bar pct={pct} color={spent>cat.budget?"#E05252":pct>75?"#E8A832":cat.color}/>}
           </div>
-          <span style={{fontSize:14,color:"#475569",flexShrink:0}}>›</span>
+          <span style={{fontSize:14,color:"#536057",flexShrink:0}}>›</span>
         </div>;
       })}
 
@@ -336,15 +336,15 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
             const mesOk=mesFiltro==="todos"||anoMesE===mesFiltro;
             return mesOk&&e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[\u0300-\u036f]/g,""));
           });
-          return <div key={f.id} style={{...ROW,borderLeft:`3px solid ${jaLancado?"#4ade80":"#f59e0b"}`}}>
+          return <div key={f.id} style={{...ROW,borderLeft:`3px solid ${jaLancado?"#3DBA6F":"#E8A832"}`}}>
             <span style={{fontSize:20}}>{f.emoji}</span>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{f.desc}</div>
-              <div style={{fontSize:11,color:"#475569"}}>{cat?.label||"Outros"} · todo mês</div>
+              <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF"}}>{f.desc}</div>
+              <div style={{fontSize:11,color:"#536057"}}>{cat?.label||"Outros"} · todo mês</div>
             </div>
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
-              <span style={{fontSize:13,fontWeight:700,color:"#94a3b8"}}>{hide?"••••":fmt(f.valor)}</span>
-              <span style={{fontSize:10,color:jaLancado?"#4ade80":"#f59e0b",fontWeight:700}}>{jaLancado?"✓ lançado":"⚠️ pendente"}</span>
+              <span style={{fontSize:13,fontWeight:700,color:"#8FA893"}}>{hide?"••••":fmt(f.valor)}</span>
+              <span style={{fontSize:10,color:jaLancado?"#3DBA6F":"#E8A832",fontWeight:700}}>{jaLancado?"✓ lançado":"⚠️ pendente"}</span>
             </div>
           </div>;
         })}
@@ -357,10 +357,10 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
           <div key={e.id||i} style={ROW}>
             <span style={{fontSize:16,width:24,textAlign:"center"}}>{["🥇","🥈","🥉"][i]}</span>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
-              <div style={{fontSize:11,color:"#475569"}}>{e.date}</div>
+              <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
+              <div style={{fontSize:11,color:"#536057"}}>{e.date}</div>
             </div>
-            <span style={{fontSize:13,fontWeight:700,color:"#f87171",flexShrink:0}}>{hide?"••••":fmt(e.value)}</span>
+            <span style={{fontSize:13,fontWeight:700,color:"#E05252",flexShrink:0}}>{hide?"••••":fmt(e.value)}</span>
           </div>
         ))}
       </>}
@@ -373,13 +373,13 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
           return <div key={i} style={ROW}>
             <span style={{fontSize:20}}>{r.emoji}</span>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.desc}</div>
-              <div style={{fontSize:11,color:"#475569"}}>{r.count}x · {hide?"••••":fmt(r.value)}</div>
+              <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.desc}</div>
+              <div style={{fontSize:11,color:"#536057"}}>{r.count}x · {hide?"••••":fmt(r.value)}</div>
             </div>
             {!jaEhFixa&&onAddFixa&&<button
-              style={{fontSize:10,color:"#818cf8",background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.25)",borderRadius:6,padding:"3px 8px",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit"}}
+              style={{fontSize:10,color:"#3DBA6F",background:"rgba(61,186,111,0.1)",border:"1px solid rgba(61,186,111,0.12)",borderRadius:6,padding:"3px 8px",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontFamily:"inherit"}}
               onClick={()=>onAddFixa(r)}>+ Fixas</button>}
-            {jaEhFixa&&<span style={{fontSize:10,color:"#4ade80",flexShrink:0}}>✓ fixa</span>}
+            {jaEhFixa&&<span style={{fontSize:10,color:"#3DBA6F",flexShrink:0}}>✓ fixa</span>}
           </div>;
         })}
       </>}
@@ -390,13 +390,13 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         const cat=cats.find(c=>c.id===e.cat);
         const isTransf=e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"||e.incType==="outro");
         const incLabel=e.kind==="inc"?(INC_TIPOS.find(t=>t.id===e.incType)?.label||e.type||"Entrada"):null;
-        return <div key={e.id} style={{...ROW,...(e.kind==="inc"?{borderColor:isTransf?"rgba(148,163,184,0.2)":"rgba(74,222,128,0.2)",background:isTransf?"rgba(148,163,184,0.03)":"rgba(74,222,128,0.04)"}:{})}}>
-          <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransf?"rgba(148,163,184,0.1)":"rgba(74,222,128,0.12)"):"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{e.emoji||cat?.emoji||"📦"}</div>
+        return <div key={e.id} style={{...ROW,...(e.kind==="inc"?{borderColor:isTransf?"rgba(143,168,147,0.2)":"rgba(61,186,111,0.2)",background:isTransf?"rgba(143,168,147,0.03)":"rgba(61,186,111,0.04)"}:{})}}>
+          <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransf?"rgba(143,168,147,0.1)":"rgba(61,186,111,0.12)"):"#232B24",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{e.emoji||cat?.emoji||"📦"}</div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
-            <div style={{fontSize:11,color:"#475569"}}>{e.kind==="inc"?incLabel:(cat?.label||"Outros")} · {e.date}</div>
+            <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
+            <div style={{fontSize:11,color:"#536057"}}>{e.kind==="inc"?incLabel:(cat?.label||"Outros")} · {e.date}</div>
           </div>
-          <span style={{fontSize:13,fontWeight:700,color:e.kind==="inc"?(isTransf?"#94a3b8":"#4ade80"):"#f87171",flexShrink:0}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
+          <span style={{fontSize:13,fontWeight:700,color:e.kind==="inc"?(isTransf?"#8FA893":"#3DBA6F"):"#E05252",flexShrink:0}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
         </div>;
       })}
       {/* Botões de ação do mês */}
@@ -429,22 +429,22 @@ Gerado pelo Granzo`;
           else{navigator.clipboard?.writeText(txt).then(()=>showToast("📋 Resumo copiado!")).catch(()=>showToast("❌ Não foi possível copiar"));}
         }
         return <div style={{display:"flex",gap:8}}>
-          <button style={{flex:1,background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",color:"#f87171",borderRadius:12,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
+          <button style={{flex:1,background:"rgba(224,82,82,0.1)",border:"1px solid rgba(224,82,82,0.25)",color:"#E05252",borderRadius:12,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
             onClick={()=>gerarRelatorioPDF(exps,cats,fixas,reservas,meta,mesFiltro,showToast)}>
             📄 Relatório PDF
           </button>
-          <button style={{flex:1,background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.25)",color:"#818cf8",borderRadius:12,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
+          <button style={{flex:1,background:"rgba(61,186,111,0.1)",border:"1px solid rgba(61,186,111,0.12)",color:"#3DBA6F",borderRadius:12,padding:"11px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
             onClick={gerarResumo}>📤 Compartilhar</button>
         </div>;
       })()}
 
       {/* Estado vazio */}
       {exps.length===0&&(
-        <div style={{textAlign:"center",padding:"60px 20px",color:"#475569"}}>
+        <div style={{textAlign:"center",padding:"60px 20px",color:"#536057"}}>
           <div style={{fontSize:52,marginBottom:12}}>📊</div>
-          <div style={{fontSize:16,fontWeight:700,color:"#94a3b8",marginBottom:8}}>Nenhum lançamento ainda</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#8FA893",marginBottom:8}}>Nenhum lançamento ainda</div>
           <div style={{fontSize:13,lineHeight:1.7,marginBottom:20}}>
-            Comece registrando seus gastos e receitas,<br/>ou importe um extrato em <strong style={{color:"#818cf8"}}>⚙️ Config → Importar</strong>.
+            Comece registrando seus gastos e receitas,<br/>ou importe um extrato em <strong style={{color:"#3DBA6F"}}>⚙️ Config → Importar</strong>.
           </div>
         </div>
       )}

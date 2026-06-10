@@ -70,21 +70,21 @@ Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-t
       {!getGeminiKey()&&<div style={{padding:"10px 16px"}}>
         <AlertBox tipo="warn" texto="⚠️ Chave Gemini não configurada. Vá em ⚙️ Config → Chave IA para ativar o assistente."/>
       </div>}
-      <div style={{display:"flex",gap:12,alignItems:"center",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
-        <div style={{fontSize:24,background:"rgba(99,102,241,0.2)",borderRadius:12,width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center"}}>🤖</div>
+      <div style={{display:"flex",gap:12,alignItems:"center",padding:"12px 16px",borderBottom:"1px solid #232B24"}}>
+        <div style={{fontSize:24,background:"rgba(61,186,111,0.2)",borderRadius:12,width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center"}}>🤖</div>
         <div>
-          <div style={{fontSize:14,fontWeight:700,color:"#e2e8f0"}}>Consultor Financeiro IA</div>
-          <div style={{fontSize:11,color:"#64748b"}}>Baseado nos seus dados · {exps.length} lançamentos</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#DDE8DF"}}>Consultor Financeiro IA</div>
+          <div style={{fontSize:11,color:"#536057"}}>Baseado nos seus dados · {exps.length} lançamentos</div>
         </div>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:16,display:"flex",flexDirection:"column",gap:10}} ref={ref}>
         {msgs.length===0&&!loading&&(
           <div style={{textAlign:"center",marginTop:12}}>
             <div style={{fontSize:36,marginBottom:8}}>💬</div>
-            <div style={{fontSize:13,color:"#64748b",marginBottom:16}}>Pergunte qualquer coisa sobre suas finanças!</div>
+            <div style={{fontSize:13,color:"#536057",marginBottom:16}}>Pergunte qualquer coisa sobre suas finanças!</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
               {suggs.map(s=>(
-                <button key={s} style={{background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.25)",color:"#818cf8",borderRadius:10,padding:"10px 12px",fontSize:12,cursor:"pointer",textAlign:"left",fontFamily:"inherit",lineHeight:1.4}}
+                <button key={s} style={{background:"rgba(61,186,111,0.1)",border:"1px solid rgba(61,186,111,0.12)",color:"#3DBA6F",borderRadius:10,padding:"10px 12px",fontSize:12,cursor:"pointer",textAlign:"left",fontFamily:"inherit",lineHeight:1.4}}
                   onClick={()=>setInput(s)}>{s}</button>
               ))}
             </div>
@@ -92,15 +92,15 @@ Dados: Renda ${fmt(totalInc)} | Gastos ${fmt(totalExp)} | Saldo ${fmt(totalInc-t
         )}
         {msgs.map((m,i)=>(
           <div key={i} style={{padding:"12px 14px",borderRadius:14,maxWidth:"85%",fontSize:14,lineHeight:1.6,
-            ...(m.role==="user"?{alignSelf:"flex-end",background:"linear-gradient(135deg,#1d4ed8,#2563eb)",color:"white",borderBottomRightRadius:4}:{alignSelf:"flex-start",background:"rgba(255,255,255,0.07)",color:"#e2e8f0",border:"1px solid rgba(255,255,255,0.08)",borderBottomLeftRadius:4})}}>
+            ...(m.role==="user"?{alignSelf:"flex-end",background:"#3DBA6F",color:"#0A0F0D",borderBottomRightRadius:4}:{alignSelf:"flex-start",background:"#232B24",color:"#DDE8DF",border:"1px solid #232B24",borderBottomLeftRadius:4})}}>
             <MdText text={m.text}/>
           </div>
         ))}
-        {loading&&<div style={{alignSelf:"flex-start",background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:14,padding:"12px 14px",display:"flex",gap:5}}><span className="dot"/><span className="dot"/><span className="dot"/></div>}
+        {loading&&<div style={{alignSelf:"flex-start",background:"#232B24",border:"1px solid #232B24",borderRadius:14,padding:"12px 14px",display:"flex",gap:5}}><span className="dot"/><span className="dot"/><span className="dot"/></div>}
       </div>
-      <div style={{display:"flex",gap:8,padding:"10px 14px",background:"rgba(8,14,29,0.98)",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+      <div style={{display:"flex",gap:8,padding:"10px 14px",background:"rgba(10,15,13,0.98)",borderTop:"1px solid #232B24"}}>
         <input style={{...inp(),flex:1}} placeholder="Pergunte algo..." value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()}/>
-        <button style={{background:"linear-gradient(135deg,#4f46e5,#4338ca)",border:"none",color:"white",borderRadius:12,width:44,height:44,fontSize:16,cursor:"pointer"}} onClick={send}>➤</button>
+        <button style={{background:"#3DBA6F",border:"none",color:"#0A0F0D",borderRadius:12,width:44,height:44,fontSize:16,cursor:"pointer"}} onClick={send}>➤</button>
       </div>
     </div>
   );

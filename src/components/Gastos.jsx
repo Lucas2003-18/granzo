@@ -110,17 +110,17 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
         <div style={{display:"flex",alignItems:"center",gap:10,background:`${catFiltro.color}18`,border:`1px solid ${catFiltro.color}44`,borderRadius:12,padding:"10px 14px",marginBottom:12}}>
           <span style={{fontSize:22}}>{catFiltro.emoji}</span>
           <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>{catFiltro.label}</div>
-            <div style={{fontSize:11,color:"#64748b"}}>{expsFilt.length} lançamento(s) · {fmt(totalFilt)}</div>
+            <div style={{fontSize:13,fontWeight:700,color:"#DDE8DF"}}>{catFiltro.label}</div>
+            <div style={{fontSize:11,color:"#536057"}}>{expsFilt.length} lançamento(s) · {fmt(totalFilt)}</div>
           </div>
-          <button style={{background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",borderRadius:8,padding:"4px 10px",fontSize:12,cursor:"pointer"}} onClick={()=>onClearCat&&onClearCat()}>✕</button>
+          <button style={{background:"#232B24",border:"1px solid #2E3A2F",color:"#8FA893",borderRadius:8,padding:"4px 10px",fontSize:12,cursor:"pointer"}} onClick={()=>onClearCat&&onClearCat()}>✕</button>
         </div>
       )}
 
       {/* Botões + busca + ordenar */}
       <div style={{display:"flex",gap:8,marginBottom:10}}>
-        <button style={{flex:1,...btn("rgba(74,222,128,0.15)","#4ade80",{border:"1px solid rgba(74,222,128,0.3)",padding:"9px 0",fontSize:13})}} onClick={()=>{setMode("income");setShow(true);}}>+💰</button>
-        <button style={{flex:1,...btn("rgba(248,113,113,0.15)","#f87171",{border:"1px solid rgba(248,113,113,0.3)",padding:"9px 0",fontSize:13})}} onClick={()=>{setMode("expense");setShow(true);}}>+💸</button>
+        <button style={{flex:1,...btn("rgba(61,186,111,0.15)","#3DBA6F",{border:"1px solid rgba(61,186,111,0.3)",padding:"9px 0",fontSize:13})}} onClick={()=>{setMode("income");setShow(true);}}>+💰</button>
+        <button style={{flex:1,...btn("rgba(224,82,82,0.15)","#E05252",{border:"1px solid rgba(224,82,82,0.3)",padding:"9px 0",fontSize:13})}} onClick={()=>{setMode("expense");setShow(true);}}>+💸</button>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:12}}>
         <input style={{...inp({flex:1,padding:"9px 12px",fontSize:13})}} placeholder="🔍 Buscar..." value={busca} onChange={e=>setBusca(e.target.value)}/>
@@ -132,27 +132,27 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
       </div>
       {(contas||CONTAS_DEF).filter(c=>c.id!=="geral").length>0&&(
         <div style={{display:"flex",gap:6,marginBottom:10}}>
-          <button style={{background:!contaFiltro?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:!contaFiltro?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:!contaFiltro?"#818cf8":"#64748b",borderRadius:99,padding:"5px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:!contaFiltro?700:400}}
+          <button style={{background:!contaFiltro?"rgba(61,186,111,0.12)":"#181E19",border:!contaFiltro?"1px solid rgba(61,186,111,0.35)":"1px solid #232B24",color:!contaFiltro?"#3DBA6F":"#536057",borderRadius:99,padding:"5px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:!contaFiltro?700:400}}
             onClick={()=>setContaFiltro(null)}>Todas</button>
           {(contas||CONTAS_DEF).filter(c=>c.id!=="geral").map(c=>(
-            <button key={c.id} style={{background:contaFiltro===c.id?`${c.color}22`:"rgba(255,255,255,0.04)",border:contaFiltro===c.id?`1px solid ${c.color}55`:"1px solid rgba(255,255,255,0.08)",color:contaFiltro===c.id?c.color:"#64748b",borderRadius:99,padding:"5px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:contaFiltro===c.id?700:400}}
+            <button key={c.id} style={{background:contaFiltro===c.id?`${c.color}22`:"#181E19",border:contaFiltro===c.id?`1px solid ${c.color}55`:"1px solid #232B24",color:contaFiltro===c.id?c.color:"#536057",borderRadius:99,padding:"5px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:contaFiltro===c.id?700:400}}
               onClick={()=>setContaFiltro(contaFiltro===c.id?null:c.id)}>{c.emoji} {c.label}</button>
           ))}
         </div>
       )}
 
       {(mesFiltro!=="todos"||catFiltro||busca)&&(
-        <div style={{fontSize:12,color:"#64748b",marginBottom:10,padding:"8px 12px",background:"rgba(255,255,255,0.03)",borderRadius:8,display:"flex",gap:12,flexWrap:"wrap"}}>
+        <div style={{fontSize:12,color:"#536057",marginBottom:10,padding:"8px 12px",background:"#181E19",borderRadius:8,display:"flex",gap:12,flexWrap:"wrap"}}>
           <span>📋 {sorted.length} lançamentos</span>
-          {totalFilt>0&&<span style={{color:"#f87171"}}>💸 {hide?"••••":fmt(totalFilt)}</span>}
-          {totalIncFilt>0&&<span style={{color:"#4ade80"}}>💼 {hide?"••••":fmt(totalIncFilt)}</span>}
-          {totalTransfFilt>0&&<span style={{color:"#94a3b8"}}>🔄 {hide?"••••":fmt(totalTransfFilt)}</span>}
+          {totalFilt>0&&<span style={{color:"#E05252"}}>💸 {hide?"••••":fmt(totalFilt)}</span>}
+          {totalIncFilt>0&&<span style={{color:"#3DBA6F"}}>💼 {hide?"••••":fmt(totalIncFilt)}</span>}
+          {totalTransfFilt>0&&<span style={{color:"#8FA893"}}>🔄 {hide?"••••":fmt(totalTransfFilt)}</span>}
         </div>
       )}
 
       {/* Carregar mais */}
       {sorted.length>pagina*POR_PAGINA&&(
-        <button style={{width:"100%",background:"rgba(99,102,241,0.08)",border:"1px solid rgba(99,102,241,0.2)",color:"#818cf8",borderRadius:12,padding:"12px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}
+        <button style={{width:"100%",background:"rgba(61,186,111,0.08)",border:"1px solid rgba(61,186,111,0.2)",color:"#3DBA6F",borderRadius:12,padding:"12px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}
           onClick={()=>setPagina(p=>p+1)}>
           ⬇️ Carregar mais ({sorted.length-pagina*POR_PAGINA} restantes)
         </button>
@@ -160,11 +160,11 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
 
       {/* Formulário novo lançamento */}
       {show&&(
-        <div style={{background:"rgba(17,24,39,0.98)",border:"1px solid rgba(99,102,241,0.3)",borderRadius:16,padding:20,marginBottom:16}}>
-          <div style={{fontSize:16,fontWeight:800,color:"#f1f5f9",marginBottom:14}}>{mode==="income"?"💰 Nova entrada":"💸 Novo gasto"}</div>
+        <div style={{background:"rgba(17,23,19,0.98)",border:"1px solid rgba(61,186,111,0.12)",borderRadius:16,padding:20,marginBottom:16}}>
+          <div style={{fontSize:16,fontWeight:800,color:"#DDE8DF",marginBottom:14}}>{mode==="income"?"💰 Nova entrada":"💸 Novo gasto"}</div>
           <div style={{display:"flex",gap:8,marginBottom:12}}>
-            {[["expense","💸 Gasto","#f87171"],["income","💰 Entrada","#4ade80"]].map(([m,l,c])=>(
-              <button key={m} style={{flex:1,borderRadius:10,padding:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:mode===m?`${c}22`:"rgba(255,255,255,0.05)",border:mode===m?`1px solid ${c}55`:"1px solid rgba(255,255,255,0.1)",color:mode===m?c:"#94a3b8"}} onClick={()=>setMode(m)}>{l}</button>
+            {[["expense","💸 Gasto","#E05252"],["income","💰 Entrada","#3DBA6F"]].map(([m,l,c])=>(
+              <button key={m} style={{flex:1,borderRadius:10,padding:10,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:mode===m?`${c}22`:"#181E19",border:mode===m?`1px solid ${c}55`:"1px solid #2E3A2F",color:mode===m?c:"#8FA893"}} onClick={()=>setMode(m)}>{l}</button>
             ))}
           </div>
           <input style={{...inp(),marginBottom:10}} placeholder="Descrição" value={form.desc} onChange={e=>setForm(p=>({...p,desc:e.target.value}))}/>
@@ -172,12 +172,12 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
           <input style={{...inp(),marginBottom:10,colorScheme:"dark"}} type="date" value={form.date||new Date().toISOString().slice(0,10)} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/>
           {mode==="income"&&(
             <div style={{marginBottom:10}}>
-              <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Tipo de entrada</div>
+              <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Tipo de entrada</div>
               <select style={inp()} value={form.incType} onChange={e=>setForm(p=>({...p,incType:e.target.value}))}>
                 {INC_TIPOS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
               </select>
               {(form.incType==="transferencia"||form.incType==="investimento_ret")&&(
-                <div style={{fontSize:11,color:"#f59e0b",marginTop:6,padding:"6px 10px",background:"rgba(245,158,11,0.08)",borderRadius:8}}>
+                <div style={{fontSize:11,color:"#E8A832",marginTop:6,padding:"6px 10px",background:"rgba(245,158,11,0.08)",borderRadius:8}}>
                   ⚠️ Esta entrada não será contada como renda — não afeta o KPI "Salário/Renda".
                 </div>
               )}
@@ -189,43 +189,43 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
           {mode==="expense"&&(
             <div style={{display:"flex",gap:8,marginBottom:10}}>
               {[["dinheiro","💵 Débito/Pix"],["cartao","💳 Cartão"]].map(([v,l])=>(
-                <button key={v} style={{flex:1,borderRadius:10,padding:"9px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:form.payment===v?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.05)",border:form.payment===v?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.1)",color:form.payment===v?"#818cf8":"#94a3b8"}}
+                <button key={v} style={{flex:1,borderRadius:10,padding:"9px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:form.payment===v?"rgba(61,186,111,0.12)":"#181E19",border:form.payment===v?"1px solid rgba(61,186,111,0.35)":"1px solid #2E3A2F",color:form.payment===v?"#3DBA6F":"#8FA893"}}
                   onClick={()=>setForm(p=>({...p,payment:v}))}>{l}</button>
               ))}
             </div>
           )}
           {mode==="expense"&&form.payment==="cartao"&&(
-            <div style={{background:"rgba(99,102,241,0.07)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:12,padding:12,marginBottom:10}}>
-              <div style={{fontSize:11,color:"#818cf8",fontWeight:700,textTransform:"uppercase",marginBottom:10}}>💳 Parcelamento</div>
+            <div style={{background:"rgba(61,186,111,0.07)",border:"1px solid rgba(61,186,111,0.2)",borderRadius:12,padding:12,marginBottom:10}}>
+              <div style={{fontSize:11,color:"#3DBA6F",fontWeight:700,textTransform:"uppercase",marginBottom:10}}>💳 Parcelamento</div>
               <div style={{display:"flex",gap:8,marginBottom:6}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Parcelas</div>
+                  <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Parcelas</div>
                   <select style={inp()} value={form.parcelas} onChange={e=>setForm(p=>({...p,parcelas:+e.target.value}))}>
                     {[1,2,3,4,5,6,7,8,9,10,11,12].map(n=><option key={n} value={n}>{n}x{n>1?" de "+fmt(+form.value/n||0):""}</option>)}
                   </select>
                 </div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Vencimento (dia)</div>
+                  <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Vencimento (dia)</div>
                   <select style={inp()} value={form.vencimento} onChange={e=>setForm(p=>({...p,vencimento:e.target.value}))}>
                     {[1,5,7,10,12,15,17,20,25,28].map(d=><option key={d} value={d}>Dia {d}</option>)}
                   </select>
                 </div>
               </div>
-              {form.parcelas>1&&<div style={{fontSize:12,color:"#64748b"}}>💡 {form.parcelas}x de {fmt(+form.value/form.parcelas||0)} — vence dia {form.vencimento}</div>}
+              {form.parcelas>1&&<div style={{fontSize:12,color:"#536057"}}>💡 {form.parcelas}x de {fmt(+form.value/form.parcelas||0)} — vence dia {form.vencimento}</div>}
             </div>
           )}
           <div style={{marginBottom:10}}>
-            <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Conta</div>
+            <div style={{fontSize:11,color:"#536057",marginBottom:6}}>Conta</div>
             <div style={{display:"flex",gap:6}}>
               {(contas||CONTAS_DEF).filter(c=>c.id!=="geral").map(c=>(
-                <button key={c.id} style={{flex:1,borderRadius:10,padding:"8px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:form.conta===c.id?`${c.color}22`:"rgba(255,255,255,0.05)",border:form.conta===c.id?`1px solid ${c.color}55`:"1px solid rgba(255,255,255,0.1)",color:form.conta===c.id?c.color:"#94a3b8"}}
+                <button key={c.id} style={{flex:1,borderRadius:10,padding:"8px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:form.conta===c.id?`${c.color}22`:"#181E19",border:form.conta===c.id?`1px solid ${c.color}55`:"1px solid #2E3A2F",color:form.conta===c.id?c.color:"#8FA893"}}
                   onClick={()=>setForm(p=>({...p,conta:c.id}))}>{c.emoji} {c.label}</button>
               ))}
             </div>
           </div>
                     <div style={{display:"flex",gap:8}}>
-            <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setShow(false)}>Cancelar</button>
-            <button style={btn(mode==="income"?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#ef4444,#dc2626)")} onClick={add}>Salvar</button>
+            <button style={btn("#232B24","#8FA893",{border:"1px solid #2E3A2F"})} onClick={()=>setShow(false)}>Cancelar</button>
+            <button style={btn(mode==="income"?"#3DBA6F":"#E05252",mode==="income"?"#0A0F0D":"#fff")} onClick={add}>Salvar</button>
           </div>
         </div>
       )}
@@ -233,18 +233,18 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
       {/* Confirmação exclusão */}
       {confirm&&(()=>{
         const item=exps.find(e=>e.id===confirm);
-        return <div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:12,padding:14,marginBottom:12}}>
-          <div style={{fontSize:13,color:"#f87171",marginBottom:4}}>⚠️ Excluir este lançamento?</div>
-          {item&&<div style={{fontSize:12,color:"#94a3b8",marginBottom:10}}>{item.desc} · {item.kind==="inc"?"+":"-"}{fmt(item.value)}</div>}
+        return <div style={{background:"rgba(224,82,82,0.1)",border:"1px solid rgba(224,82,82,0.3)",borderRadius:12,padding:14,marginBottom:12}}>
+          <div style={{fontSize:13,color:"#E05252",marginBottom:4}}>⚠️ Excluir este lançamento?</div>
+          {item&&<div style={{fontSize:12,color:"#8FA893",marginBottom:10}}>{item.desc} · {item.kind==="inc"?"+":"-"}{fmt(item.value)}</div>}
           <div style={{display:"flex",gap:8}}>
-            <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setConfirm(null)}>Cancelar</button>
-            <button style={btn("rgba(248,113,113,0.2)","#f87171",{border:"1px solid rgba(248,113,113,0.3)"})} onClick={()=>{setExps(p=>p.filter(x=>x.id!==confirm));setConfirm(null);}}>Excluir</button>
+            <button style={btn("#232B24","#8FA893",{border:"1px solid #2E3A2F"})} onClick={()=>setConfirm(null)}>Cancelar</button>
+            <button style={btn("rgba(224,82,82,0.2)","#E05252",{border:"1px solid rgba(224,82,82,0.3)"})} onClick={()=>{setExps(p=>p.filter(x=>x.id!==confirm));setConfirm(null);}}>Excluir</button>
           </div>
         </div>;
       })()}
 
       {sorted.length===0&&!show&&(
-        <div style={{textAlign:"center",padding:"40px 20px",color:"#475569"}}>
+        <div style={{textAlign:"center",padding:"40px 20px",color:"#536057"}}>
           <div style={{fontSize:40,marginBottom:10}}>📋</div>
           <div style={{fontSize:14}}>{busca?`Nenhum resultado para "${busca}"`:catFiltro?"Nenhum lançamento nesta categoria":"Nenhum lançamento"}</div>
           {!busca&&!catFiltro&&<div style={{fontSize:12,marginTop:6}}>Use os botões acima ou importe em ⚙️ Config</div>}
@@ -255,22 +255,22 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
       {parcelarId&&(()=>{
         const orig=exps.find(e=>e.id===parcelarId);
         if(!orig) return null;
-        return <div style={{background:"rgba(17,24,39,0.98)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:14,padding:16,marginBottom:12}}>
-          <div style={{fontSize:14,fontWeight:800,color:"#818cf8",marginBottom:4}}>💳 Parcelar retroativamente</div>
-          <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>{orig.desc} · {fmt(orig.value)}</div>
-          <div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>Número de parcelas</div>
+        return <div style={{background:"rgba(17,23,19,0.98)",border:"1px solid rgba(61,186,111,0.4)",borderRadius:14,padding:16,marginBottom:12}}>
+          <div style={{fontSize:14,fontWeight:800,color:"#3DBA6F",marginBottom:4}}>💳 Parcelar retroativamente</div>
+          <div style={{fontSize:12,color:"#536057",marginBottom:12}}>{orig.desc} · {fmt(orig.value)}</div>
+          <div style={{fontSize:11,color:"#8FA893",marginBottom:6}}>Número de parcelas</div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
             {[2,3,4,5,6,8,10,12].map(n=>(
-              <button key={n} style={{borderRadius:8,padding:"6px 12px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:parcelarN===n?"rgba(99,102,241,0.3)":"rgba(255,255,255,0.05)",border:parcelarN===n?"1px solid rgba(99,102,241,0.6)":"1px solid rgba(255,255,255,0.1)",color:parcelarN===n?"#818cf8":"#64748b"}}
+              <button key={n} style={{borderRadius:8,padding:"6px 12px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:parcelarN===n?"rgba(61,186,111,0.12)":"#181E19",border:parcelarN===n?"1px solid rgba(61,186,111,0.35)":"1px solid #2E3A2F",color:parcelarN===n?"#3DBA6F":"#536057"}}
                 onClick={()=>setParcelarN(n)}>{n}x</button>
             ))}
           </div>
-          {parcelarN>1&&<div style={{fontSize:12,color:"#64748b",marginBottom:12,padding:"8px 10px",background:"rgba(99,102,241,0.06)",borderRadius:8}}>
+          {parcelarN>1&&<div style={{fontSize:12,color:"#536057",marginBottom:12,padding:"8px 10px",background:"rgba(61,186,111,0.06)",borderRadius:8}}>
             {parcelarN}x de {fmt(orig.value/parcelarN)} · a partir de {orig.date}
           </div>}
           <div style={{display:"flex",gap:8}}>
-            <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setParcelarId(null)}>Cancelar</button>
-            <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)")} onClick={aplicarParcelamento}>✓ Parcelar em {parcelarN}x</button>
+            <button style={btn("#232B24","#8FA893",{border:"1px solid #2E3A2F"})} onClick={()=>setParcelarId(null)}>Cancelar</button>
+            <button style={btn("#3DBA6F","#0A0F0D")} onClick={aplicarParcelamento}>✓ Parcelar em {parcelarN}x</button>
           </div>
         </div>;
       })()}
@@ -283,18 +283,18 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
         const isTransf=e.kind==="inc"&&(e.incType==="transferencia"||e.incType==="investimento_ret"||e.incType==="outro");
         const isTransfInt=e.incType==="transf_interna";
         const rowBg=e.kind==="inc"
-          ?isTransfInt?"rgba(148,163,184,0.03)":isTransf?"rgba(148,163,184,0.04)":"rgba(74,222,128,0.04)"
+          ?isTransfInt?"rgba(143,168,147,0.03)":isTransf?"rgba(143,168,147,0.04)":"rgba(61,186,111,0.04)"
           :{};
         const rowBorder=e.kind==="inc"
-          ?isTransfInt?"rgba(148,163,184,0.15)":isTransf?"rgba(148,163,184,0.2)":"rgba(74,222,128,0.2)"
+          ?isTransfInt?"rgba(143,168,147,0.15)":isTransf?"rgba(143,168,147,0.2)":"rgba(61,186,111,0.2)"
           :undefined;
-        const valColor=e.kind==="inc"?(isTransfInt||isTransf?"#94a3b8":"#4ade80"):"#f87171";
+        const valColor=e.kind==="inc"?(isTransfInt||isTransf?"#8FA893":"#3DBA6F"):"#E05252";
         return <SwipeRow key={e.id} swipeId={e.id} activeSwipe={activeSwipe} setActiveSwipe={setActiveSwipe} onDelete={()=>setConfirm(e.id)} disabled={!!editId}>
           <div style={{...ROW,marginBottom:0,...(e.kind==="inc"?{borderColor:rowBorder,background:rowBg}:{})}}>
-            <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransfInt||isTransf?"rgba(148,163,184,0.1)":"rgba(74,222,128,0.12)"):"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{e.emoji||cat?.emoji||"📦"}</div>
+            <div style={{width:38,height:38,borderRadius:10,background:e.kind==="inc"?(isTransfInt||isTransf?"rgba(143,168,147,0.1)":"rgba(61,186,111,0.12)"):"#232B24",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{e.emoji||cat?.emoji||"📦"}</div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
-              <div style={{fontSize:11,color:"#475569",display:"flex",alignItems:"center",gap:5}}>
+              <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.desc}</div>
+              <div style={{fontSize:11,color:"#536057",display:"flex",alignItems:"center",gap:5}}>
                 <span>{e.kind==="inc"?incLabel:(cat?.label||"Outros")} · {e.date}</span>
                 {conta&&conta.id!=="geral"&&<span style={{background:`${conta.color}22`,color:conta.color,borderRadius:4,padding:"1px 5px",fontSize:10,fontWeight:700,flexShrink:0}}>{conta.emoji}</span>}
               </div>
@@ -302,57 +302,57 @@ function Gastos({ exps, setExps, cats, contas, openWith, onOpened, hide, mesFilt
             <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
               <span style={{fontSize:14,fontWeight:700,color:valColor}}>{hide?"••••":(e.kind==="inc"?"+":"-")+fmt(e.value)}</span>
               <div style={{display:"flex",gap:4}}>
-                <button style={{fontSize:11,color:"#818cf8",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>startEdit(e)}>✏️</button>
+                <button style={{fontSize:11,color:"#3DBA6F",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>startEdit(e)}>✏️</button>
                 {e.kind==="exp"&&e.payment==="cartao"&&!e.desc.includes("(1/")&&<button style={{fontSize:11,color:"#a78bfa",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} title="Parcelar" onClick={()=>{setParcelarId(e.id);setParcelarN(2);}}>✂️</button>}
-                <button style={{fontSize:11,color:"#475569",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>setConfirm(e.id)}>🗑️</button>
+                <button style={{fontSize:11,color:"#536057",background:"none",border:"none",cursor:"pointer",padding:"2px 4px"}} onClick={()=>setConfirm(e.id)}>🗑️</button>
               </div>
             </div>
           </div>
           {editId===e.id&&(
-            <div style={{background:"rgba(17,24,39,0.98)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:14,padding:16,marginBottom:8,marginTop:4}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#818cf8",marginBottom:14}}>✏️ Editando</div>
-              <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Tipo</div>
+            <div style={{background:"rgba(17,23,19,0.98)",border:"1px solid rgba(61,186,111,0.4)",borderRadius:14,padding:16,marginBottom:8,marginTop:4}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#3DBA6F",marginBottom:14}}>✏️ Editando</div>
+              <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Tipo</div>
               <div style={{display:"flex",gap:8,marginBottom:12}}>
-                {[["inc","💰 Entrada","#4ade80"],["exp","💸 Gasto","#f87171"]].map(([v,l,c])=>(
-                  <button key={v} style={{flex:1,borderRadius:10,padding:"9px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:editForm.kind===v?`${c}22`:"rgba(255,255,255,0.05)",border:editForm.kind===v?`1px solid ${c}55`:"1px solid rgba(255,255,255,0.1)",color:editForm.kind===v?c:"#94a3b8"}}
+                {[["inc","💰 Entrada","#3DBA6F"],["exp","💸 Gasto","#E05252"]].map(([v,l,c])=>(
+                  <button key={v} style={{flex:1,borderRadius:10,padding:"9px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",background:editForm.kind===v?`${c}22`:"#181E19",border:editForm.kind===v?`1px solid ${c}55`:"1px solid #2E3A2F",color:editForm.kind===v?c:"#8FA893"}}
                     onClick={()=>setEditForm(p=>({...p,kind:v}))}>{l}</button>
                 ))}
               </div>
               {editForm.kind==="exp"&&<>
-                <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Categoria</div>
+                <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Categoria</div>
                 <select style={{...inp(),marginBottom:12}} value={editForm.cat||"outros"} onChange={e=>setEditForm(p=>({...p,cat:e.target.value}))}>
                   {cats.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
                 </select>
               </>}
               {editForm.kind==="inc"&&<>
-                <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Tipo de entrada</div>
+                <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Tipo de entrada</div>
                 <select style={{...inp(),marginBottom:12}} value={editForm.incType||"salario"} onChange={e=>setEditForm(p=>({...p,incType:e.target.value}))}>
                   {INC_TIPOS.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.label}</option>)}
                 </select>
               </>}
-              <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Descrição</div>
+              <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Descrição</div>
               <input style={{...inp(),marginBottom:12}} value={editForm.desc} onChange={e=>setEditForm(p=>({...p,desc:e.target.value}))}/>
               <div style={{display:"flex",gap:8,marginBottom:12}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Valor (R$)</div>
+                  <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Valor (R$)</div>
                   <input style={inp()} type="number" value={editForm.value} onChange={e=>setEditForm(p=>({...p,value:e.target.value}))}/>
                 </div>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>Data</div>
+                  <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Data</div>
                   <input style={{...inp(),colorScheme:"dark"}} type="date"
                     value={(()=>{const pts=(editForm.date||"").split("/");if(pts.length>=3)return `${pts[2]}-${pts[1].padStart(2,"0")}-${pts[0].padStart(2,"0")}`;if(pts.length>=2)return `${new Date().getFullYear()}-${pts[1].padStart(2,"0")}-${pts[0].padStart(2,"0")}`;return "";})()}
                     onChange={e=>{if(!e.target.value)return;const d=new Date(e.target.value+"T12:00:00");setEditForm(p=>({...p,date:fmtDate(d.toISOString().slice(0,10))}));}}/>
                 </div>
               </div>
               <div style={{marginBottom:10}}>
-                <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>Conta</div>
+                <div style={{fontSize:11,color:"#536057",marginBottom:6}}>Conta</div>
                 <select style={inp()} value={editForm.conta||"geral"} onChange={e=>setEditForm(p=>({...p,conta:e.target.value}))}>
                   {(contas||CONTAS_DEF).map(c=><option key={c.id} value={c.id}>{c.emoji} {c.label}</option>)}
                 </select>
               </div>
               <div style={{display:"flex",gap:8}}>
-                <button style={btn("rgba(255,255,255,0.06)","#94a3b8",{border:"1px solid rgba(255,255,255,0.1)"})} onClick={()=>setEditId(null)}>Cancelar</button>
-                <button style={btn("linear-gradient(135deg,#4f46e5,#4338ca)")} onClick={saveEdit}>Salvar ✓</button>
+                <button style={btn("#232B24","#8FA893",{border:"1px solid #2E3A2F"})} onClick={()=>setEditId(null)}>Cancelar</button>
+                <button style={btn("#3DBA6F","#0A0F0D")} onClick={saveEdit}>Salvar ✓</button>
               </div>
             </div>
           )}

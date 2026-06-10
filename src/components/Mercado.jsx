@@ -82,7 +82,7 @@ function Mercado({ markets, setMarkets, hide }) {
       {/* Abas */}
       <div style={{display:"flex",gap:6,marginBottom:16}}>
         {[["comparar","📊 Comparar"],["registrar","✏️ Registrar"],["gerenciar","⚙️ Produtos"]].map(([id,label])=>(
-          <button key={id} style={{flex:1,background:aba===id?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:aba===id?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:aba===id?"#818cf8":"#64748b",borderRadius:10,padding:"8px 4px",fontSize:12,fontWeight:aba===id?700:400,cursor:"pointer",fontFamily:"inherit"}}
+          <button key={id} style={{flex:1,background:aba===id?"rgba(61,186,111,0.12)":"#181E19",border:aba===id?"1px solid rgba(61,186,111,0.35)":"1px solid #232B24",color:aba===id?"#3DBA6F":"#536057",borderRadius:10,padding:"8px 4px",fontSize:12,fontWeight:aba===id?700:400,cursor:"pointer",fontFamily:"inherit"}}
             onClick={()=>setAba(id)}>{label}</button>
         ))}
       </div>
@@ -93,19 +93,19 @@ function Mercado({ markets, setMarkets, hide }) {
           <AlertBox tipo="info" texto="Nenhum preço registrado ainda. Vá em ✏️ Registrar para anotar os preços que você viu no mercado — o app compara automaticamente!"/>
         )}
         {temPrecos&&totSorted.length>=2&&(
-          <div style={{background:"linear-gradient(135deg,rgba(34,197,94,0.12),rgba(16,163,74,0.06))",border:"1px solid rgba(74,222,128,0.25)",borderRadius:16,padding:16,marginBottom:16,textAlign:"center"}}>
-            <div style={{fontSize:10,color:"#4ade80",textTransform:"uppercase",marginBottom:4}}>🏆 Mais barato (itens comparáveis)</div>
-            <div style={{fontSize:20,fontWeight:800,color:"#f1f5f9",marginBottom:2}}>{totSorted[0][0]}</div>
-            <div style={{fontSize:13,color:"#94a3b8"}}>Economia de <strong style={{color:"#4ade80"}}>{fmt(totSorted[totSorted.length-1][1]-totSorted[0][1])}</strong> vs mais caro</div>
+          <div style={{background:"rgba(61,186,111,0.1)",border:"1px solid rgba(61,186,111,0.25)",borderRadius:16,padding:16,marginBottom:16,textAlign:"center"}}>
+            <div style={{fontSize:10,color:"#3DBA6F",textTransform:"uppercase",marginBottom:4}}>🏆 Mais barato (itens comparáveis)</div>
+            <div style={{fontSize:20,fontWeight:800,color:"#DDE8DF",marginBottom:2}}>{totSorted[0][0]}</div>
+            <div style={{fontSize:13,color:"#8FA893"}}>Economia de <strong style={{color:"#3DBA6F"}}>{fmt(totSorted[totSorted.length-1][1]-totSorted[0][1])}</strong> vs mais caro</div>
           </div>
         )}
         {temPrecos&&totSorted.length>=2&&<>
           <SecTitle t="Total por mercado" sub="Baseado nos preços que você registrou"/>
           {totSorted.map(([m,t],i)=>(
-            <div key={m} style={{...ROW,...(i===0?{borderColor:"rgba(74,222,128,0.2)",background:"rgba(74,222,128,0.06)"}:{})}}>
+            <div key={m} style={{...ROW,...(i===0?{borderColor:"rgba(61,186,111,0.2)",background:"rgba(61,186,111,0.06)"}:{})}}>
               <span style={{fontSize:16,width:24}}>{["🥇","🥈","🥉","4°","5°"][i]||"·"}</span>
-              <span style={{flex:1,fontSize:14,fontWeight:600,color:"#e2e8f0"}}>{m}</span>
-              <span style={{fontSize:14,fontWeight:700,color:i===0?"#4ade80":"#e2e8f0"}}>{fmt(t)}</span>
+              <span style={{flex:1,fontSize:14,fontWeight:600,color:"#DDE8DF"}}>{m}</span>
+              <span style={{fontSize:14,fontWeight:700,color:i===0?"#3DBA6F":"#DDE8DF"}}>{fmt(t)}</span>
             </div>
           ))}
         </>}
@@ -114,17 +114,17 @@ function Mercado({ markets, setMarkets, hide }) {
         {comparacao.map(({prod,entradas,min,minMkt})=>(
           <div key={prod} style={CARD}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:entradas.length>0?10:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{prod}</div>
-              {entradas.length===0&&<button style={{fontSize:12,color:"#818cf8",background:"rgba(99,102,241,0.1)",border:"1px solid rgba(99,102,241,0.2)",borderRadius:8,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}} onClick={()=>{setSelProd(prod);setAba("registrar");}}>+ Registrar</button>}
-              {entradas.length>0&&<span style={{fontSize:11,color:"#4ade80",fontWeight:700}}>🏆 {minMkt}</span>}
+              <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF"}}>{prod}</div>
+              {entradas.length===0&&<button style={{fontSize:12,color:"#3DBA6F",background:"rgba(61,186,111,0.1)",border:"1px solid rgba(61,186,111,0.2)",borderRadius:8,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}} onClick={()=>{setSelProd(prod);setAba("registrar");}}>+ Registrar</button>}
+              {entradas.length>0&&<span style={{fontSize:11,color:"#3DBA6F",fontWeight:700}}>🏆 {minMkt}</span>}
             </div>
             {entradas.length>0&&(
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {entradas.sort(([,a],[,b])=>a.valor-b.valor).map(([mkt,info])=>(
-                  <div key={mkt} style={{flex:"1 0 calc(33% - 6px)",background:info.valor===min?"rgba(74,222,128,0.1)":"rgba(255,255,255,0.03)",borderRadius:8,padding:"7px 6px",textAlign:"center",border:info.valor===min?"1px solid rgba(74,222,128,0.3)":"1px solid rgba(255,255,255,0.06)"}}>
-                    <div style={{fontSize:9,color:"#64748b",marginBottom:2}}>{mkt.split(" ")[0]}</div>
-                    <div style={{fontSize:13,fontWeight:700,color:info.valor===min?"#4ade80":"#94a3b8"}}>{fmt(info.valor)}</div>
-                    <div style={{fontSize:9,color:"#475569",marginTop:1}}>{info.data}</div>
+                  <div key={mkt} style={{flex:"1 0 calc(33% - 6px)",background:info.valor===min?"rgba(61,186,111,0.1)":"#181E19",borderRadius:8,padding:"7px 6px",textAlign:"center",border:info.valor===min?"1px solid rgba(61,186,111,0.3)":"1px solid #232B24"}}>
+                    <div style={{fontSize:9,color:"#536057",marginBottom:2}}>{mkt.split(" ")[0]}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:info.valor===min?"#3DBA6F":"#8FA893"}}>{fmt(info.valor)}</div>
+                    <div style={{fontSize:9,color:"#536057",marginTop:1}}>{info.data}</div>
                   </div>
                 ))}
               </div>
@@ -135,21 +135,21 @@ function Mercado({ markets, setMarkets, hide }) {
 
       {/* ABA: REGISTRAR */}
       {aba==="registrar"&&<>
-        <div style={{fontSize:13,color:"#64748b",marginBottom:14,lineHeight:1.6}}>Anote o preço que você viu hoje no mercado. O app guarda o histórico e compara automaticamente.</div>
-        <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>1. Escolha o produto</div>
+        <div style={{fontSize:13,color:"#536057",marginBottom:14,lineHeight:1.6}}>Anote o preço que você viu hoje no mercado. O app guarda o histórico e compara automaticamente.</div>
+        <div style={{fontSize:11,color:"#536057",marginBottom:6}}>1. Escolha o produto</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:16}}>
           {produtos.map(p=>(
-            <button key={p} style={{background:selProd===p?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:selProd===p?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:selProd===p?"#818cf8":"#94a3b8",borderRadius:99,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:selProd===p?700:400}}
+            <button key={p} style={{background:selProd===p?"rgba(61,186,111,0.12)":"#181E19",border:selProd===p?"1px solid rgba(61,186,111,0.35)":"1px solid #232B24",color:selProd===p?"#3DBA6F":"#8FA893",borderRadius:99,padding:"6px 12px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:selProd===p?700:400}}
               onClick={()=>{setSelProd(p);setSelMkt(null);setInputVal("");}}>
               {selProd===p?"✓ ":""}{p}
             </button>
           ))}
         </div>
         {selProd&&<>
-          <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>2. Qual mercado?</div>
+          <div style={{fontSize:11,color:"#536057",marginBottom:6}}>2. Qual mercado?</div>
           <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
             {markets.map(m=>(
-              <button key={m.id} style={{background:selMkt===m.label?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.04)",border:selMkt===m.label?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.08)",color:selMkt===m.label?"#818cf8":"#94a3b8",borderRadius:10,padding:"8px 14px",fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:selMkt===m.label?700:400}}
+              <button key={m.id} style={{background:selMkt===m.label?"rgba(61,186,111,0.12)":"#181E19",border:selMkt===m.label?"1px solid rgba(61,186,111,0.35)":"1px solid #232B24",color:selMkt===m.label?"#3DBA6F":"#8FA893",borderRadius:10,padding:"8px 14px",fontSize:13,cursor:"pointer",fontFamily:"inherit",fontWeight:selMkt===m.label?700:400}}
                 onClick={()=>setSelMkt(m.label)}>
                 {m.emoji} {m.label}
               </button>
@@ -157,32 +157,32 @@ function Mercado({ markets, setMarkets, hide }) {
           </div>
         </>}
         {selProd&&selMkt&&<>
-          <div style={{fontSize:11,color:"#64748b",marginBottom:6}}>3. Preço (R$)</div>
+          <div style={{fontSize:11,color:"#536057",marginBottom:6}}>3. Preço (R$)</div>
           <div style={{display:"flex",gap:8,marginBottom:8}}>
             <input style={{...inp({flex:1}),fontSize:18,fontWeight:700,textAlign:"center"}} type="number" step="0.01" placeholder="0,00" value={inputVal} onChange={e=>setInputVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&salvarPreco()}/>
-            <button style={{...btn("linear-gradient(135deg,#22c55e,#16a34a)"),width:"auto",padding:"11px 20px"}} onClick={salvarPreco}>✓ Salvar</button>
+            <button style={{...btn("#3DBA6F","#0A0F0D"),width:"auto",padding:"11px 20px"}} onClick={salvarPreco}>✓ Salvar</button>
           </div>
           {precos[selProd]?.[selMkt]&&(
-            <div style={{fontSize:12,color:"#64748b",marginBottom:12}}>Último registrado: <strong style={{color:"#94a3b8"}}>{fmt(precos[selProd][selMkt].valor)}</strong> em {precos[selProd][selMkt].data}</div>
+            <div style={{fontSize:12,color:"#536057",marginBottom:12}}>Último registrado: <strong style={{color:"#8FA893"}}>{fmt(precos[selProd][selMkt].valor)}</strong> em {precos[selProd][selMkt].data}</div>
           )}
         </>}
       </>}
 
       {/* ABA: GERENCIAR */}
       {aba==="gerenciar"&&<>
-        <div style={{fontSize:13,color:"#64748b",marginBottom:14}}>Adicione produtos ou remova os que não usa.</div>
+        <div style={{fontSize:13,color:"#536057",marginBottom:14}}>Adicione produtos ou remova os que não usa.</div>
         <div style={{display:"flex",gap:8,marginBottom:16}}>
           <input style={{...inp({flex:1})}} placeholder="Novo produto (ex: Sabão em pó 1kg)" value={novoProd} onChange={e=>setNovoProd(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addProd()}/>
-          <button style={{...btn("linear-gradient(135deg,#22c55e,#16a34a)"),width:"auto",padding:"11px 16px"}} onClick={addProd}>+</button>
+          <button style={{...btn("#3DBA6F","#0A0F0D"),width:"auto",padding:"11px 16px"}} onClick={addProd}>+</button>
         </div>
         {produtos.map(p=>{
           const nReg=Object.keys(precos[p]||{}).length;
           return <div key={p} style={ROW}>
             <div style={{flex:1}}>
-              <div style={{fontSize:13,fontWeight:600,color:"#e2e8f0"}}>{p}</div>
-              <div style={{fontSize:11,color:"#475569"}}>{nReg>0?`${nReg} mercado(s) registrado(s)`:"Sem preços ainda"}</div>
+              <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF"}}>{p}</div>
+              <div style={{fontSize:11,color:"#536057"}}>{nReg>0?`${nReg} mercado(s) registrado(s)`:"Sem preços ainda"}</div>
             </div>
-            <button style={{fontSize:11,color:"#f87171",background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.2)",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>remProd(p)}>✕</button>
+            <button style={{fontSize:11,color:"#E05252",background:"rgba(224,82,82,0.1)",border:"1px solid rgba(224,82,82,0.2)",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>remProd(p)}>✕</button>
           </div>;
         })}
       </>}
