@@ -102,6 +102,12 @@ jobs:
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
 
+      - name: Restaurar keystore debug (assinatura consistente entre builds)
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: debug-keystore-v1
+
       - name: Build APK release assinado
         run: |
           cd android
