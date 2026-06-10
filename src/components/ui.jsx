@@ -6,6 +6,17 @@ export function Bar({pct,color="#3DBA6F"}) {
   </div>;
 }
 
+export function SegmentToggle({value,onChange,options}) {
+  return <div style={{padding:"12px 16px 0"}}>
+    <div style={{display:"flex",background:"#181E19",border:"1px solid #232B24",borderRadius:12,padding:3}}>
+      {options.map(o=>(
+        <button key={o.id} style={{flex:1,background:value===o.id?"rgba(61,186,111,0.12)":"transparent",color:value===o.id?"#3DBA6F":"#536057",border:"none",borderRadius:9,padding:"8px 0",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}
+          onClick={()=>onChange(o.id)}>{o.label}</button>
+      ))}
+    </div>
+  </div>;
+}
+
 export function SecTitle({t,sub}) {
   return <div style={{margin:"18px 0 10px"}}>
     <div style={{fontSize:11,fontWeight:700,color:"#536057",textTransform:"uppercase",letterSpacing:"0.1em"}}>{t}</div>

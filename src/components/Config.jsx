@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import { fmt, fmtDate } from '../utils/format';
-import { PRESETS, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF, APP_VERSION } from '../utils/constants';
+import { PRESETS, CATS_DEF, FIXAS_DEF, CONTAS_DEF, APP_VERSION } from '../utils/constants';
 import { getGeminiKey, setGeminiKey } from '../utils/gemini';
 import { inp, btn, CARD, ROW } from '../utils/styles';
 import { AlertBox, ConfirmModal } from './ui';
 import Importador from './Importador';
-import GoogleDriveBackup from './GoogleDriveBackup';
 import NotifConfig from './NotifConfig';
 import { categorizar } from '../utils/categorizar';
-import { loadPrecos, savePrecos, loadProdsExtra, saveProdsExtra } from '../utils/mercadoStorage';
-import { testBackend } from '../utils/api';
 
 function ChaveIAConfig() {
   const [chave, setChave] = useState(getGeminiKey);
@@ -60,10 +57,8 @@ function MetaConfig({ meta, setMeta }) {
 
 // ── CONFIG ─────────────────────────────────────────────────
 
-function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setFixas, contas, setContas, reservas, setReservas, meta, setMeta, setTab, showToast, mesFiltro }){
+function Config({ cats, setCats, exps, setExps, fixas, setFixas, contas, setContas, reservas, setReservas, meta, setMeta, setTab, showToast, mesFiltro }){
   const [sec,setsec]=useState("importar");
-  const [showNM,setShowNM]=useState(false);
-  const [newMkt,setNewMkt]=useState({label:"",emoji:"🏪"});
   const [showNC,setShowNC]=useState(false);
   const [newCat,setNewCat]=useState({label:"",emoji:"📁",budget:200,color:"#60a5fa"});
   const [novaFixa,setNovaFixa]=useState({desc:"",valor:"",cat:"moradia",emoji:"📌"});
@@ -75,7 +70,7 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
     onOk={()=>{confirmModal.onOk();setConfirmModal(null);}}
     onCancel={()=>setConfirmModal(null)}/>;
 
-  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"mercados",l:"🏪 Mercados"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"notif",l:"🔔 Notif."},{id:"integracao",l:"🔗 Integração"},{id:"dados",l:"🗄️ Dados"}];
+  const SECS=[{id:"importar",l:"📥 Importar"},{id:"fixas",l:"📌 Fixas"},{id:"meta",l:"🎯 Meta"},{id:"contas",l:"🏦 Contas"},{id:"categorias",l:"🏷️ Categ."},{id:"chaveIA",l:"🤖 Chave IA"},{id:"notif",l:"🔔 Notif."},{id:"dados",l:"🗄️ Dados"}];
 
   return (
     <div style={{padding:16,paddingBottom:100}}>
@@ -160,29 +155,6 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
         )}
       </>}
       {sec==="importar"&&<Importador exps={exps} setExps={setExps} cats={cats} setCats={setCats} contas={contas} setContas={setContas} setTab={setTab} showToast={showToast}/>}
-      {sec==="mercados"&&<>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <div style={{fontSize:14,fontWeight:700,color:"#DDE8DF"}}>Mercados</div>
-          <button style={{fontSize:11,background:"rgba(61,186,111,0.15)",color:"#3DBA6F",border:"1px solid rgba(61,186,111,0.12)",borderRadius:8,padding:"4px 12px",cursor:"pointer"}} onClick={()=>setShowNM(!showNM)}>+ Novo</button>
-        </div>
-        {showNM&&<div style={{...CARD,background:"rgba(61,186,111,0.08)",border:"1px solid rgba(61,186,111,0.2)"}}>
-          <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <input style={inp({width:52,textAlign:"center",fontSize:20,padding:8})} placeholder="🏪" value={newMkt.emoji} onChange={e=>setNewMkt(p=>({...p,emoji:e.target.value}))}/>
-            <input style={inp({flex:1})} placeholder="Nome do mercado" value={newMkt.label} onChange={e=>setNewMkt(p=>({...p,label:e.target.value}))}/>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button style={btn("#232B24","#8FA893",{border:"1px solid #2E3A2F"})} onClick={()=>setShowNM(false)}>Cancelar</button>
-            <button style={btn("#3DBA6F","#0A0F0D")} onClick={()=>{if(newMkt.label){setMarkets(p=>[...p,{...newMkt,id:`m${Date.now()}`}]);setShowNM(false);setNewMkt({label:"",emoji:"🏪"});}}}>Salvar</button>
-          </div>
-        </div>}
-        {markets.map(m=>(
-          <div key={m.id} style={ROW}>
-            <div style={{width:34,height:34,borderRadius:8,background:"#232B24",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{m.emoji}</div>
-            <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:"#DDE8DF"}}>{m.label}</div></div>
-            <button style={{fontSize:11,color:"#E05252",background:"rgba(224,82,82,0.1)",border:"1px solid rgba(224,82,82,0.2)",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>markets.length>1&&setMarkets(p=>p.filter(x=>x.id!==m.id))}>✕</button>
-          </div>
-        ))}
-      </>}
       {sec==="categorias"&&<>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
           <div style={{fontSize:14,fontWeight:700,color:"#DDE8DF"}}>Categorias</div>
@@ -256,7 +228,6 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
         </div>
       </>}
        {sec==="chaveIA"&&<ChaveIAConfig/>}
-      {sec==="drive"&&<GoogleDriveBackup exps={exps} cats={cats} markets={markets} fixas={fixas} contas={contas} reservas={reservas} meta={meta} setExps={setExps} setCats={setCats} setMarkets={setMarkets} setFixas={setFixas} setContas={setContas} setReservas={setReservas} setMeta={setMeta} showToast={showToast} setConfirmModal={setConfirmModal}/>}
       {sec==="notif"&&<NotifConfig showToast={showToast}/>}
       {sec==="dados"&&<div style={CARD}>
         <button style={{...btn("rgba(61,186,111,0.1)","#3DBA6F",{border:"1px solid rgba(61,186,111,0.2)",marginBottom:10})}} onClick={()=>{
@@ -277,11 +248,10 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
         <div style={{fontSize:14,fontWeight:700,color:"#DDE8DF",marginBottom:8}}>🗄️ Dados</div>
         <div style={{fontSize:13,color:"#536057",marginBottom:16,lineHeight:1.6}}>
           💾 Salvamento automático ativo<br/>
-          {exps.length} lançamentos · {cats.length} categorias · {markets.length} mercados · {fixas.length} fixas · {(contas||[]).filter(c=>c.id!=="geral").length} contas
+          {exps.length} lançamentos · {cats.length} categorias · {fixas.length} fixas · {(contas||[]).filter(c=>c.id!=="geral").length} contas
         </div>
         <button style={btn("#3DBA6F","#0A0F0D",{marginBottom:10})} onClick={async()=>{
-          const prodsExtra=loadProdsExtra();const precosMkt=loadPrecos();
-          const json=JSON.stringify({exps,cats,markets,fixas,contas,reservas,meta,prodsExtra,precosMkt,_version:2,_savedAt:new Date().toISOString()},null,2);
+          const json=JSON.stringify({exps,cats,fixas,contas,reservas,meta,_version:2,_savedAt:new Date().toISOString()},null,2);
           const filename="granzo_backup_"+new Date().toISOString().slice(0,10)+".json";
           const blob=new Blob([json],{type:"application/json"});
 
@@ -355,13 +325,10 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
                 onOk:()=>{
                   setExps(_data.exps||[]);
                   setCats(_data.cats||CATS_DEF);
-                  setMarkets(_data.markets||MKTS_DEF);
                   setFixas(_data.fixas||FIXAS_DEF);
                   if(_data.contas) setContas(_data.contas);
                   if(_data.reservas) setReservas(_data.reservas);
                   if(_data.meta!==undefined) setMeta(_data.meta);
-                  if(_data.prodsExtra) saveProdsExtra(_data.prodsExtra);
-                  if(_data.precosMkt) savePrecos(_data.precosMkt);
                   showToast("✓ Backup restaurado!");
                 }
               });
@@ -375,8 +342,8 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
             sub:"Esta ação não pode ser desfeita. Todos os lançamentos, configurações e histórico serão removidos.",
             okLabel:"Apagar tudo",okColor:"#E05252",
             onOk:()=>{
-              setExps([]);setCats(CATS_DEF);setMarkets(MKTS_DEF);setFixas(FIXAS_DEF);setContas(CONTAS_DEF);setReservas([]);setMeta(0);
-              try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos","mf_onboarding_done"].forEach(k=>localStorage.removeItem(k));}catch{}
+              setExps([]);setCats(CATS_DEF);setFixas(FIXAS_DEF);setContas(CONTAS_DEF);setReservas([]);setMeta(0);
+              try{["mf_exps","mf_cats","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_onboarding_done"].forEach(k=>localStorage.removeItem(k));}catch{}
               showToast("✓ Dados apagados");
               setTab("dashboard");
             }
@@ -386,68 +353,6 @@ function Config({ cats, setCats, markets, setMarkets, exps, setExps, fixas, setF
           <div style={{fontSize:11,color:"#536057"}}>Granzo v{APP_VERSION}</div>
         </div>
       </div>}
-
-      {sec==="integracao"&&<IntegracaoConfig showToast={showToast}/>}
-    </div>
-  );
-}
-
-
-// ── INTEGRAÇÃO ─────────────────────────────────────────────
-function IntegracaoConfig({ showToast }) {
-  const [backendUrl,     setBackendUrl]     = useState(()=>{ try{return localStorage.getItem("mf_backend_url")||"";}catch{return "";} });
-  const [backendKey,     setBackendKey]     = useState(()=>{ try{return localStorage.getItem("mf_backend_key")||"";}catch{return "";} });
-  const [webhookUrl,     setWebhookUrl]     = useState(()=>{ try{return localStorage.getItem("mf_discord_webhook")||"";}catch{return "";} });
-  const [testando,       setTestando]       = useState(false);
-
-  function salvarBackend() {
-    try {
-      localStorage.setItem("mf_backend_url", backendUrl.trim());
-      localStorage.setItem("mf_backend_key", backendKey.trim());
-      showToast("✓ Backend salvo");
-    } catch {}
-  }
-
-  function salvarWebhook() {
-    try { localStorage.setItem("mf_discord_webhook", webhookUrl.trim()); showToast("✓ Webhook salvo"); } catch {}
-  }
-
-  async function testarConexao() {
-    setTestando(true);
-    const ok = await testBackend();
-    setTestando(false);
-    showToast(ok ? "✓ Backend conectado!" : "❌ Falha na conexão");
-  }
-
-  return (
-    <div>
-      <AlertBox tipo="info" texto="Configure o backend Granzo (/backend) para ativar o bot Discord e sincronização de dados."/>
-
-      {/* Backend */}
-      <div style={CARD}>
-        <div style={{fontSize:13,fontWeight:700,color:"#DDE8DF",marginBottom:12}}>🖥️ Backend Granzo</div>
-        <div style={{fontSize:11,color:"#536057",marginBottom:4}}>URL do servidor</div>
-        <input style={{...inp(),marginBottom:10}} placeholder="https://seu-servidor.com" value={backendUrl} onChange={e=>setBackendUrl(e.target.value)}/>
-        <div style={{fontSize:11,color:"#536057",marginBottom:4}}>Chave de API (GRANZO_API_KEY)</div>
-        <input style={{...inp({fontFamily:"monospace",fontSize:12}),marginBottom:12}} placeholder="minha-chave-secreta" type="password" value={backendKey} onChange={e=>setBackendKey(e.target.value)}/>
-        <div style={{display:"flex",gap:8}}>
-          <button style={{...btn("#3DBA6F","#0A0F0D",{flex:1})}} onClick={salvarBackend}>Salvar</button>
-          <button style={{...btn("#232B24","#8FA893",{border:"1px solid #2E3A2F",flex:1})}} onClick={testarConexao} disabled={testando}>
-            {testando?"Testando…":"Testar conexão"}
-          </button>
-        </div>
-      </div>
-
-      {/* Discord Webhook (fallback) */}
-      <div style={CARD}>
-        <div style={{fontSize:13,fontWeight:700,color:"#DDE8DF",marginBottom:4}}>🎮 Discord Webhook</div>
-        <div style={{fontSize:12,color:"#536057",marginBottom:10,lineHeight:1.5}}>
-          Alternativa sem backend — o app envia alertas direto para um canal Discord via webhook.
-        </div>
-        <div style={{fontSize:11,color:"#536057",marginBottom:4}}>URL do webhook</div>
-        <input style={{...inp({fontSize:12}),marginBottom:10}} placeholder="https://discord.com/api/webhooks/..." value={webhookUrl} onChange={e=>setWebhookUrl(e.target.value)}/>
-        <button style={btn("#3DBA6F","#0A0F0D")} onClick={salvarWebhook}>Salvar webhook</button>
-      </div>
     </div>
   );
 }

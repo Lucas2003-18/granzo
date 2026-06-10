@@ -1,19 +1,19 @@
 import { useState, useRef, useEffect, Component } from "react";
+import { LayoutDashboard, ArrowLeftRight, PieChart, Wallet, Sparkles, Eye, EyeOff, Settings, Plus } from "lucide-react";
 import { fmt } from "./utils/format";
-import { MESES, MESES_CURTO, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF } from "./utils/constants";
-import { useAutoBackup } from "./hooks/useAutoBackup";
+import { MESES, MESES_CURTO, CATS_DEF, FIXAS_DEF, CONTAS_DEF } from "./utils/constants";
 import { useNotifCheck } from "./hooks/useNotifications";
 import { syncToBackend } from "./utils/api";
 import Dashboard from "./components/Dashboard";
 import Graficos from "./components/Graficos";
 import Orcamento from "./components/Orcamento";
 import Gastos from "./components/Gastos";
-import Mercado from "./components/Mercado";
 import IAChat from "./components/IAChat";
 import Reservas from "./components/Reservas";
 import Dividas from "./components/Dividas";
 import Onboarding from "./components/Onboarding";
 import Config from "./components/Config";
+import { SegmentToggle } from "./components/ui";
 
 class ErrorBoundary extends Component{
   constructor(props){super(props);this.state={hasError:false,error:null};}
@@ -29,7 +29,7 @@ class ErrorBoundary extends Component{
             onClick={()=>{this.setState({hasError:false,error:null});}}>Tentar novamente</button>
           <div style={{marginTop:12}}>
             <button style={{background:"none",border:"none",color:"#536057",fontSize:12,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}
-              onClick={()=>{try{["mf_exps","mf_cats","mf_mkts","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_prods_extra","mf_precos","mf_onboarding_done"].forEach(k=>localStorage.removeItem(k));}catch{}window.location.reload();}}>Limpar dados e reiniciar</button>
+              onClick={()=>{try{["mf_exps","mf_cats","mf_fixas","mf_contas","mf_reservas","mf_meta","mf_onboarding_done"].forEach(k=>localStorage.removeItem(k));}catch{}window.location.reload();}}>Limpar dados e reiniciar</button>
           </div>
         </div>
       </div>
@@ -58,18 +58,16 @@ function AppContent() {
     try{ plugins.SplashScreen?.hide?.(); }catch{}
   },[]);
 
-  const [tab,      setTab]     = useState(()=>{
-    if(window.location.hash?.includes("access_token")) return "config";
-    return "dashboard";
-  });
+  const [tab,      setTab]     = useState("dashboard");
   const [openWith, setOpenWith]= useState(null);
   const [hideVals, setHideVals]= useState(false);
   const [catModal, setCatModal]= useState(null);
   const [toast,    setToast]   = useState("");
+  const [analiseView,setAnaliseView]=useState("graficos");
+  const [carteiraView,setCarteiraView]=useState("reservas");
 
   const [exps,    setExps]    = useState(()=>{ try{const v=localStorage.getItem("mf_exps");return v?JSON.parse(v):[]}catch{return []} });
   const [cats,    setCats]    = useState(()=>{ try{const v=localStorage.getItem("mf_cats");return v?JSON.parse(v):CATS_DEF}catch{return CATS_DEF} });
-  const [markets, setMarkets] = useState(()=>{ try{const v=localStorage.getItem("mf_mkts");return v?JSON.parse(v):MKTS_DEF}catch{return MKTS_DEF} });
   const [fixas,   setFixas]   = useState(()=>{ try{const v=localStorage.getItem("mf_fixas");return v?JSON.parse(v):FIXAS_DEF}catch{return FIXAS_DEF} });
   const [contas,  setContas]  = useState(()=>{ try{const v=localStorage.getItem("mf_contas");return v?JSON.parse(v):CONTAS_DEF}catch{return CONTAS_DEF} });
   const [reservas,setReservas]= useState(()=>{ try{const v=localStorage.getItem("mf_reservas");return v?JSON.parse(v):[]}catch{return []} });
@@ -83,44 +81,9 @@ function AppContent() {
     toastTimer.current=setTimeout(()=>setToast(""),2000);
   }
 
-  // Captura token do Google OAuth — via deep link (nativo) ou hash na URL (web)
-  useEffect(()=>{
-    // 1) Verifica hash na URL (fallback web)
-    const hash=window.location.hash;
-    if(hash&&hash.includes("access_token")){
-      const p=new URLSearchParams(hash.slice(1));
-      const t=p.get("access_token");
-      if(t){
-        try{localStorage.setItem("mf_gdrive_token",t);}catch{}
-        window.history.replaceState(null,"",window.location.pathname);
-        showToast("✓ Google Drive conectado!");
-      }
-    }
-
-    // 2) Escuta deep link do Capacitor (nativo — app.granzo.finance://oauth?token=...)
-    const cap=window.Capacitor;
-    if(cap?.isNativePlatform?.()){
-      const appPlugin=cap.Plugins?.App;
-      if(appPlugin?.addListener){
-        appPlugin.addListener("appUrlOpen",(data)=>{
-          const url=data?.url||"";
-          if(url.includes("oauth")&&url.includes("token=")){
-            const params=new URL(url).searchParams||new URLSearchParams(url.split("?")[1]||"");
-            const t=params.get("token");
-            if(t){
-              try{localStorage.setItem("mf_gdrive_token",t);}catch{}
-              showToast("✓ Google Drive conectado!");
-            }
-          }
-        });
-      }
-    }
-  },[]);
-
   useEffect(()=>{ try{localStorage.setItem("mf_exps",JSON.stringify(exps));}catch{} },[exps]);
   const catsInit=useRef(true);
   useEffect(()=>{ if(catsInit.current){catsInit.current=false;return;} try{localStorage.setItem("mf_cats",JSON.stringify(cats));showToast("✓ Salvo");}catch{} },[cats]);
-  useEffect(()=>{ try{localStorage.setItem("mf_mkts",JSON.stringify(markets))}catch{} },[markets]);
   const fixasInit=useRef(true);
   useEffect(()=>{ if(fixasInit.current){fixasInit.current=false;return;} try{localStorage.setItem("mf_fixas",JSON.stringify(fixas));showToast("✓ Salvo");}catch{} },[fixas]);
   useEffect(()=>{ try{localStorage.setItem("mf_contas",JSON.stringify(contas))}catch{} },[contas]);
@@ -171,18 +134,14 @@ function AppContent() {
   const totalExp=expsFiltrados.filter(e=>e.kind==="exp"&&e.cat!=="investimento").reduce((s,e)=>s+e.value,0);
   const saldo=totalInc-totalExp;
 
-  useAutoBackup(exps,cats,markets,fixas,contas,reservas,meta,showToast);
   useNotifCheck(cats,exps,fixas,mesFiltro,dividas);
 
   const TABS=[
-    {id:"dashboard",emoji:"📊",label:"Início"},
-    {id:"graficos", emoji:"📈",label:"Gráficos"},
-    {id:"orcamento",emoji:"💰",label:"Orçamento"},
-    {id:"gastos",   emoji:"💸",label:"Gastos"},
-    {id:"reservas", emoji:"🏦",label:"Reservas"},
-    {id:"dividas",  emoji:"🤝",label:"Dívidas"},
-    {id:"mercado",  emoji:"🛒",label:"Mercado"},
-    {id:"ia",       emoji:"🤖",label:"IA"},
+    {id:"dashboard", Icon:LayoutDashboard, label:"Início"},
+    {id:"gastos",    Icon:ArrowLeftRight,  label:"Gastos"},
+    {id:"analise",   Icon:PieChart,        label:"Análise"},
+    {id:"carteira",  Icon:Wallet,          label:"Carteira"},
+    {id:"ia",        Icon:Sparkles,        label:"IA"},
   ];
 
   return (
@@ -220,8 +179,8 @@ function AppContent() {
               <div style={{fontSize:10,color:"#536057",marginBottom:1}}>Saldo {mesFiltro!=="todos"?"do mês":"total"}</div>
               <div style={{fontSize:17,fontWeight:500,fontFamily:"'DM Mono',monospace",color:saldo>=0?"#3DBA6F":"#E05252"}}>{hideVals?"R$ ••••":fmt(saldo)}</div>
             </div>
-            <button style={{background:"#181E19",border:"1px solid #2E3A2F",borderRadius:10,color:"#8FA893",fontSize:18,padding:"6px 8px",cursor:"pointer"}} onClick={()=>setHideVals(v=>!v)}>{hideVals?"🙈":"👁️"}</button>
-            <button style={{background:"#181E19",border:"1px solid #2E3A2F",borderRadius:10,color:"#8FA893",fontSize:18,padding:"6px 8px",cursor:"pointer"}} onClick={()=>setTab("config")}>⚙️</button>
+            <button style={{background:"#181E19",border:"1px solid #2E3A2F",borderRadius:10,color:"#8FA893",display:"flex",alignItems:"center",padding:"6px 8px",cursor:"pointer"}} onClick={()=>setHideVals(v=>!v)}>{hideVals?<EyeOff size={18}/>:<Eye size={18}/>}</button>
+            <button style={{background:"#181E19",border:"1px solid #2E3A2F",borderRadius:10,color:"#8FA893",display:"flex",alignItems:"center",padding:"6px 8px",cursor:"pointer"}} onClick={()=>setTab("config")}><Settings size={18}/></button>
           </div>
         </div>
         {mesesDisp.length>0&&(
@@ -242,27 +201,32 @@ function AppContent() {
       <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
         {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} contas={contas} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps} fixas={fixas} setFixas={setFixas} mesAtual={mesAtual} reservas={reservas} meta={meta} showToast={showToast}
           onAddFixa={r=>{setFixas(p=>[...p,{id:"fx"+Date.now(),desc:r.desc,valor:r.value,cat:r.cat||"outros",emoji:r.emoji||"📌",ativo:true}]);showToast("✓ Adicionado às fixas!");}}/>}
-        {tab==="graficos" &&<Graficos  exps={expsFiltrados} cats={cats} hide={hideVals} allExps={exps} mesFiltro={mesFiltro}/>}
-        {tab==="orcamento"&&<Orcamento exps={expsFiltrados} cats={cats} setCats={setCats} hide={hideVals} mesFiltro={mesFiltro}/>}
         {tab==="gastos"   &&<Gastos    exps={exps} setExps={setExps} cats={cats} contas={contas} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals} mesFiltro={mesFiltro} catFiltro={catModal} onClearCat={()=>setCatModal(null)}/>}
-        {tab==="reservas" &&<Reservas  reservas={reservas} setReservas={setReservas} hide={hideVals}/>}
-        {tab==="dividas"  &&<Dividas   dividas={dividas} setDividas={setDividas}/>}
-        {tab==="mercado"  &&<Mercado   markets={markets} setMarkets={setMarkets} hide={hideVals}/>}
+        {tab==="analise"&&<>
+          <SegmentToggle value={analiseView} onChange={setAnaliseView}
+            options={[{id:"graficos",label:"Gráficos"},{id:"orcamento",label:"Limites"}]}/>
+          {analiseView==="graficos" &&<Graficos  exps={expsFiltrados} cats={cats} hide={hideVals} allExps={exps} mesFiltro={mesFiltro}/>}
+          {analiseView==="orcamento"&&<Orcamento exps={expsFiltrados} cats={cats} setCats={setCats} hide={hideVals} mesFiltro={mesFiltro}/>}
+        </>}
+        {tab==="carteira"&&<>
+          <SegmentToggle value={carteiraView} onChange={setCarteiraView}
+            options={[{id:"reservas",label:"Reservas"},{id:"dividas",label:"Dívidas"}]}/>
+          {carteiraView==="reservas"&&<Reservas reservas={reservas} setReservas={setReservas} hide={hideVals}/>}
+          {carteiraView==="dividas" &&<Dividas  dividas={dividas} setDividas={setDividas}/>}
+        </>}
         {tab==="ia"       &&<IAChat    exps={expsFiltrados} cats={cats} mesFiltro={mesFiltro}/>}
-        {tab==="config"   &&<Config    cats={cats} setCats={setCats} markets={markets} setMarkets={setMarkets} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} reservas={reservas} setReservas={setReservas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast} mesFiltro={mesFiltro}/>}
+        {tab==="config"   &&<Config    cats={cats} setCats={setCats} exps={exps} setExps={setExps} fixas={fixas} setFixas={setFixas} contas={contas} setContas={setContas} reservas={reservas} setReservas={setReservas} meta={meta} setMeta={setMeta} setTab={setTab} showToast={showToast} mesFiltro={mesFiltro}/>}
       </div>
 
       {tab!=="ia"&&tab!=="config"&&(
-        <div style={{position:"fixed",bottom:76,right:16,display:"flex",flexDirection:"column",gap:8,zIndex:49}}>
-          <button style={{width:46,height:46,borderRadius:"50%",background:"#3DBA6F",border:"none",color:"#0A0F0D",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(61,186,111,0.4)",fontWeight:700}} onClick={()=>{setOpenWith("income");setTab("gastos");}}>+💰</button>
-          <button style={{width:46,height:46,borderRadius:"50%",background:"#E05252",border:"none",color:"#0A0F0D",fontSize:13,cursor:"pointer",boxShadow:"0 4px 16px rgba(224,82,82,0.4)",fontWeight:700}} onClick={()=>{setOpenWith("expense");setTab("gastos");}}>+💸</button>
-        </div>
+        <button style={{position:"fixed",bottom:76,right:16,width:52,height:52,borderRadius:"50%",background:"#3DBA6F",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 4px 20px rgba(61,186,111,0.4)",zIndex:49}}
+          onClick={()=>{setOpenWith("expense");setTab("gastos");}}><Plus size={24} strokeWidth={2.5} color="#0A0F0D"/></button>
       )}
 
-      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"min(600px,100vw)",background:"rgba(10,15,13,0.97)",borderTop:"1px solid #232B24",display:"flex",overflowX:"auto",padding:"6px 2px 10px",backdropFilter:"blur(20px)",zIndex:50}}>
+      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"min(600px,100vw)",background:"rgba(10,15,13,0.97)",borderTop:"1px solid #232B24",display:"flex",padding:"6px 2px 10px",backdropFilter:"blur(20px)",zIndex:50}}>
         {TABS.map(t=>(
-          <button key={t.id} style={{flex:"0 0 auto",minWidth:60,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 2px",opacity:tab===t.id?1:0.6,transition:"opacity 0.15s"}} onClick={()=>setTab(t.id)}>
-            <span style={{fontSize:18,opacity:tab===t.id?1:0.45}}>{t.emoji}</span>
+          <button key={t.id} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 2px"}} onClick={()=>setTab(t.id)}>
+            <t.Icon size={20} strokeWidth={1.75} color={tab===t.id?"#3DBA6F":"#536057"}/>
             <span style={{fontSize:9,color:tab===t.id?"#3DBA6F":"#536057",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.03em",fontFamily:"'DM Mono',monospace"}}>{t.label}</span>
           </button>
         ))}

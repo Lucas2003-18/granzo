@@ -26,7 +26,7 @@ const ONBOARDING_STEPS = [
     sub:"Configure quanto você quer gastar por categoria — alimentação, moradia, lazer...\nO app avisa quando estiver chegando no limite.",
     dica:"Aba Orçamento → toque em cada categoria",
     cor:"#E8A832",
-    destaque:"orcamento",
+    destaque:"analise",
   },
   {
     id:"fixas",

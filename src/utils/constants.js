@@ -29,14 +29,6 @@ export const FIXAS_DEF = [
   { id:"fx3", desc:"Plano de saúde", valor:0, cat:"saude", emoji:"💊", ativo:true },
 ];
 
-export const MKTS_DEF = [
-  {id:"carrefour",label:"Carrefour",emoji:"🔵"},
-  {id:"paodeacucar",label:"Pão de Açúcar",emoji:"🍞"},
-  {id:"atacadao",label:"Atacadão",emoji:"🏭"},
-];
-
-export const GROCERY = ["Frango (kg)","Carne moída (kg)","Leite integral (L)","Arroz 5kg","Feijão 1kg","Óleo de soja","Macarrão 500g","Pão de forma","Ovos (dz)","Manteiga 200g","Sabão em pó","Detergente 500ml"];
-
 export const PRESETS = ["#60a5fa","#4ade80","#f59e0b","#f472b6","#a78bfa","#fb923c","#34d399","#8FA893","#f87171","#38bdf8"];
 
 export const CONTAS_DEF = [

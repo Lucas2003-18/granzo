@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { btn, CARD, ROW } from '../utils/styles';
+import { btn, inp, CARD, ROW } from '../utils/styles';
 import { SecTitle, AlertBox } from './ui';
 import { getNotifConfig, saveNotifConfig, checkPermission, requestPermission, sendNotif } from '../hooks/useNotifications';
 
@@ -7,6 +7,11 @@ export default function NotifConfig({ showToast }){
   const [cfg,setCfg]=useState(getNotifConfig);
   const [permStatus,setPermStatus]=useState("loading");
   const [testando,setTestando]=useState(false);
+  const [webhookUrl,setWebhookUrl]=useState(()=>{ try{return localStorage.getItem("mf_discord_webhook")||"";}catch{return "";} });
+
+  function salvarWebhook() {
+    try { localStorage.setItem("mf_discord_webhook", webhookUrl.trim()); showToast("✓ Webhook salvo"); } catch {}
+  }
 
   useEffect(()=>{
     checkPermission().then(s=>setPermStatus(s));
@@ -89,5 +94,15 @@ export default function NotifConfig({ showToast }){
         </div>
       </div>
     </>}
+
+    <div style={CARD}>
+      <div style={{fontSize:13,fontWeight:700,color:"#DDE8DF",marginBottom:4}}>🎮 Discord Webhook</div>
+      <div style={{fontSize:12,color:"#536057",marginBottom:10,lineHeight:1.5}}>
+        Alternativa às notificações nativas — o app envia alertas direto para um canal Discord via webhook.
+      </div>
+      <div style={{fontSize:11,color:"#536057",marginBottom:4}}>URL do webhook</div>
+      <input style={{...inp({fontSize:12}),marginBottom:10}} placeholder="https://discord.com/api/webhooks/..." value={webhookUrl} onChange={e=>setWebhookUrl(e.target.value)}/>
+      <button style={btn("#3DBA6F","#0A0F0D")} onClick={salvarWebhook}>Salvar webhook</button>
+    </div>
   </div>;
 }

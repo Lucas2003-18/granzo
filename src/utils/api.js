@@ -13,15 +13,3 @@ export async function syncToBackend(snapshot) {
     });
   } catch {}
 }
-
-export async function testBackend() {
-  const base = getBase();
-  const key  = getKey();
-  if (!base || !key) return false;
-  try {
-    const r = await fetch(`${base}/api/health`, {
-      headers: { "Authorization": `Bearer ${key}` },
-    });
-    return r.ok;
-  } catch { return false; }
-}
