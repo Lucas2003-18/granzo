@@ -102,88 +102,16 @@ jobs:
           echo "android.useAndroidX=true" >> android/gradle.properties
           echo "android.enableJetifier=true" >> android/gradle.properties
 
-      - name: Decodificar keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/granzo-release.jks
-
-      - name: Injetar signingConfig no build.gradle
-        run: |
-          python3 - << 'PYEOF'
-          import re, os
-
-          kts_path = "android/app/build.gradle.kts"
-          groovy_path = "android/app/build.gradle"
-
-          if os.path.exists(kts_path):
-              path = kts_path
-              is_kotlin = True
-          else:
-              path = groovy_path
-              is_kotlin = False
-
-          print(f"Usando: {path} (kotlin={is_kotlin})")
-
-          with open(path, "r") as f:
-              src = f.read()
-
-          if "granzo-release.jks" in src:
-              print("signingConfig ja configurado, pulando")
-              exit(0)
-
-          if is_kotlin:
-              signing = '''
-              signingConfigs {
-                  create("release") {
-                      storeFile = file("granzo-release.jks")
-                      storePassword = System.getenv("KEYSTORE_PASSWORD")
-                      keyAlias = System.getenv("KEY_ALIAS")
-                      keyPassword = System.getenv("KEY_PASSWORD")
-                  }
-              }
-          '''
-              src = src.replace("    buildTypes {", signing + "    buildTypes {", 1)
-              src = re.sub(
-                  r'(getByName\("release"\)\s*\{)',
-                  r'\1\n            signingConfig = signingConfigs.getByName("release")',
-                  src, count=1
-              )
-          else:
-              signing = '''
-              signingConfigs {
-                  release {
-                      storeFile file("granzo-release.jks")
-                      storePassword System.getenv("KEYSTORE_PASSWORD")
-                      keyAlias System.getenv("KEY_ALIAS")
-                      keyPassword System.getenv("KEY_PASSWORD")
-                  }
-              }
-          '''
-              src = src.replace("    buildTypes {", signing + "    buildTypes {", 1)
-              src = re.sub(
-                  r'(buildTypes\s*\{[^}]*release\s*\{)',
-                  r'\1\n            signingConfig signingConfigs.release',
-                  src, count=1, flags=re.DOTALL
-              )
-
-          with open(path, "w") as f:
-              f.write(src)
-
-          print("signingConfig injetado com sucesso")
-          PYEOF
-
       - name: Build APK release assinado
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --no-parallel --max-workers=2 --stacktrace
+          ./gradlew assembleDebug --no-daemon --no-parallel --max-workers=2 --stacktrace
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m"
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Renomear APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk granzo.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk granzo.apk
 
       - name: Obter versao
         id: version
