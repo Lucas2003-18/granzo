@@ -57,7 +57,7 @@ function MetaConfig({ meta, setMeta }) {
 
 // ── CONFIG ─────────────────────────────────────────────────
 
-function Config({ cats, setCats, exps, setExps, fixas, setFixas, contas, setContas, reservas, setReservas, meta, setMeta, setTab, showToast, mesFiltro }){
+function Config({ cats, setCats, exps, setExps, fixas, setFixas, contas, setContas, reservas, setReservas, dividas, setDividas, meta, setMeta, setTab, showToast, mesFiltro }){
   const [sec,setsec]=useState("importar");
   const [showNC,setShowNC]=useState(false);
   const [newCat,setNewCat]=useState({label:"",emoji:"📁",budget:200,color:"#60a5fa"});
@@ -251,7 +251,7 @@ function Config({ cats, setCats, exps, setExps, fixas, setFixas, contas, setCont
           {exps.length} lançamentos · {cats.length} categorias · {fixas.length} fixas · {(contas||[]).filter(c=>c.id!=="geral").length} contas
         </div>
         <button style={btn("#3DBA6F","#0A0F0D",{marginBottom:10})} onClick={async()=>{
-          const json=JSON.stringify({exps,cats,fixas,contas,reservas,meta,_version:2,_savedAt:new Date().toISOString()},null,2);
+          const json=JSON.stringify({exps,cats,fixas,contas,reservas,dividas,meta,_version:2,_savedAt:new Date().toISOString()},null,2);
           const filename="granzo_backup_"+new Date().toISOString().slice(0,10)+".json";
           const blob=new Blob([json],{type:"application/json"});
 
@@ -328,6 +328,7 @@ function Config({ cats, setCats, exps, setExps, fixas, setFixas, contas, setCont
                   setFixas(_data.fixas||FIXAS_DEF);
                   if(_data.contas) setContas(_data.contas);
                   if(_data.reservas) setReservas(_data.reservas);
+                  if(_data.dividas) setDividas(_data.dividas);
                   if(_data.meta!==undefined) setMeta(_data.meta);
                   showToast("✓ Backup restaurado!");
                 }
