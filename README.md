@@ -2,7 +2,7 @@
 
 > Seu dinheiro, do seu jeito.
 
-![Version](https://img.shields.io/badge/versão-1.0.0-818cf8) ![Platform](https://img.shields.io/badge/plataforma-Android-4ade80) ![Stack](https://img.shields.io/badge/stack-React%20%2B%20Capacitor-6095FF)
+![Version](https://img.shields.io/badge/versão-1.1.0-818cf8) ![Platform](https://img.shields.io/badge/plataforma-Android-4ade80) ![Stack](https://img.shields.io/badge/stack-React%20%2B%20Capacitor-6095FF)
 
 App de finanças pessoais mobile, construído com React + Capacitor. Categorização inteligente via Gemini AI, importação de extratos CSV do Nubank, e controle completo de gastos, investimentos e reservas.
 
@@ -57,7 +57,7 @@ Campos reconhecidos: `Data`, `Descrição`, `Valor`
 ## Stack
 
 - **React 18** + Vite
-- **Capacitor 5** (Android)
+- **Capacitor 6** (Android)
 - **Gemini 2.5 Flash** (IA)
 - **GitHub Actions** (CI/CD)
 - **Pillow** (geração de ícones)

@@ -3,7 +3,7 @@ import { fmt, fmtDate } from '../utils/format';
 import { PRESETS, CATS_DEF, FIXAS_DEF, MKTS_DEF, CONTAS_DEF, APP_VERSION } from '../utils/constants';
 import { getGeminiKey, setGeminiKey } from '../utils/gemini';
 import { inp, btn, CARD, ROW } from '../utils/styles';
-import { SecTitle, AlertBox, ConfirmModal } from './ui';
+import { AlertBox, ConfirmModal } from './ui';
 import Importador from './Importador';
 import GoogleDriveBackup from './GoogleDriveBackup';
 import NotifConfig from './NotifConfig';
@@ -398,7 +398,6 @@ function IntegracaoConfig({ showToast }) {
   const [backendUrl,     setBackendUrl]     = useState(()=>{ try{return localStorage.getItem("mf_backend_url")||"";}catch{return "";} });
   const [backendKey,     setBackendKey]     = useState(()=>{ try{return localStorage.getItem("mf_backend_key")||"";}catch{return "";} });
   const [webhookUrl,     setWebhookUrl]     = useState(()=>{ try{return localStorage.getItem("mf_discord_webhook")||"";}catch{return "";} });
-  const [resumoDiario,   setResumoDiario]   = useState(()=>{ try{return localStorage.getItem("mf_resumo_diario")==="1";}catch{return false;} });
   const [testando,       setTestando]       = useState(false);
 
   function salvarBackend() {
@@ -411,11 +410,6 @@ function IntegracaoConfig({ showToast }) {
 
   function salvarWebhook() {
     try { localStorage.setItem("mf_discord_webhook", webhookUrl.trim()); showToast("✓ Webhook salvo"); } catch {}
-  }
-
-  function toggleResumoDiario(v) {
-    setResumoDiario(v);
-    try { localStorage.setItem("mf_resumo_diario", v ? "1" : "0"); } catch {}
   }
 
   async function testarConexao() {
@@ -453,19 +447,6 @@ function IntegracaoConfig({ showToast }) {
         <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>URL do webhook</div>
         <input style={{...inp({fontSize:12}),marginBottom:10}} placeholder="https://discord.com/api/webhooks/..." value={webhookUrl} onChange={e=>setWebhookUrl(e.target.value)}/>
         <button style={btn("linear-gradient(135deg,#7c3aed,#6d28d9)")} onClick={salvarWebhook}>Salvar webhook</button>
-      </div>
-
-      {/* Resumo diário */}
-      <div style={{...CARD,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div>
-          <div style={{fontSize:13,fontWeight:700,color:"#e2e8f0"}}>📅 Resumo diário</div>
-          <div style={{fontSize:11,color:"#64748b",marginTop:2}}>Receber resumo financeiro todo dia no Discord</div>
-        </div>
-        <button
-          style={{background:resumoDiario?"rgba(99,102,241,0.25)":"rgba(255,255,255,0.06)",border:resumoDiario?"1px solid rgba(99,102,241,0.5)":"1px solid rgba(255,255,255,0.12)",color:resumoDiario?"#818cf8":"#475569",borderRadius:20,padding:"6px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}
-          onClick={()=>toggleResumoDiario(!resumoDiario)}>
-          {resumoDiario?"✓ Ativo":"Ativar"}
-        </button>
       </div>
     </div>
   );

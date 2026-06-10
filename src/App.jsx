@@ -130,17 +130,6 @@ function AppContent() {
   const dividasInit=useRef(true);
   useEffect(()=>{ if(dividasInit.current){dividasInit.current=false;return;} try{localStorage.setItem("mf_dividas",JSON.stringify(dividas));}catch{} },[dividas]);
 
-  // Sync debounced ao backend quando dados financeiros mudam
-  const syncTimer=useRef(null);
-  useEffect(()=>{
-    clearTimeout(syncTimer.current);
-    syncTimer.current=setTimeout(()=>{
-      const[ano,mes]=mesFiltro!=="todos"?mesFiltro.split("-"):[String(new Date().getFullYear()),String(new Date().getMonth()+1).padStart(2,"0")];
-      syncToBackend({exps,cats,reservas,dividas,mesFiltro,meta});
-    },5000);
-    return ()=>clearTimeout(syncTimer.current);
-  },[exps,cats,reservas,dividas,meta]);
-
   const mesesDisp=[...new Set(exps.map(e=>{
     const p=e.date?.split("/");
     if(p?.length>=3) return `${p[2]}-${p[1]}`;
@@ -151,6 +140,16 @@ function AppContent() {
     const m=`${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}`;
     return m;
   });
+
+  // Sync debounced ao backend quando dados financeiros mudam
+  const syncTimer=useRef(null);
+  useEffect(()=>{
+    clearTimeout(syncTimer.current);
+    syncTimer.current=setTimeout(()=>{
+      syncToBackend({exps,cats,reservas,dividas,mesFiltro,meta});
+    },5000);
+    return ()=>clearTimeout(syncTimer.current);
+  },[exps,cats,reservas,dividas,meta,mesFiltro]);
 
   useEffect(()=>{
     if(mesFiltro!=="todos"&&mesesDisp.length>0&&!mesesDisp.includes(mesFiltro)){

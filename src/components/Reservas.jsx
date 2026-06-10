@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { fmt, fmtDate } from '../utils/format';
 import { inp, btn, CARD, ROW } from '../utils/styles';
-import { Bar, SecTitle, ConfirmModal } from './ui';
+import { Bar, ConfirmModal } from './ui';
 
 function Reservas({ reservas, setReservas, hide }) {
   const [selId,    setSelId]    = useState(null); // reserva aberta

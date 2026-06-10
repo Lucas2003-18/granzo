@@ -32,20 +32,3 @@ export function buildDividaEmbed(pessoa, valor, tipo, dias) {
     footer: { text: "Granzo · Lembretes de dívidas" },
   }];
 }
-
-export function buildResumoEmbed(renda, gastos, saldo, mes) {
-  const taxa = renda > 0 ? ((saldo / renda) * 100).toFixed(1) : "0";
-  const r = (v) => `R$ ${v.toFixed(2).replace(".", ",")}`;
-  return [{
-    title: `📊 Resumo financeiro — ${mes}`,
-    fields: [
-      { name: "💰 Renda", value: r(renda), inline: true },
-      { name: "💸 Gastos", value: r(gastos), inline: true },
-      { name: "📈 Saldo", value: r(saldo), inline: true },
-      { name: "🎯 Taxa poupança", value: `${taxa}%`, inline: true },
-    ],
-    color: saldo >= 0 ? 0x4ade80 : 0xf87171,
-    timestamp: new Date().toISOString(),
-    footer: { text: "Granzo · Resumo automático" },
-  }];
-}
