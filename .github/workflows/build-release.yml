@@ -140,7 +140,8 @@ jobs:
             2. No Android, vá em **Configurações → Segurança** e ative "Fontes desconhecidas" para o seu navegador/gerenciador de arquivos
             3. Abra o arquivo baixado e confirme a instalação
 
-            > **Atualização?** Basta instalar por cima — seus dados não são apagados.
+            > **Atualização?** Antes de instalar por cima, faça backup: ⚙️ Configurações → Dados → 📤 Exportar backup JSON.
+            > Se a instalação falhar com "App não instalada" (mudança de assinatura), desinstale o app antigo, instale este APK e restaure pelo 📥 Importar backup JSON.
 
             ---
             Commit: `${{ github.sha }}`
