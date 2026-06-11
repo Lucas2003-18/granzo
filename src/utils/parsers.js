@@ -120,8 +120,11 @@ export function detectBankPdf(text){
   if(t.includes("nubank"))return "nubank_pdf";
   if(t.includes("banco inter")||t.includes("inter s.a")||t.includes("interdigital"))return "inter_pdf";
   if(t.includes("c6 bank")||t.includes("banco c6"))return "c6_pdf";
-  if(t.includes("bradesco"))return "bradesco_pdf";
-  if(t.includes("itaú")||t.includes("itau"))return "itau_pdf";
+  // Razão social completa (exigência BACEN, sempre presente em extratos oficiais).
+  // Sem fallback genérico de "itaú"/"bradesco" sozinhos: um extrato pode citar o nome
+  // de outro banco numa linha de TED/Pix e seria classificado errado.
+  if(t.includes("itaú unibanco")||t.includes("itau unibanco")||t.includes("banco itaú")||t.includes("banco itau")||t.includes("itaú s.a")||t.includes("itau s.a"))return "itau_pdf";
+  if(t.includes("banco bradesco")||t.includes("bradesco s.a"))return "bradesco_pdf";
   if(t.includes("santander"))return "santander_pdf";
   if(t.includes("banco do brasil")||t.includes("bb s.a"))return "bb_pdf";
   if(t.includes("caixa econômica")||t.includes("caixa economica"))return "caixa_pdf";

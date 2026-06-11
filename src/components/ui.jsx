@@ -24,7 +24,7 @@ export function SecTitle({t,sub}) {
   </div>;
 }
 
-export function AlertBox({tipo,texto}) {
+export function AlertBox({tipo,texto,onClick,right}) {
   const cfg={
     info:{bg:"rgba(61,186,111,0.06)",border:"rgba(61,186,111,0.15)",color:"#8FA893"},
     warn:{bg:"rgba(232,168,50,0.1)",border:"rgba(232,168,50,0.25)",color:"#E8A832"},
@@ -32,7 +32,10 @@ export function AlertBox({tipo,texto}) {
     ok  :{bg:"rgba(61,186,111,0.1)",border:"rgba(61,186,111,0.25)",color:"#3DBA6F"},
   };
   const s=cfg[tipo]||cfg.info;
-  return <div style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:12,padding:"10px 14px",color:s.color,fontSize:13,marginBottom:12,lineHeight:1.5}}>{texto}</div>;
+  return <div style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:12,padding:"10px 14px",color:s.color,fontSize:13,marginBottom:12,lineHeight:1.5,...(onClick?{cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}:{})}} onClick={onClick}>
+    <span>{texto}</span>
+    {right}
+  </div>;
 }
 
 export function ConfirmModal({msg,sub,onOk,onCancel,okLabel="Confirmar",okColor="#E05252",cancelLabel="Cancelar"}){

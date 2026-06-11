@@ -199,7 +199,8 @@ function AppContent() {
       </div>
 
       <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
-        {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} contas={contas} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps} fixas={fixas} setFixas={setFixas} mesAtual={mesAtual} reservas={reservas} meta={meta} showToast={showToast}
+        {tab==="dashboard"&&<Dashboard exps={expsFiltrados} cats={cats} contas={contas} hide={hideVals} onCatClick={cat=>{setCatModal(cat);setTab("gastos");}} mesFiltro={mesFiltro} allExps={exps} fixas={fixas} setFixas={setFixas} mesAtual={mesAtual} reservas={reservas} meta={meta} dividas={dividas} showToast={showToast}
+          onGoToLimites={()=>{setTab("analise");setAnaliseView("orcamento");}}
           onAddFixa={r=>{setFixas(p=>[...p,{id:"fx"+Date.now(),desc:r.desc,valor:r.value,cat:r.cat||"outros",emoji:r.emoji||"📌",ativo:true}]);showToast("✓ Adicionado às fixas!");}}/>}
         {tab==="gastos"   &&<Gastos    exps={exps} setExps={setExps} cats={cats} contas={contas} openWith={openWith} onOpened={()=>setOpenWith(null)} hide={hideVals} mesFiltro={mesFiltro} catFiltro={catModal} onClearCat={()=>setCatModal(null)}/>}
         {tab==="analise"&&<>
@@ -225,8 +226,8 @@ function AppContent() {
 
       <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:"min(600px,100vw)",background:"rgba(10,15,13,0.97)",borderTop:"1px solid #232B24",display:"flex",padding:"6px 2px 10px",backdropFilter:"blur(20px)",zIndex:50}}>
         {TABS.map(t=>(
-          <button key={t.id} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 2px"}} onClick={()=>setTab(t.id)}>
-            <t.Icon size={20} strokeWidth={1.75} color={tab===t.id?"#3DBA6F":"#536057"}/>
+          <button key={t.id} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"8px 2px"}} onClick={()=>setTab(t.id)}>
+            <t.Icon size={22} strokeWidth={1.75} color={tab===t.id?"#3DBA6F":"#536057"}/>
             <span style={{fontSize:9,color:tab===t.id?"#3DBA6F":"#536057",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.03em",fontFamily:"'DM Mono',monospace"}}>{t.label}</span>
           </button>
         ))}

@@ -1,30 +1,7 @@
 import { useState } from 'react';
-import { fmt, fmtDate } from '../utils/format';
+import { fmt, fmtDate, diasAteVencer, urgencyColor } from '../utils/format';
 import { inp, btn, ROW, CARD } from '../utils/styles';
 import { SwipeRow, ConfirmModal } from './ui';
-
-function parseData(str) {
-  if (!str) return null;
-  const [d, m, y] = str.split("/");
-  if (!d || !m || !y) return null;
-  return new Date(+y, +m - 1, +d);
-}
-
-function diasAteVencer(vencimento) {
-  const dt = parseData(vencimento);
-  if (!dt) return null;
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  dt.setHours(0, 0, 0, 0);
-  return Math.round((dt - hoje) / 86400000);
-}
-
-function urgencyColor(dias) {
-  if (dias === null) return null;
-  if (dias < 0)  return "#E05252";
-  if (dias <= 3) return "#E8A832";
-  return null;
-}
 
 function emptyForm() {
   return {

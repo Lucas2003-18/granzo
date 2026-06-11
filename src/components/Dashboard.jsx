@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { fmt, fmtPct, dateKey } from '../utils/format';
+import { fmt, fmtPct, dateKey, diasAteVencer } from '../utils/format';
 import { MESES, MESES_CURTO, INC_TIPOS, CONTAS_DEF } from '../utils/constants';
 import { ROW, CARD } from '../utils/styles';
 import { Bar, SecTitle, AlertBox } from './ui';
 import { gerarRelatorioPDF } from '../utils/pdf';
 
-function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, fixas, setFixas, mesAtual, reservas, meta, showToast, onAddFixa }) {
+function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, fixas, setFixas, mesAtual, reservas, meta, dividas, showToast, onAddFixa, onGoToLimites }) {
   const gastos  = exps.filter(e=>e.kind==="exp"&&e.cat!=="investimento");
   const invests = exps.filter(e=>e.cat==="investimento");
   const totalExp= gastos.reduce((s,e)=>s+e.value,0);
@@ -41,17 +41,29 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
   }
 
   // Projeção: só faz sentido no mês atual, não em meses passados
-  let projecao=null, projecaoEconomia=null, diasRestantes=null, mediadiaria=null;
+  let projecao=null, projecaoEconomia=null, diasRestantes=null, mediadiaria=null, limiteDiario=null, corteDiario=null, diaAtual=null;
   if(mesFiltro!=="todos"&&mesFiltro===mesAtual&&gastos.length>0){
     const hoje=new Date().getDate();
     const [anoP,mesN]=mesFiltro.split("-");
     const diasMes=new Date(+anoP,+mesN,0).getDate();
     diasRestantes=diasMes-hoje;
     mediadiaria=totalExp/hoje;
+    diaAtual=hoje;
     if(hoje>=3&&hoje<diasMes&&totalExp>0){
       projecao=mediadiaria*diasMes;
       if(totalInc>0) projecaoEconomia=totalInc-projecao;
     }
+    const saldoAtual=totalInc-totalExp;
+    if(saldoAtual>0&&diasRestantes>0) limiteDiario=saldoAtual/diasRestantes;
+    if(totalInc>0) corteDiario=mediadiaria-(totalInc/diasMes);
+  }
+
+  // Retrospectiva: mês passado (não atual, não "todos")
+  let retro=null;
+  if(mesFiltro!=="todos"&&mesFiltro!==mesAtual&&gastos.length>0){
+    const [anoP,mesN]=mesFiltro.split("-");
+    const diasMes=new Date(+anoP,+mesN,0).getDate();
+    retro={mediaDia:totalExp/diasMes,saldo:totalInc>0?totalInc-totalExp:null};
   }
 
   const top3=[...gastos].sort((a,b)=>b.value-a.value).slice(0,3);
@@ -95,6 +107,63 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         return <AlertBox tipo="warn" texto={txt}/>;
       })()}
 
+      {/* Hero de status */}
+      {mesFiltro!=="todos"&&(()=>{
+        if(mesFiltro===mesAtual){
+          if(projecao===null) return null;
+          const ok=totalInc===0?null:projecaoEconomia>=0;
+          const cor=ok===false?"#E05252":"#3DBA6F";
+          const titulo=ok===null
+            ?`📊 Ritmo de ${hide?"••••":fmt(mediadiaria)}/dia`
+            :ok
+              ?`✅ No ritmo — sobram ~${hide?"••••":fmt(projecaoEconomia)}`
+              :`⚠️ Estourando — corte ~${hide?"••••":fmt(Math.abs(corteDiario))}/dia`;
+          return <div style={{...CARD,marginBottom:14,borderLeft:`3px solid ${cor}`}}>
+            <div style={{fontSize:14,fontWeight:800,color:"#DDE8DF",marginBottom:4}}>{titulo}</div>
+            <div style={{fontSize:11,color:"#536057"}}>{hide?"••••":fmt(mediadiaria)}/dia em média · {diaAtual} dia{diaAtual>1?"s":""} decorrido{diaAtual>1?"s":""}</div>
+            {limiteDiario!==null&&limiteDiario>0&&<div style={{fontSize:11,color:"#3DBA6F",marginTop:4}}>💡 Gaste até {hide?"••••":fmt(limiteDiario)}/dia para fechar com a meta</div>}
+          </div>;
+        }
+        if(!retro) return null;
+        const {mediaDia,saldo}=retro;
+        const cor=saldo!==null&&saldo<0?"#E05252":"#3DBA6F";
+        const titulo=saldo===null
+          ?`📊 Fechou com média de ${hide?"••••":fmt(mediaDia)}/dia`
+          :saldo>=0
+            ?`✅ Fechou com sobra de ${hide?"••••":fmt(saldo)}`
+            :`⚠️ Fechou no vermelho em ${hide?"••••":fmt(Math.abs(saldo))}`;
+        return <div style={{...CARD,marginBottom:14,borderLeft:`3px solid ${cor}`}}>
+          <div style={{fontSize:14,fontWeight:800,color:"#DDE8DF",marginBottom:4}}>{titulo}</div>
+          <div style={{fontSize:11,color:"#536057"}}>{hide?"••••":fmt(mediaDia)}/dia em média</div>
+        </div>;
+      })()}
+
+      {/* Dívidas urgentes */}
+      {dividas&&dividas.length>0&&(()=>{
+        const urgentes=dividas
+          .filter(d=>d.status==="pendente"&&d.vencimento)
+          .map(d=>({...d,dias:diasAteVencer(d.vencimento)}))
+          .filter(d=>d.dias!==null&&d.dias<=3)
+          .sort((a,b)=>a.dias-b.dias);
+        if(urgentes.length===0) return null;
+        return <>
+          <SecTitle t="Dívidas urgentes"/>
+          {urgentes.map(d=>{
+            const aPagar=d.tipo==="devo";
+            const cor=aPagar?"#E05252":"#3DBA6F";
+            const prazo=d.dias<0?`vencida há ${Math.abs(d.dias)}d`:d.dias===0?"vence hoje":d.dias===1?"vence amanhã":`vence em ${d.dias}d`;
+            return <div key={d.id} style={{...ROW,borderLeft:`3px solid ${cor}`}}>
+              <div style={{width:38,height:38,borderRadius:"50%",background:aPagar?"rgba(224,82,82,0.15)":"rgba(61,186,111,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:800,color:cor,flexShrink:0}}>{d.pessoa.charAt(0).toUpperCase()}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.pessoa}</div>
+                <div style={{fontSize:11,color:cor}}>{prazo}</div>
+              </div>
+              <span style={{fontSize:13,fontWeight:700,color:cor,flexShrink:0}}>{aPagar?"-":"+"}{hide?"••••":fmt(d.valor)}</span>
+            </div>;
+          })}
+        </>;
+      })()}
+
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
         {[
@@ -135,9 +204,6 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         const hoje=new Date().getDate();
         const pctMes=Math.round((hoje/diasMes)*100);
         const ok=projecaoEconomia>=0;
-        // Quanto ainda pode gastar por dia para fechar no zero
-        const saldoAtual=totalInc-totalExp;
-        const limiteDiario=saldoAtual>0&&diasRestantes>0?saldoAtual/diasRestantes:null;
         // Semáforo: verde <70% renda, amarelo 70-90%, vermelho >90%
         const pctProjecao=totalInc>0?(projecao/totalInc)*100:0;
         const semaforo=pctProjecao<=70?"#3DBA6F":pctProjecao<=90?"#E8A832":"#E05252";
@@ -182,7 +248,7 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
             <span style={{fontSize:18}}>⚠️</span>
             <div>
               <div style={{fontSize:12,fontWeight:700,color:"#E05252"}}>Renda insuficiente no ritmo atual</div>
-              <div style={{fontSize:10,color:"#536057"}}>Reduza {fmt(Math.abs(mediadiaria-(totalInc/diasMes)))}/dia para equilibrar</div>
+              <div style={{fontSize:10,color:"#536057"}}>Reduza {fmt(Math.abs(corteDiario))}/dia para equilibrar</div>
             </div>
           </div>}
           {ok&&projecaoEconomia>0&&<div style={{background:"rgba(61,186,111,0.06)",border:"1px solid rgba(61,186,111,0.15)",borderRadius:10,padding:"9px 12px",display:"flex",alignItems:"center",gap:10}}>
@@ -290,18 +356,21 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         return <AlertBox tipo="info" texto={`🏦 ${semConta} lançamento${semConta>1?"s":""} sem conta definida — vá em Gastos e edite para atribuir ao Bradesco ou Nubank.`}/>;
       })()}
 
-      {/* Alertas orçamento — só faz sentido num mês específico */}
-      {mesFiltro!=="todos"&&cats.filter(c=>c.budget>0&&c.id!=="investimento").map(cat=>{
-        const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
-        const pct=spent/cat.budget*100;
-        if(pct<80) return null;
-        if(pct>100) return <AlertBox key={cat.id} tipo="err"
-          texto={`${cat.emoji} ${cat.label} estourou o limite! (${hide?"••••":fmt(spent)} de ${hide?"••••":fmt(cat.budget)})`}/>;
-        if(pct===100) return <AlertBox key={cat.id} tipo="ok"
-          texto={`${cat.emoji} ${cat.label} atingiu exatamente o limite — ${hide?"••••":fmt(cat.budget)} ✓`}/>;
-        return <AlertBox key={cat.id} tipo="warn"
-          texto={`${cat.emoji} ${cat.label} em ${pct.toFixed(0)}% do limite (${hide?"••••":fmt(spent)} de ${hide?"••••":fmt(cat.budget)})`}/>;
-      })}
+      {/* Alertas orçamento consolidados — só faz sentido num mês específico */}
+      {mesFiltro!=="todos"&&(()=>{
+        const proximas=cats.filter(c=>c.budget>0&&c.id!=="investimento").map(cat=>{
+          const spent=gastos.filter(e=>e.cat===cat.id).reduce((s,e)=>s+e.value,0);
+          return {cat,pct:(spent/cat.budget)*100};
+        }).filter(({pct})=>pct>=80);
+        if(proximas.length===0) return null;
+        const estourou=proximas.some(({pct})=>pct>100);
+        return <AlertBox tipo={estourou?"err":"warn"} onClick={onGoToLimites}
+          texto={`${proximas.length} categoria${proximas.length>1?"s":""} perto do limite`}
+          right={<div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+            {proximas.map(({cat})=>(<span key={cat.id} style={{fontSize:16}}>{cat.emoji}</span>))}
+            <span style={{fontSize:14}}>›</span>
+          </div>}/>;
+      })()}
 
       {/* Categorias */}
       <SecTitle t="Por categoria" sub={mesFiltro!=="todos"?"Toque para ver as transações":undefined}/>
@@ -327,25 +396,13 @@ function Dashboard({ exps, cats, contas, hide, onCatClick, mesFiltro, allExps, f
         <SecTitle t="Despesas fixas" sub={`Total: ${hide?"••••":fmt(totalFixas)}/mês`}/>
         {fixas.filter(f=>f.ativo&&f.valor>0).map(f=>{
           const cat=cats.find(c=>c.id===f.cat);
-          // Verifica se há lançamento real no mês filtrado com descrição parecida
-          const descMatch=new RegExp(f.desc.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").split(" ")[0],"i");
-          const jaLancado=exps.some(e=>{
-            const p=e.date?.split("/");
-            if(!p||p.length<2) return false;
-            const anoMesE=p.length>=3?`${p[2]}-${p[1]}`:`${new Date().getFullYear()}-${p[1]}`;
-            const mesOk=mesFiltro==="todos"||anoMesE===mesFiltro;
-            return mesOk&&e.kind==="exp"&&descMatch.test((e.desc||"").normalize("NFD").replace(/[\u0300-\u036f]/g,""));
-          });
-          return <div key={f.id} style={{...ROW,borderLeft:`3px solid ${jaLancado?"#3DBA6F":"#E8A832"}`}}>
+          return <div key={f.id} style={ROW}>
             <span style={{fontSize:20}}>{f.emoji}</span>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:600,color:"#DDE8DF"}}>{f.desc}</div>
               <div style={{fontSize:11,color:"#536057"}}>{cat?.label||"Outros"} · todo mês</div>
             </div>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
-              <span style={{fontSize:13,fontWeight:700,color:"#8FA893"}}>{hide?"••••":fmt(f.valor)}</span>
-              <span style={{fontSize:10,color:jaLancado?"#3DBA6F":"#E8A832",fontWeight:700}}>{jaLancado?"✓ lançado":"⚠️ pendente"}</span>
-            </div>
+            <span style={{fontSize:13,fontWeight:700,color:"#8FA893"}}>{hide?"••••":fmt(f.valor)}</span>
           </div>;
         })}
       </>}
