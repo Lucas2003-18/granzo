@@ -96,3 +96,38 @@ def monthly(store: Store, ym: str) -> dict:
         var = ((val - p) / p * 100) if p else None
         cats.append({"categoria": names.get(cid, cid), "valor": val, "variacao_pct": var})
     return {"mes": ym, "entradas": tot["inc"], "saidas": tot["exp"], "saldo": tot["inc"] - tot["exp"], "categorias": cats}
+
+
+def top_expenses(store: Store, ym: str, n: int = 5):
+    from .store import FORA_DOS_TOTAIS
+    return store.conn.execute(
+        f"SELECT data,descricao,valor FROM transacoes WHERE kind='exp' AND substr(data,1,7)=? "
+        f"AND NOT {FORA_DOS_TOTAIS} ORDER BY valor DESC LIMIT ?", (ym, n)).fetchall()
+
+
+def reading_sentence(categorias: list[dict]) -> str:
+    """Frase de leitura: maior alta percentual entre categorias com base relevante."""
+    ups = [c for c in categorias
+           if c["variacao_pct"] is not None and c["variacao_pct"] > 0 and c["valor"] >= 50]
+    if not ups:
+        return "Nenhuma categoria subiu em relação ao mês anterior."
+    top = max(ups, key=lambda c: c["variacao_pct"])
+    return f"{top['categoria']} subiu {top['variacao_pct']:.0f}% — maior alta do mês."
+
+
+def monthly_full(store: Store, ym: str) -> dict:
+    """E2 completo: base de `monthly` + maiores gastos, assinaturas, estouros e frase."""
+    from . import recurrence
+    base = monthly(store, ym)
+    spent = dict(store.spend_by_category(ym))
+    estouros = []
+    for c in store.conn.execute("SELECT id,nome,emoji,orcamento_mensal l FROM categorias WHERE orcamento_mensal>0"):
+        if spent.get(c["id"], 0) > c["l"]:
+            estouros.append({"categoria": f"{c['emoji'] or ''} {c['nome']}".strip(),
+                             "gasto": spent[c["id"]], "limite": c["l"]})
+    subs = recurrence.detect(store.conn, ym)
+    return {**base,
+            "maiores": [{"data": br_date(r["data"]), "descricao": r["descricao"], "valor": r["valor"]}
+                        for r in top_expenses(store, ym)],
+            "assinaturas": subs, "assinaturas_total": sum(s["valor"] for s in subs),
+            "estouros": estouros, "leitura": reading_sentence(base["categorias"])}

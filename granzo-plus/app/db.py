@@ -74,6 +74,10 @@ CREATE TABLE IF NOT EXISTS bill_payments(
   conta_origem_id TEXT REFERENCES contas(id)
 );
 
+CREATE TABLE IF NOT EXISTS alertas_enviados(
+  chave TEXT PRIMARY KEY, enviado_em TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS execucoes(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   inicio TEXT NOT NULL, fim TEXT,

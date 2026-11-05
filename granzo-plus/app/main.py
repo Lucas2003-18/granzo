@@ -10,7 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from . import config as cfgmod
 from . import db, logging_setup
-from .cogs.finance import OwnerOnlyTree, register_commands, send_daily
+from .cogs.finance import OwnerOnlyTree, register_commands, send_alerts, send_daily, send_monthly
 from .services.categorize import Categorizer
 from .services.pluggy import PluggyAuthError, PluggyClient
 from .services.store import Store
@@ -37,6 +37,18 @@ async def job_daily(bot, cfg, store, client, cat) -> None:
         log.error("sync falhou: %s", type(e).__name__)
         await notify_status(bot, cfg, f"🟠 Sincronização falhou ({type(e).__name__}). Resumo usa dados antigos.")
     await send_daily(bot, store, cfg.ch_diario, None, store.last_success(), cfg.daily_send_when_empty)
+    try:  # alerta nunca derruba o diário
+        await send_alerts(bot, store, cfg.ch_alertas or cfg.ch_diario, None, store.last_success())
+    except Exception as e:
+        log.error("alertas falharam: %s", type(e).__name__)
+
+
+async def job_monthly(bot, cfg, store) -> None:
+    try:
+        await send_monthly(bot, store, cfg.ch_mensal or cfg.ch_diario)
+    except Exception as e:
+        log.error("mensal falhou: %s", type(e).__name__)
+        await notify_status(bot, cfg, f"🟠 Resumo mensal falhou ({type(e).__name__}).")
 
 
 def main() -> None:
@@ -56,6 +68,8 @@ def main() -> None:
         if not sched.running:
             sched.add_job(job_daily, CronTrigger(hour=cfg.daily_hour, minute=cfg.daily_minute, timezone=TZ),
                           args=[bot, cfg, store, client, cat], id="diario", misfire_grace_time=3600)
+            sched.add_job(job_monthly, CronTrigger(day=1, hour=8, minute=0, timezone=TZ),
+                          args=[bot, cfg, store], id="mensal", misfire_grace_time=6 * 3600)
             sched.start()
         if cfg.guild_id:
             guild = discord.Object(id=cfg.guild_id)

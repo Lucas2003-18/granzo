@@ -22,7 +22,8 @@ pytest
 | 2 Modelo financeiro | 🟡 | Compra de cartão = despesa; pagamento de fatura fora dos totais (testado). **Falta**: preencher `credit_card_bills`/`bill_payments` (depende do endpoint de faturas) |
 | 3 Migração Granzo | 🟡 esqueleto | `services/migrate_granzo.py`; chaves do JSON assumidas. **Falta** backup novo e dedupe contra histórico Pluggy (risco de dupla contagem) |
 | 4 Diário + comandos | 🟡 | Diário + `/saldo /resumo /gastos /categorizar /orcamento /sync` (efêmeros, só dono, cooldown no /sync). **Falta**: testar no Discord real |
-| 5 Mensal / 6 Alertas | ⬜ | não iniciado (ordem da SPEC-04) |
+| 5 Mensal | 🟡 | Dia 1 às 08:00: entradas/saídas sem transferências, top categorias com variação, maiores gastos, assinaturas, estouros e frase de leitura. **Falta**: ver no Discord real |
+| 6 Alertas | 🟡 | Uma mensagem consolidada após o diário: orçamento 80%/100%, fora do padrão (média+2dp e estabelecimento novo ≥R$300), assinatura nova, duplicada (<48h), projeção dias 15/25, sync >48h. Cada alerta dispara uma vez (`alertas_enviados`). Limiares são constantes em `services/alerts.py` |
 
 ## Decisões de implementação (além das specs)
 - `Pix/transferência recebida` **não** vira salário (bug do legado): fica `inc_type='a_classificar'`.

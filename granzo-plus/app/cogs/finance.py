@@ -175,3 +175,61 @@ def register_commands(tree, store, categorizer, sync_fn, owner_id: int) -> None:
         except Exception as e:  # mensagem genérica: nada de detalhes/segredos
             log.error("/sync falhou: %s", type(e).__name__)
             await inter.followup.send(f"Falha na sincronização ({type(e).__name__}).", ephemeral=True)
+
+
+# ---------------- mensal (E2) e alertas (E3) ----------------
+def monthly_embed(m: dict) -> discord.Embed:
+    y, mo = m["mes"].split("-")
+    cor = VERMELHO if m["estouros"] else VERDE
+    e = discord.Embed(title=f"Fechamento de {mo}/{y}", description=m["leitura"], color=cor)
+    e.add_field(name="Entradas", value=brl(m["entradas"]), inline=True)
+    e.add_field(name="Saídas", value=brl(m["saidas"]), inline=True)
+    e.add_field(name="Saldo do mês", value=brl(m["saldo"]), inline=True)
+    if m["categorias"]:
+        txt = "\n".join(
+            f"{c['categoria']}: {brl(c['valor'])}" + ("" if c["variacao_pct"] is None else f" ({c['variacao_pct']:+.0f}%)")
+            for c in m["categorias"])
+        e.add_field(name="Por categoria", value=txt[:1024], inline=False)
+    if m["maiores"]:
+        e.add_field(name="Maiores gastos", value="\n".join(
+            f"`{x['data'][:5]}` {x['descricao'][:30]} · {brl(x['valor'])}" for x in m["maiores"])[:1024], inline=False)
+    if m["assinaturas"]:
+        e.add_field(name=f"Assinaturas ({brl(m['assinaturas_total'])}/mês)", value="\n".join(
+            f"{s['descricao'][:30]} · {brl(s['valor'])}" for s in m["assinaturas"][:10])[:1024], inline=False)
+    if m["estouros"]:
+        e.add_field(name="Orçamento estourado", value="\n".join(
+            f"{x['categoria']}: {brl(x['gasto'])} de {brl(x['limite'])}" for x in m["estouros"])[:1024], inline=False)
+    return e
+
+
+async def send_monthly(bot, store, channel_id: int, today: date | None = None) -> bool:
+    """Dia 1: fecha o mês anterior."""
+    ref = reports.prev_month((today or date.today()).strftime("%Y-%m"))
+    channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+    await channel.send(embed=monthly_embed(reports.monthly_full(store, ref)))
+    return True
+
+
+def alerts_embed(alerts) -> discord.Embed:
+    titulos = {"sync": "🔴 Sincronização", "orcamento": "💰 Orçamento", "fora_padrao": "⚠️ Fora do padrão",
+               "duplicada": "🔁 Possível duplicidade", "assinatura": "📆 Assinaturas", "projecao": "📈 Projeção"}
+    e = discord.Embed(title=f"Granzo Plus · Alertas de {date.today().strftime('%d/%m')}", color=AMBAR)
+    for kind, titulo in titulos.items():
+        itens = [a.text for a in alerts if a.kind == kind]
+        if itens:
+            e.add_field(name=titulo, value="\n".join(itens)[:1024], inline=False)
+    if any(a.kind in ("sync",) or "estourou" in a.text for a in alerts):
+        e.color = discord.Color(VERMELHO)
+    return e
+
+
+async def send_alerts(bot, store, channel_id: int, today: date | None, last_success: str | None) -> int:
+    """UMA mensagem consolidada por execução; só marca como enviado após sucesso."""
+    from ..services import alerts as al
+    pend = al.compute(store, today or date.today(), last_success)
+    if not pend:
+        return 0
+    channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+    await channel.send(embed=alerts_embed(pend))
+    al.mark_sent(store, pend)
+    return len(pend)
