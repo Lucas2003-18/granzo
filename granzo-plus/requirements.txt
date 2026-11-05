@@ -1,0 +1,5 @@
+# Versões fixadas (SPEC-01 S8). Auditar com: pip-audit -r requirements.txt
+httpx==0.28.1
+discord.py==2.7.1
+APScheduler==3.11.3
+sqlcipher3-binary==0.6.0

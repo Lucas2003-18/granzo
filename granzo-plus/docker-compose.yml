@@ -1,0 +1,29 @@
+# SPEC-01: sem ports, rede própria, não-root, FS somente leitura, sem socket.
+services:
+  granzo-plus:
+    build: .
+    container_name: granzo-plus
+    restart: unless-stopped
+    env_file: .env            # chmod 600; fora de qualquer repo
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./data:/data          # único volume: dados do próprio Granzo Plus
+    secrets:
+      - granzo_db_key
+    networks:
+      - granzo-plus-net
+    # (sem `ports:`, sem docker.sock, sem collab-hub-network)
+
+networks:
+  granzo-plus-net:
+    driver: bridge
+
+secrets:
+  granzo_db_key:
+    file: ./secrets/granzo_db_key   # chmod 600; chave separada do backup
