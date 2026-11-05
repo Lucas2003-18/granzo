@@ -10,7 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from . import config as cfgmod
 from . import db, logging_setup
-from .cogs.finance import OwnerOnlyTree, send_daily
+from .cogs.finance import OwnerOnlyTree, register_commands, send_daily
 from .services.categorize import Categorizer
 from .services.pluggy import PluggyAuthError, PluggyClient
 from .services.store import Store
@@ -57,9 +57,15 @@ def main() -> None:
             sched.add_job(job_daily, CronTrigger(hour=cfg.daily_hour, minute=cfg.daily_minute, timezone=TZ),
                           args=[bot, cfg, store, client, cat], id="diario", misfire_grace_time=3600)
             sched.start()
+        if cfg.guild_id:
+            guild = discord.Object(id=cfg.guild_id)
+            bot.tree.copy_global_to(guild=guild)
+            await bot.tree.sync(guild=guild)
+        else:
+            await bot.tree.sync()
         log.info("online; diário às %02d:%02d", cfg.daily_hour, cfg.daily_minute)
 
-    # TODO(Sprint 4): registrar /saldo /resumo /gastos /categorizar /orcamento /sync em bot.tree
+    register_commands(bot.tree, store, cat, lambda: run_sync(client, store, cat, cfg.pluggy_item_id), cfg.owner_id)
 
     bot.run(cfg.discord_token, log_handler=None)
 

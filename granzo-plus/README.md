@@ -21,7 +21,7 @@ pytest
 | 1 Pluggy | 🟡 código + testes com mock | Auth, accounts, `/v2/transactions` com cursor, 1ª carga completa, upsert, log de execução. **Falta validar contra API real** (itens `VALIDAR` em `services/pluggy.py` e `normalize.py`) |
 | 2 Modelo financeiro | 🟡 | Compra de cartão = despesa; pagamento de fatura fora dos totais (testado). **Falta**: preencher `credit_card_bills`/`bill_payments` (depende do endpoint de faturas) |
 | 3 Migração Granzo | 🟡 esqueleto | `services/migrate_granzo.py`; chaves do JSON assumidas. **Falta** backup novo e dedupe contra histórico Pluggy (risco de dupla contagem) |
-| 4 Diário | 🟡 | Dados (`reports.daily`) + embed + envio com `notificada` só após sucesso. **Falta**: slash commands |
+| 4 Diário + comandos | 🟡 | Diário + `/saldo /resumo /gastos /categorizar /orcamento /sync` (efêmeros, só dono, cooldown no /sync). **Falta**: testar no Discord real |
 | 5 Mensal / 6 Alertas | ⬜ | não iniciado (ordem da SPEC-04) |
 
 ## Decisões de implementação (além das specs)

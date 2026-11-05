@@ -61,3 +61,38 @@ def daily(store: Store, today: date, last_sync_iso: str | None) -> dict:
         "ritmo": month_pace(totals["exp"], today, budget),
         "desatualizado": stale,
     }
+
+
+def parse_month(text: str | None, today: date) -> str:
+    """Aceita 'AAAA-MM' ou 'MM/AAAA'; vazio = mês atual. Levanta ValueError."""
+    if not text:
+        return today.strftime("%Y-%m")
+    t = text.strip()
+    try:
+        if "/" in t:
+            m, y = t.split("/")
+            d = date(int(y), int(m), 1)
+        else:
+            y, m = t.split("-")
+            d = date(int(y), int(m), 1)
+    except ValueError:
+        raise ValueError("Use AAAA-MM ou MM/AAAA") from None
+    return d.strftime("%Y-%m")
+
+
+def prev_month(ym: str) -> str:
+    y, m = map(int, ym.split("-"))
+    return f"{y - 1}-12" if m == 1 else f"{y}-{m - 1:02d}"
+
+
+def monthly(store: Store, ym: str) -> dict:
+    cur, prev = store.spend_by_category(ym), dict(store.spend_by_category(prev_month(ym)))
+    names = {r["id"]: f"{r['emoji'] or ''} {r['nome']}".strip()
+             for r in store.conn.execute("SELECT id,nome,emoji FROM categorias")}
+    tot = store.month_totals(ym)
+    cats = []
+    for cid, val in cur[:8]:
+        p = prev.get(cid)
+        var = ((val - p) / p * 100) if p else None
+        cats.append({"categoria": names.get(cid, cid), "valor": val, "variacao_pct": var})
+    return {"mes": ym, "entradas": tot["inc"], "saidas": tot["exp"], "saldo": tot["inc"] - tot["exp"], "categorias": cats}

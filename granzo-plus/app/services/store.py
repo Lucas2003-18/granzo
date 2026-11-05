@@ -127,3 +127,47 @@ class Store:
 
     def has_history(self) -> bool:
         return self.conn.execute("SELECT 1 FROM execucoes WHERE status IN ('ok','parcial') LIMIT 1").fetchone() is not None
+
+
+# --- consultas usadas pelos slash commands ---
+def _store_find_tx(self, prefix: str):
+    rows = self.conn.execute(
+        "SELECT id, descricao FROM transacoes WHERE id LIKE ? ESCAPE '\\' LIMIT 2",
+        (prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%",),
+    ).fetchall()
+    return rows[0] if len(rows) == 1 else None  # ambíguo ou inexistente => None
+
+
+def _store_list_tx(self, since_iso: str, categoria_id: str | None = None, limit: int = 25):
+    sql = ("SELECT t.id,t.data,t.descricao,t.valor,t.kind,t.categoria_id,c.nome cat_nome,c.emoji cat_emoji "
+           "FROM transacoes t LEFT JOIN categorias c ON c.id=t.categoria_id WHERE t.data>=?")
+    args: list = [since_iso]
+    if categoria_id:
+        sql += " AND t.categoria_id=?"
+        args.append(categoria_id)
+    sql += " ORDER BY t.data DESC, t.criado_em DESC LIMIT ?"
+    args.append(limit)
+    return self.conn.execute(sql, args).fetchall()
+
+
+def _store_balances(self):
+    return self.conn.execute(
+        "SELECT tipo,nome,saldo_atual,atualizado_em FROM contas WHERE banco!='granzo' ORDER BY tipo,nome"
+    ).fetchall()
+
+
+def _store_set_budget(self, categoria_id: str, valor: float | None) -> bool:
+    cur = self.conn.execute("UPDATE categorias SET orcamento_mensal=? WHERE id=?", (valor, categoria_id))
+    self.conn.commit()
+    return cur.rowcount == 1
+
+
+def _store_valid_category(self, categoria_id: str) -> bool:
+    return self.conn.execute("SELECT 1 FROM categorias WHERE id=?", (categoria_id,)).fetchone() is not None
+
+
+Store.find_tx = _store_find_tx
+Store.list_tx = _store_list_tx
+Store.balances = _store_balances
+Store.set_budget = _store_set_budget
+Store.valid_category = _store_valid_category
